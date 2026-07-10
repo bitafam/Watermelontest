@@ -61,7 +61,7 @@ jobs:
             sed -i 's|<\/manifest>|<queries><package android:name="ir.mservices.market" /><\/queries><\/manifest>|g' "$MANIFEST_PATH"
             
             # Let's add an intent filter for Myket deep link within the .MainActivity activity
-            INTENT_FILTER='<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="watermelon-detector" /></intent-filter>'
+            INTENT_FILTER='<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="wmqd" /></intent-filter>'
             sed -i "s|<activity|<activity>\n            ${INTENT_FILTER}|g" "$MANIFEST_PATH"
           else
             echo "AndroidManifest.xml not found. Skipping auto-injection (will use Capacitor defaults)."
@@ -72,15 +72,15 @@ jobs:
           # Create keystore directory if not exists
           mkdir -p android/app/
           
-          # Generate a robust debug keystore automatically
+          # Generate a robust debug keystore automatically with custom professional identity
           keytool -genkey -v -keystore android/app/debug.keystore \
-            -alias androiddebugkey \
+            -alias wmqd_debug_key \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
             -storepass android \
             -keypass android \
-            -dname "CN=Watermelon Detector, OU=Development, O=Watermelon App, L=Tehran, S=Tehran, C=IR"
+            -dname "CN=Smart Watermelon Detector, OU=Development, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
           
           echo "Successfully generated local debug.keystore for Myket publishing preparation."
 
@@ -91,22 +91,17 @@ jobs:
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom debug signing configurations into build.gradle..."
             # Replace the standard debug signing configs with our own generated debug.keystore details
-            sed -i "s|storeFile file('debug.keystore')|storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'|g" "$GRADLE_PATH"
+            sed -i "s|storeFile file('debug.keystore')|storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'wmqd_debug_key'\n            keyPassword 'android'|g" "$GRADLE_PATH"
           fi
 
-      - name: Build Android Debug APK
+      - name: Build Android APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload Debug APK Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Watermelon-Detector-Debug-APK
+          name: Smart-Watermelon-Detector-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Build Android Release AAB (For App Store Publishing)
-        run: |
-          cd android
-          ./gradlew bundleRelease || echo "Release bundle skipped, debug APK built successfully."

@@ -1,5 +1,5 @@
 {
-  "name": "Watermelon Quality Detector",
+  "name": "هندوانه سنج هوشمند",
   "description": "برنامه سنجش دیجیتال و آنالیز نوری هندوانه رسیده با قابلیت تفکیک رنگ، پردازش تصویر دمبرگ و لکه زمین و بازخوانی متون (OCR) کاملا محلی",
   "requestFramePermissions": [
     "camera"

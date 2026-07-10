@@ -7,6 +7,37 @@ export interface VisualHotspot {
   height: number;
 }
 
+export interface WatermelonItem {
+  id: number;
+  label: string;
+  cropped_image: string;
+  ripeness_score: number;
+  quality_score: number;
+  ground_spot: {
+    color: string;
+    description: string;
+    ripeness_impact: string;
+  };
+  stripes: {
+    contrast: string;
+    description: string;
+    ripeness_impact: string;
+  };
+  stem: {
+    state: string;
+    description: string;
+    ripeness_impact: string;
+  };
+  shape_profile: {
+    shape: string;
+    description: string;
+    uniformity: string;
+  };
+  recommendation: string;
+  detailed_analysis: string;
+  visual_hotspots: VisualHotspot[];
+}
+
 export interface AnalysisResult {
   is_watermelon: boolean;
   is_watermelon_explanation: string;
@@ -38,6 +69,7 @@ export interface AnalysisResult {
   recommendation: string;
   detailed_analysis: string;
   visual_hotspots: VisualHotspot[];
+  detected_watermelons?: WatermelonItem[];
 }
 
 export interface SavedAnalysis {

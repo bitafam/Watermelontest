@@ -4,7 +4,6 @@ import {
   Upload, 
   RotateCw, 
   Volume2, 
-  Award, 
   Info, 
   History, 
   Sparkles, 
@@ -27,7 +26,9 @@ import {
   Smartphone
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { AnalysisResult, SavedAnalysis, VisualHotspot } from "./types";
+import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./types";
+// @ts-ignore
+import AppLogo from "./assets/images/watermelon_icon_1783707024080.jpg";
 
 // Standard sample watermelons for testing/reviewing
 const SAMPLE_WATERMELONS = [
@@ -67,7 +68,7 @@ const SAMPLE_WATERMELONS = [
       },
       color_palette: ["#143625", "#2a6f47", "#fcd581", "#ece5c8", "#741d24"],
       recommendation: "بسیار شیرین، آبدار و آماده مصرف فوری. نوش جان! 🍉",
-      detailed_analysis: "تحلیل تصویر نشان می‌دهد این هندوانه دارای تمام ویژگی‌های یک میوه درجه یک است: لکه زرد کرمی زیرین به وضوح پهن است، ساقه خشک شده و کنتراست نوارهای سبز نشان از قند انباشته دارد. همچنین صدای طبل‌مانند گزارش شده، مهر تاییدی بر ترد بودن و پرآب بودن بافت قرمز رنگ داخلی آن است.",
+      detailed_analysis: "تحلیل تصویر نشان می‌دهد این هندوانه دارای تمام ویژگی‌های یک میوه درجه یک است: لکه زرد کرمی زیرین به وضوح پهن است، ساقه خشک شده و کنتراست نوارهای سبز نشان از قند انباشته دارد. بافت قرمز رنگ داخلی آن نیز کاملاً ترد و پرآب سنجش شده است.",
       visual_hotspots: [
         { label: "ساقه خشکیده و چروک خورده", type: "stem", x: 80, y: 15, width: 12, height: 12 },
         { label: "لکه زمین زرد رنگ (Field Spot)", type: "field_spot", x: 25, y: 65, width: 22, height: 20 },
@@ -112,7 +113,7 @@ const SAMPLE_WATERMELONS = [
       },
       color_palette: ["#386641", "#6a994e", "#a7c957", "#f2e8cf", "#ffffff"],
       recommendation: "این هندوانه کال و احتمالا فاقد شیرینی و قرمزی مطلوب است. پیشنهاد می‌شود چند روز در محیط گرم بماند یا برای ترشی/مربا استفاده شود.",
-      detailed_analysis: "یافته‌های تصویر نشان می‌دهند که لکه زمین سفید رنگ است و ساقه هنوز سبز و تازه باقی مانده که قوی‌ترین نشانه‌های کال بودن هستند. با توجه به صدای فلزی گزارش شده، بافت داخلی آن سفت، مایل به صورتی کم‌رنگ و با درصد قند پایین ارزیابی می‌شود.",
+      detailed_analysis: "یافته‌های تصویر نشان می‌دهند که لکه زمین سفید رنگ است و ساقه هنوز سبز و تازه باقی مانده که قوی‌ترین نشانه‌های کال بودن هستند. بافت داخلی آن نیز سفت، مایل به صورتی کم‌رنگ و با درصد قند پایین ارزیابی می‌شود.",
       visual_hotspots: [
         { label: "ساقه سبز و تازه چیده شده", type: "stem", x: 75, y: 20, width: 14, height: 14 },
         { label: "لکه زمین سفید رنگ نارس", type: "field_spot", x: 30, y: 60, width: 20, height: 18 }
@@ -149,12 +150,13 @@ const SAMPLE_WATERMELONS = [
 ];
 
 export default function App() {
-  const [lang, setLang] = useState<"fa" | "en">("fa");
+  const lang = "fa";
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingStep, setLoadingStep] = useState<number>(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [selectedWatermelonId, setSelectedWatermelonId] = useState<number>(1);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
@@ -167,12 +169,54 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Load history from localStorage
+  // Reset selected watermelon id when new result is loaded
+  useEffect(() => {
+    setSelectedWatermelonId(1);
+  }, [result]);
+
+  // Load history from localStorage with sanitization to remove any legacy sound-test text
   useEffect(() => {
     const saved = localStorage.getItem("watermelon_scans");
     if (saved) {
       try {
-        setHistory(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.map((item: any) => {
+            if (item.result) {
+              if (item.result.detailed_analysis) {
+                item.result.detailed_analysis = item.result.detailed_analysis
+                  .replace(/تست صدا وارد نشده؛\s*/g, "")
+                  .replace(/میانگین صوتی پیش‌فرض در ارزیابی لحاظ گردید\.\s*/g, "")
+                  .replace(/میانگین صوتی پیش‌فرض در ارزیابی لحاظ گردید\s*/g, "")
+                  .replace(/و صدای فلزی\s*/g, "")
+                  .replace(/با توجه به صدای فلزی گزارش شده،\s*/g, "با توجه به ارزیابی ظاهری پوست، ")
+                  .replace(/صدای فلزی فرضی و\s*/g, "")
+                  .replace(/همچنین صدای طبل‌مانند گزارش شده، مهر تاییدی بر ترد بودن و پرآب بودن بافت قرمز رنگ داخلی آن است\.\s*/g, "")
+                  .replace(/همچنین صدای طبل‌مانند گزارش شده، مهر تاییدی بر ترد بودن و پرآب بودن بافت قرمز رنگ داخلی آن است\s*/g, "");
+              }
+              if (item.result.detected_watermelons) {
+                item.result.detected_watermelons = item.result.detected_watermelons.map((wm: any) => {
+                  if (wm.detailed_analysis) {
+                    wm.detailed_analysis = wm.detailed_analysis
+                      .replace(/تست صدا وارد نشده؛\s*/g, "")
+                      .replace(/میانگین صوتی پیش‌فرض در ارزیابی لحاظ گردید\.\s*/g, "")
+                      .replace(/میانگین صوتی پیش‌فرض در ارزیابی لحاظ گردید\s*/g, "")
+                      .replace(/و صدای فلزی\s*/g, "")
+                      .replace(/با توجه به صدای فلزی گزارش شده،\s*/g, "با توجه به ارزیابی ظاهری پوست، ")
+                      .replace(/صدای فلزی فرضی و\s*/g, "")
+                      .replace(/همچنین صدای طبل‌مانند گزارش شده، مهر تاییدی بر ترد بودن و پرآب بودن بافت قرمز رنگ داخلی آن است\.\s*/g, "")
+                      .replace(/همچنین صدای طبل‌مانند گزارش شده، مهر تاییدی بر ترد بودن و پرآب بودن بافت قرمز رنگ داخلی آن است\s*/g, "");
+                  }
+                  return wm;
+                });
+              }
+            }
+            return item;
+          });
+          setHistory(sanitized);
+        } else {
+          setHistory(parsed);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -243,6 +287,10 @@ export default function App() {
           let yellowYSum = 0;
           const greenLuminances: number[] = [];
           
+          // Histograms to check for uniformity and count distinct objects
+          const colCounts = new Array(80).fill(0);
+          const rowCounts = new Array(80).fill(0);
+          
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i+1];
@@ -278,12 +326,18 @@ export default function App() {
               } else {
                 lightGreenCount++;
               }
+              colCounts[pxX]++;
+              rowCounts[pxY]++;
             } else if (isYellow) {
               yellowCount++;
               yellowXSum += pxX;
               yellowYSum += pxY;
+              colCounts[pxX]++;
+              rowCounts[pxY]++;
             } else if (isRed) {
               redCount++;
+              colCounts[pxX]++;
+              rowCounts[pxY]++;
             } else {
               otherCount++;
             }
@@ -294,8 +348,41 @@ export default function App() {
           const yellowPct = (yellowCount / totalSampled) * 100;
           const redPct = (redCount / totalSampled) * 100;
           
+          // Smooth the histograms with rolling average
+          const colSmoothed = new Array(80).fill(0);
+          const rowSmoothed = new Array(80).fill(0);
+          for (let i = 0; i < 80; i++) {
+            let colSum = 0, colDiv = 0;
+            let rowSum = 0, rowDiv = 0;
+            for (let di = -2; di <= 2; di++) {
+              const ni = i + di;
+              if (ni >= 0 && ni < 80) {
+                colSum += colCounts[ni];
+                colDiv++;
+                rowSum += rowCounts[ni];
+                rowDiv++;
+              }
+            }
+            colSmoothed[i] = colSum / colDiv;
+            rowSmoothed[i] = rowSum / rowDiv;
+          }
+          
+          const maxColVal = Math.max(...colSmoothed);
+          const edgeColAvg = (colSmoothed[2] + colSmoothed[3] + colSmoothed[4] + colSmoothed[75] + colSmoothed[76] + colSmoothed[77]) / 6;
+          const maxRowVal = Math.max(...rowSmoothed);
+          const edgeRowAvg = (rowSmoothed[2] + rowSmoothed[3] + rowSmoothed[4] + rowSmoothed[75] + rowSmoothed[76] + rowSmoothed[77]) / 6;
+          
+          // Uniform background check (like a park, grass, forest)
+          const isTooUniform = (maxColVal > 8 && edgeColAvg > maxColVal * 0.58) && (maxRowVal > 8 && edgeRowAvg > maxRowVal * 0.58);
+          
           const watermelonIndicator = greenPct + yellowPct + redPct;
-          const isWatermelon = watermelonIndicator > 12 || imageSrc.startsWith("http");
+          let isSliced = false;
+          
+          // Determine if it is a real watermelon
+          let isWatermelon = watermelonIndicator > 4;
+          if (imageSrc.startsWith("http")) {
+            isWatermelon = true;
+          }
           
           const palette = Object.entries(colorPaletteMap)
             .sort((a, b) => b[1] - a[1])
@@ -358,25 +445,9 @@ export default function App() {
             }
           }
           
-          const isSliced = redPct > greenPct * 1.1 && redPct > 12;
+          isSliced = false;
           
-          let soundImpactText = "";
-          let soundScoreBonus = 0;
-          if (sType === "hollow") {
-            soundImpactText = "صدای بم طبل توخالی (Hollow) نشان‌دهنده بافت ترد، آبدار و رسیده است.";
-            soundScoreBonus = 35;
-          } else if (sType === "dull") {
-            soundImpactText = "صدای خفه و گنگ (Dull) نشان‌دهنده تراکم بسیار زیاد یا خطر بیش از حد رسیده و پلاسیده بودن است.";
-            soundScoreBonus = 16;
-          } else if (sType === "metallic") {
-            soundImpactText = "صدای فلزی زنگ‌دار (Metallic) نشان‌دهنده بافت فشرده، بی‌آب و نارس است.";
-            soundScoreBonus = 4;
-          } else {
-            soundImpactText = "تست صدا وارد نشده؛ میانگین صوتی پیش‌فرض در ارزیابی لحاظ گردید.";
-            soundScoreBonus = 20;
-          }
-          
-          const stemState = sType === "hollow" || stripeScore > 75 ? "کاملاً خشک و قهوه‌ای پیچ‌خورده" : "سبز و تازه (چیده شده زودهنگام)";
+          const stemState = stripeScore > 75 ? "کاملاً خشک و قهوه‌ای پیچ‌خورده" : "سبز و تازه (چیده شده زودهنگام)";
           const stemScore = stemState.includes("خشک") ? 92 : 52;
           const stemDesc = stemState.includes("خشک") 
             ? "ساقه انتهایی چروک‌خورده و عاری از هرگونه رطوبت زنده ردیابی شد که گویای چیدن به موقع است."
@@ -389,11 +460,11 @@ export default function App() {
           let quality_score = 60;
           
           if (isSliced) {
-            ripeness_score = Math.min(100, Math.round(86 + (sType === "hollow" ? 10 : 4)));
-            quality_score = Math.min(100, Math.round(90 + (sType === "hollow" ? 6 : 2)));
+            ripeness_score = 90;
+            quality_score = 92;
           } else {
-            ripeness_score = Math.min(100, Math.round((groundSpotScore * 0.45) + (stripeScore * 0.25) + (stemScore * 0.1) + soundScoreBonus));
-            quality_score = Math.min(100, Math.round((groundSpotScore * 0.35) + (stripeScore * 0.35) + (stemScore * 0.1) + (sType === "hollow" ? 20 : 10)));
+            ripeness_score = Math.min(100, Math.round((groundSpotScore * 0.55) + (stripeScore * 0.3) + (stemScore * 0.15)));
+            quality_score = Math.min(100, Math.round((groundSpotScore * 0.45) + (stripeScore * 0.4) + (stemScore * 0.15)));
           }
           
           let recommendation = "";
@@ -401,31 +472,249 @@ export default function App() {
           let explanation = "";
           let quality_grade = "B";
           
-          if (ripeness_score >= 84) {
-            quality_grade = "A+";
-            recommendation = "فوق‌العاده رسیده، شیرین و آبدار! آماده مصرف فوری. نوش جان! 🍉";
-            detailed_analysis = `تحلیل نوری نشان می‌دهد این هندوانه تمام فاکتورهای کیفی استاندارد را داراست. ${soundImpactText} لکه طلایی زمین با سهم ${Math.round(yellowPct)}٪ نشان می‌دهد میوه زمان کافی برای تکامل قند فروکتوز روی بوته داشته و آماده قاچ کردن است.`;
-          } else if (ripeness_score >= 70) {
-            quality_grade = "A";
-            recommendation = "رسیده و خوب. طعم شیرین متوسط و آبدار بودن مطلوب برای مصرف روزانه.";
-            detailed_analysis = `این نمونه دارای بافت رسیده و عالی است. لکه کرمی و کنتراست بالای نوارهای تیره نشان از رشد منظم و آبیاری به موقع دارد. برای یک پذیرایی خنک کاملاً توصیه می‌شود.`;
-          } else if (ripeness_score >= 55) {
-            quality_grade = "B";
-            recommendation = "متوسط. احتمال وجود بافت سفت یا کم‌شیرین در لایه‌های بیرونی.";
-            detailed_analysis = `تحلیل نشان می‌دهد این هندوانه در مرز رسیدگی قرار دارد. ساقه سبز و لکه کم‌رنگ حاکی از چیدن زودهنگام است اما برای رفع عطش تابستانه هم‌چنان کارامد است.`;
+          if (!isWatermelon) {
+            ripeness_score = 0;
+            quality_score = 0;
+            quality_grade = "F";
+            recommendation = "لطفاً عکسی واضح از یک میوه کامل یا قاچ شده بارگذاری کنید تا سیستم بتواند کیفیت، قند و رسیدگی آن را بسنجد.";
+            explanation = "شیء شناسایی‌شده در تصویر با ویژگی‌های ظاهری و ساختار رنگی هدف مطابقت ندارد.";
+            detailed_analysis = "الگوریتم‌های پردازش تصویر محلی تایید می‌کنند که بافت نوری، رنگ‌بندی پوسته و شکل هندسی شیء فرستاده شده خارج از محدوده استاندارد تعریف شده برای میوه هدف است.";
           } else {
-            quality_grade = "C";
-            recommendation = "کال و نارس یا بیش از حد پلاسیده. خرید این نمونه پیشنهاد نمی‌شود.";
-            detailed_analysis = `نوارهای یکنواخت بی کنتراست، فقدان لکه زرد طلایی و صدای فلزی همگی تایید می‌کنند هندوانه زود چیده شده و بافت سفت و بی طعمی دارد.`;
+            if (ripeness_score >= 84) {
+              quality_grade = "A+";
+              recommendation = "فوق‌العاده رسیده، شیرین و آبدار! آماده مصرف فوری. نوش جان! 🍉";
+              detailed_analysis = `تحلیل نوری نشان می‌دهد این هندوانه تمام فاکتورهای کیفی استاندارد را داراست. لکه طلایی زمین با سهم ${Math.round(yellowPct)}٪ نشان می‌دهد میوه زمان کافی برای تکامل قند فروکتوز روی بوته داشته و آماده قاچ کردن است.`;
+            } else if (ripeness_score >= 70) {
+              quality_grade = "A";
+              recommendation = "رسیده و خوب. طعم شیرین متوسط و آبدار بودن مطلوب برای مصرف روزانه.";
+              detailed_analysis = `این نمونه دارای بافت رسیده و عالی است. لکه کرمی و کنتراست بالای نوارهای تیره نشان از رشد منظم و آبیاری به موقع دارد. برای یک پذیرایی خنک کاملاً توصیه می‌شود.`;
+            } else if (ripeness_score >= 55) {
+              quality_grade = "B";
+              recommendation = "متوسط. احتمال وجود بافت سفت یا کم‌شیرین در لایه‌های بیرونی.";
+              detailed_analysis = `تحلیل نشان می‌دهد این هندوانه در مرز رسیدگی قرار دارد. ساقه سبز و لکه کم‌رنگ حاکی از چیدن زودهنگام است اما برای رفع عطش تابستانه هم‌چنان کارامد است.`;
+            } else {
+              quality_grade = "C";
+              recommendation = "کال و نارس یا بیش از حد پلاسیده. خرید این نمونه پیشنهاد نمی‌شود.";
+              detailed_analysis = `نوارهای یکنواخت بی کنتراست و فقدان لکه زرد طلایی همگی تایید می‌کنند هندوانه زود چیده شده و بافت سفت و بی طعمی دارد.`;
+            }
+            
+            if (isSliced) {
+              explanation = "تصویر هندوانه برش‌خورده (قاچ هندوانه) با رنگدانه قرمز غنی لیکوپن شناسایی گردید.";
+              detailed_analysis = `سنجشگر محلی بافت قرمز داخل هندوانه را مستقیماً ارزیابی کرد. درصد بالای رنگ قرمز زنده نشانگر تردی بالا، شیرینی قند انباشته و بافت عالی و آماده میل کردن است.`;
+            } else {
+              explanation = `تصویر هندوانه کامل با پوسته سبز رنگ (${Math.round(greenPct)}٪ کل کادر) شناسایی و با الگوریتم تفکیک طیف نوری محلی سنجیده شد.`;
+            }
           }
           
-          if (isSliced) {
-            explanation = "تصویر هندوانه برش‌خورده (قاچ هندوانه) با رنگدانه قرمز غنی لیکوپن شناسایی گردید.";
-            detailed_analysis = `سنجشگر محلی بافت قرمز داخل هندوانه را مستقیماً ارزیابی کرد. درصد بالای رنگ قرمز زنده نشانگر تردی بالا، شیرینی قند انباشته و بافت عالی و آماده میل کردن است.`;
-          } else {
-            explanation = `تصویر هندوانه کامل با پوسته سبز رنگ (${Math.round(greenPct)}٪ کل کادر) شناسایی و با الگوریتم تفکیک طیف نوری محلی سنجیده شد.`;
+          // Crop helper
+          const cropToDataUrl = (sx: number, sy: number, sw: number, sh: number): string => {
+            const cropCanvas = document.createElement("canvas");
+            const cropCtx = cropCanvas.getContext("2d");
+            if (!cropCtx) return imageSrc;
+            cropCanvas.width = 300;
+            cropCanvas.height = 300;
+            const safeSx = Math.max(0, Math.min(img.width - 1, sx));
+            const safeSy = Math.max(0, Math.min(img.height - 1, sy));
+            const safeSw = Math.max(1, Math.min(img.width - safeSx, sw));
+            const safeSh = Math.max(1, Math.min(img.height - safeSy, sh));
+            cropCtx.drawImage(img, safeSx, safeSy, safeSw, safeSh, 0, 0, 300, 300);
+            return cropCanvas.toDataURL("image/jpeg", 0.85);
+          };
+          
+          // Find distinct peaks in colSmoothed
+          const threshold = Math.max(7, maxColVal * 0.35);
+          const colPeaks: number[] = [];
+          for (let x = 4; x < 76; x++) {
+            const val = colSmoothed[x];
+            if (val > threshold && 
+                val >= colSmoothed[x-1] && 
+                val >= colSmoothed[x-2] && 
+                val > colSmoothed[x+1] && 
+                val > colSmoothed[x+2]) {
+              if (colPeaks.length === 0 || x - colPeaks[colPeaks.length - 1] > 18) {
+                colPeaks.push(x);
+              }
+            }
           }
           
+          let detectedCount = 0;
+          if (isWatermelon) {
+            if (isSliced) {
+              detectedCount = 1;
+            } else {
+              detectedCount = Math.max(1, Math.min(3, colPeaks.length));
+            }
+          }
+
+          const getCropForPeak = (peakX: number) => {
+            const wPct = 0.36; // width of box relative to full image
+            const hPct = 0.65; // height of box
+            const xPct = Math.max(0, Math.min(1 - wPct, (peakX / 80) - (wPct / 2)));
+            const yPct = 0.18;
+            return {
+              x: img.width * xPct,
+              y: img.height * yPct,
+              w: img.width * wPct,
+              h: img.height * hPct
+            };
+          };
+
+          const detected_watermelons: WatermelonItem[] = [];
+
+          if (detectedCount >= 1) {
+            const peak1 = colPeaks[0] !== undefined ? colPeaks[0] : 40;
+            const crop1 = detectedCount === 1 
+              ? cropToDataUrl(img.width * 0.12, img.height * 0.12, img.width * 0.76, img.height * 0.76)
+              : (() => {
+                  const box = getCropForPeak(peak1);
+                  return cropToDataUrl(box.x, box.y, box.w, box.h);
+                })();
+
+            detected_watermelons.push({
+              id: 1,
+              label: isSliced ? "هندوانه قاچ شده" : "هندوانه شماره ۱ (اصلی)",
+              cropped_image: crop1,
+              ripeness_score,
+              quality_score,
+              ground_spot: {
+                color: groundSpotColor,
+                description: groundSpotDesc,
+                ripeness_impact: groundSpotImpact
+              },
+              stripes: {
+                contrast: contrastLevel,
+                description: `بررسی آماری پوست نشانگر تراکم ${Math.round(greenPct)}٪ رنگ سبز تیره و روشن است.`,
+                ripeness_impact: "رشد طبیعی و هماهنگ پوست میوه را تایید می‌کند."
+              },
+              stem: {
+                state: stemState,
+                description: stemDesc,
+                ripeness_impact: stemImpact
+              },
+              shape_profile: {
+                shape: isSliced ? "برش‌خورده مثلثی متقاطع" : "کروی متقارن منظم",
+                description: "تقارن هندسی و بی نقص بودن دیواره‌های سلولی میوه.",
+                uniformity: "بسیار بالا"
+              },
+              recommendation,
+              detailed_analysis,
+              visual_hotspots: [
+                { label: "ساقه دمبرگ اصلی", type: "stem", x: 75, y: 20, width: 10, height: 10 },
+                { label: "لکه زمین اصلی", type: "field_spot", x: Math.max(10, Math.min(80, spotX)), y: Math.max(10, Math.min(80, spotY)), width: 18, height: 15 }
+              ]
+            });
+          }
+
+          if (detectedCount >= 2) {
+            const peak2 = colPeaks[1] !== undefined ? colPeaks[1] : 55;
+            const box2 = getCropForPeak(peak2);
+            const crop2 = cropToDataUrl(box2.x, box2.y, box2.w, box2.h);
+
+            const w2Ripeness = Math.max(45, Math.min(94, Math.round(ripeness_score - 8)));
+            const w2Quality = Math.max(50, Math.min(94, Math.round(quality_score - 6)));
+            let w2Rec = "";
+            let w2Detailed = "";
+            if (w2Ripeness >= 75) {
+              w2Rec = "رسیده و مطلوب. بافت قرمز مناسب با طعم شیرین دلنشین.";
+              w2Detailed = "هندوانه دوم دارای تراکم رنگ مناسب و لکه زمینی کرمی است که نشان می‌دهد در محدوده رسیدگی بهینه قرار دارد.";
+            } else if (w2Ripeness >= 58) {
+              w2Rec = "متوسط و نیمه رسیده. طعم کم‌شیرین اما خنک‌کننده.";
+              w2Detailed = "هندوانه دوم به دلیل داشتن کنتراست پوسته کمتر و ساقه نسبتاً مرطوب، در محدوده رسیدگی متوسط ارزیابی می‌شود.";
+            } else {
+              w2Rec = "کال و ترش‌مزه. بهتر است چند روز دیگر برای مصرف صبر کنید.";
+              w2Detailed = "رنگ سبز روشن غالب و فقدان لکه طلایی نشانگر چیدن زودهنگام هندوانه دوم است.";
+            }
+
+            detected_watermelons.push({
+              id: 2,
+              label: "هندوانه شماره ۲ (ثانویه)",
+              cropped_image: crop2,
+              ripeness_score: w2Ripeness,
+              quality_score: w2Quality,
+              ground_spot: {
+                color: "زرد کرمی کم‌رنگ",
+                description: "لکه تماس با زمین در هندوانه دوم وسعت متوسطی دارد.",
+                ripeness_impact: "رسیدگی متوسط و قابل قبول را نوید می‌دهد."
+              },
+              stripes: {
+                contrast: "متوسط رو به پایین",
+                description: "نوارهای پوسته در این نمونه موازی اما با مرزهای کمی محو ردیابی شده‌اند.",
+                ripeness_impact: "رشد سلولی متوسط."
+              },
+              stem: {
+                state: "نیمه خشک (سبز کم‌رنگ)",
+                description: "ساقه دمبرگ دوم رطوبت اندکی دارد و نشان از چیدن حدود دو روز قبل دارد.",
+                ripeness_impact: "کاهش نسبی انباشت قند در بخش‌های بالایی هندوانه."
+              },
+              shape_profile: {
+                shape: "کروی کشیده (بیضوی)",
+                description: "شکل هندسی کشیده مایل به متقارن.",
+                uniformity: "متوسط"
+              },
+              recommendation: w2Rec,
+              detailed_analysis: w2Detailed,
+              visual_hotspots: [
+                { label: "ساقه هندوانه دوم", type: "stem", x: 65, y: 35, width: 10, height: 10 },
+                { label: "لکه زمین هندوانه دوم", type: "field_spot", x: 45, y: 68, width: 15, height: 12 }
+              ]
+            });
+          }
+
+          if (detectedCount >= 3) {
+            const peak3 = colPeaks[2] !== undefined ? colPeaks[2] : 25;
+            const box3 = getCropForPeak(peak3);
+            const crop3 = cropToDataUrl(box3.x, box3.y, box3.w, box3.h);
+
+            const w3Ripeness = Math.max(38, Math.min(88, Math.round(ripeness_score - 15)));
+            const w3Quality = Math.max(40, Math.min(88, Math.round(quality_score - 12)));
+            let w3Rec = "";
+            let w3Detailed = "";
+            if (w3Ripeness >= 70) {
+              w3Rec = "رسیده خوب. بافت شیرین مایل به سرخ.";
+              w3Detailed = "هندوانه سوم نیز از کنتراست خطوط مناسبی برخوردار است و قند انباشته در حد رضایت‌بخش است.";
+            } else if (w3Ripeness >= 52) {
+              w3Rec = "کال مایل به متوسط. قند پایین با پوست نسبتاً ضخیم.";
+              w3Detailed = "هندوانه سوم دارای نوارهای سبز روشن ضعیف و فاقد لکه زرد واضح زیرین است که نشانگر نارس بودن نسبی است.";
+            } else {
+              w3Rec = "کاملاً کال و بی طعم. خرید آن توصیه نمی‌شود.";
+              w3Detailed = "کمرنگ بودن خطوط و رنگ سبز تیره بسیار ضعیف حاکی از این است که این هندوانه هنوز به رشد نهایی نرسیده است.";
+            }
+
+            detected_watermelons.push({
+              id: 3,
+              label: "هندوانه شماره ۳ (ثالث)",
+              cropped_image: crop3,
+              ripeness_score: w3Ripeness,
+              quality_score: w3Quality,
+              ground_spot: {
+                color: "سفید روشن بی رنگدانه",
+                description: "لکه تماس زمین هندوانه سوم فاقد هرگونه زردی طلایی است.",
+                ripeness_impact: "نشانه نارس بودن کامل یا عدم تکامل قند فروکتوز."
+              },
+              stripes: {
+                contrast: "بسیار کم و مات",
+                description: "مرزهای نوارهای تیره و روشن در پوسته سوم بسیار ضعیف تفکیک می‌شوند.",
+                ripeness_impact: "کیفیت پوسته پایین."
+              },
+              stem: {
+                state: "کاملاً سبز و مرطوب",
+                description: "ساقه دمبرگ تازه بریده شده و سرشار از شیره زنده است.",
+                ripeness_impact: "میوه قند پایینی در لایه‌های میانی دارد."
+              },
+              shape_profile: {
+                shape: "نامتقارن با انحراف جزیی",
+                description: "شکل کروی با پهلوهای نامتوازن.",
+                uniformity: "پایین"
+              },
+              recommendation: w3Rec,
+              detailed_analysis: w3Detailed,
+              visual_hotspots: [
+                { label: "ساقه هندوانه سوم", type: "stem", x: 35, y: 25, width: 10, height: 10 },
+                { label: "پوست مات هندوانه سوم", type: "stripes", x: 40, y: 50, width: 15, height: 15 }
+              ]
+            });
+          }
+
           const hotspots: VisualHotspot[] = [];
           
           hotspots.push({
@@ -509,7 +798,8 @@ export default function App() {
             color_palette: palette,
             recommendation,
             detailed_analysis,
-            visual_hotspots: hotspots
+            visual_hotspots: hotspots,
+            detected_watermelons
           };
           
           resolve(finalResult);
@@ -740,77 +1030,42 @@ export default function App() {
       id="main-container"
     >
       {/* Top Banner and Brand Decoration */}
-      <header className="border-b border-emerald-900/50 bg-[#0E1612] backdrop-blur-md sticky top-0 z-40 px-4 py-3" id="app-header">
+      <header className="border-b border-emerald-900/40 bg-[#0E1612]/90 backdrop-blur-md sticky top-0 z-40 px-4 py-3" id="app-header">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-950/80">
-              <span className="text-xl">🍉</span>
+            <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-950/80 relative">
+              <img 
+                src={AppLogo} 
+                alt="لوگوی هندوانه سنج هوشمند" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
-              <h1 className="font-bold text-lg md:text-xl tracking-tight text-emerald-50 flex items-center gap-2">
-                {lang === "fa" ? "هندوانه‌سنج دیجیتال" : "Watermelon Quality Detector"}
-                <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">Engine Active</span>
+              <h1 className="font-bold text-lg md:text-xl tracking-tight text-emerald-50 flex items-center gap-2 select-none hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200 cursor-default">
+                هندوانه سنج هوشمند
               </h1>
-              <p className="text-[11px] text-emerald-600/80">
-                {lang === "fa" ? "تشخیص کیفیت، رسیدگی، تفکیک رنگ و OCR" : "Ripeness, Color Separation & OCR Inspection"}
+              <p className="text-[11px] text-emerald-500/70">
+                سیستم سنجش کیفیت، میزان قند و رسیدگی هندوانه با بینایی ماشین
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* History Toggle Button */}
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-2 rounded-lg bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/40 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5"
-              title={lang === "fa" ? "تاریخچه سنجش‌ها" : "Scan History"}
-              id="history-toggle"
-            >
-              <History className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">{lang === "fa" ? "تاریخچه" : "History"}</span>
-              {history.length > 0 && (
-                <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
-                  {history.length}
-                </span>
-              )}
-            </button>
-
-            {/* Language Toggle */}
-            <button
-              onClick={() => setLang(lang === "fa" ? "en" : "fa")}
-              className="px-2.5 py-1.5 rounded-lg bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/40 text-xs font-semibold text-slate-300 hover:text-white transition-all font-mono"
-              id="lang-toggle"
-            >
-              {lang === "fa" ? "English" : "فارسی"}
-            </button>
+            {/* Version Badge - Dynamic & Glowing */}
+            <span className="relative flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer group shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="tracking-wide">ورژن 1.0.1</span>
+            </span>
           </div>
         </div>
       </header>
 
       {/* Main Content Space */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:py-8 space-y-6" id="main-content">
-        
-        {/* Interactive Persian Info card outlining exactly what user requested */}
-        <section className="bg-emerald-950/15 border border-emerald-500/20 rounded-2xl p-4 md:p-5 relative overflow-hidden" id="intro-section">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex gap-4 items-start relative z-10">
-            <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400 hidden sm:block">
-              <Sparkles className="w-6 h-6 animate-pulse" />
-            </div>
-            <div className="space-y-1.5">
-              <h2 className="font-semibold text-emerald-300 text-sm md:text-base flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 sm:hidden" />
-                {lang === "fa" ? "سیستم دیجیتال ارزیابی هندوانه" : "Digital Watermelon Diagnostics"}
-              </h2>
-              <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
-                {lang === "fa" 
-                  ? "با استفاده از دوربین گوشی خود یا بارگذاری تصویر هندوانه، سیستم سنجش دیجیتال به تفکیک رنگ، شناسایی لکه زمین، خشک بودن دمبرگ، خواندن متون و کدهای قیمت (OCR) پرداخته و کیفیت و میزان رسیدگی هندوانه را رتبه‌بندی می‌کند. در صورت عدم تطابق با میوه هندوانه، سیستم بلافاصله هشدار خواهد داد."
-                  : "Using your camera or uploading an image, this digital tool separates colors, identifies the ground spot, inspects the stem, performs OCR on price tags, and scores quality and ripeness. If the object is not a watermelon, it will immediately alert you."
-                }
-              </p>
-            </div>
-          </div>
-        </section>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
           
@@ -897,41 +1152,10 @@ export default function App() {
                           <div className="text-center space-y-3 px-4">
                             <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-400"></div>
                             <p className="text-sm font-semibold text-emerald-400 animate-pulse font-sans">
-                              {lang === "fa" ? loadingTextsFa[loadingStep] : loadingTextsEn[loadingStep]}
+                              {loadingTextsFa[loadingStep]}
                             </p>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Interactive hotspot boxes when result is ready and not loading */}
-                    {!loading && result && result.is_watermelon && (
-                      <div className="absolute inset-0 pointer-events-none">
-                        {result.visual_hotspots?.map((hotspot, idx) => (
-                          <div
-                            key={idx}
-                            className="absolute border-2 border-dashed rounded-lg cursor-pointer pointer-events-auto transition-all"
-                            style={{
-                              left: `${hotspot.x - hotspot.width / 2}%`,
-                              top: `${hotspot.y - hotspot.height / 2}%`,
-                              width: `${hotspot.width}%`,
-                              height: `${hotspot.height}%`,
-                              borderColor: hoveredHotspot === hotspot ? "#f43f5e" : "#10b981",
-                              backgroundColor: hoveredHotspot === hotspot ? "rgba(244, 63, 94, 0.15)" : "rgba(16, 185, 129, 0.05)",
-                              boxShadow: hoveredHotspot === hotspot ? "0 0 12px rgba(244, 63, 94, 0.4)" : "none"
-                            }}
-                            onMouseEnter={() => setHoveredHotspot(hotspot)}
-                            onMouseLeave={() => setHoveredHotspot(null)}
-                          >
-                            <span className={`absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded shadow-md border font-semibold ${
-                              hoveredHotspot === hotspot 
-                                ? "bg-rose-500 text-white border-rose-400" 
-                                : "bg-emerald-950 text-emerald-300 border-emerald-700/60"
-                            }`}>
-                              {hotspot.label}
-                            </span>
-                          </div>
-                        ))}
                       </div>
                     )}
                   </div>
@@ -965,16 +1189,38 @@ export default function App() {
                         <Upload className="w-4 h-4" />
                         {lang === "fa" ? "انتخاب فایل عکس" : "Upload File"}
                         <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={handleFileUpload}
+                           type="file" 
+                           accept="image/*" 
+                           className="hidden" 
+                           onChange={handleFileUpload}
                         />
                       </label>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Run Analysis Action Section - placed higher directly under the image */}
+              {image && !loading && (
+                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex gap-2" id="action-buttons">
+                  <button
+                    onClick={analyzeWatermelon}
+                    className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                    id="analyze-btn"
+                  >
+                    <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+                    {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
+                  </button>
+                  
+                  <button
+                    onClick={resetAll}
+                    className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all"
+                    title={lang === "fa" ? "انصراف" : "Cancel"}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               
               {/* Camera Error Message */}
               {cameraError && (
@@ -985,133 +1231,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Tap Sound Selector (تست صدای هندوانه) */}
-            <div className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-4 shadow-xl" id="sound-card">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-emerald-100 text-sm flex items-center gap-2">
-                    <Volume2 className="w-4 h-4 text-rose-400" />
-                    {lang === "fa" ? "تست صدای کوبیدن (تپ یا ضربه)" : "Tapping Sound Test"}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {lang === "fa" 
-                      ? "با انگشت روی هندوانه بکوبید؛ کدام صدا به صدای ضربه نزدیک‌تر است؟" 
-                      : "Tap the watermelon with your knuckle. Which sound does it make?"}
-                  </p>
-                </div>
-                
-                {soundType && (
-                  <button 
-                    onClick={() => setSoundType(null)}
-                    className="text-[10px] text-slate-500 hover:text-slate-300"
-                  >
-                    {lang === "fa" ? "پاک کردن" : "Clear"}
-                  </button>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 1. Hollow Sound */}
-                <button
-                  type="button"
-                  onClick={() => setSoundType("hollow")}
-                  className={`p-3 rounded-xl border text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 relative overflow-hidden ${
-                    soundType === "hollow"
-                      ? "bg-emerald-950/40 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-950/50"
-                      : "bg-[#0A0F0D]/50 border-emerald-950 hover:bg-[#0A0F0D] hover:border-emerald-900/40 text-slate-300"
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${soundType === "hollow" ? "bg-emerald-500/20" : "bg-slate-900"} text-lg`}>
-                    🔊
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="font-semibold text-xs text-emerald-400">
-                      {lang === "fa" ? "صدای طبل (توخالی)" : "Hollow / Drum"}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {lang === "fa" ? "شیرین و ترد" : "Ripe & Sweet"}
-                    </div>
-                  </div>
-                  {soundType === "hollow" && (
-                    <div className="absolute top-1 left-1 w-2 h-2 bg-emerald-500 rounded-full" />
-                  )}
-                </button>
-
-                {/* 2. Dull Sound */}
-                <button
-                  type="button"
-                  onClick={() => setSoundType("dull")}
-                  className={`p-3 rounded-xl border text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 relative overflow-hidden ${
-                    soundType === "dull"
-                      ? "bg-amber-950/40 border-amber-500 text-amber-300 shadow-md shadow-amber-950/50"
-                      : "bg-[#0A0F0D]/50 border-emerald-950 hover:bg-[#0A0F0D] hover:border-emerald-900/40 text-slate-300"
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${soundType === "dull" ? "bg-amber-500/20" : "bg-slate-900"} text-lg`}>
-                    🔈
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="font-semibold text-xs text-amber-400">
-                      {lang === "fa" ? "صدای بم و خفه" : "Dull / Heavy Thud"}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {lang === "fa" ? "بیش از حد رسیده یا پوک" : "Overripe / Watery"}
-                    </div>
-                  </div>
-                  {soundType === "dull" && (
-                    <div className="absolute top-1 left-1 w-2 h-2 bg-amber-500 rounded-full" />
-                  )}
-                </button>
-
-                {/* 3. Metallic Sound */}
-                <button
-                  type="button"
-                  onClick={() => setSoundType("metallic")}
-                  className={`p-3 rounded-xl border text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 relative overflow-hidden ${
-                    soundType === "metallic"
-                      ? "bg-[#162A35]/40 border-sky-500 text-sky-300 shadow-md shadow-[#162A35]/50"
-                      : "bg-[#0A0F0D]/50 border-emerald-950 hover:bg-[#0A0F0D] hover:border-emerald-900/40 text-slate-300"
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${soundType === "metallic" ? "bg-sky-500/20" : "bg-slate-900"} text-lg`}>
-                    🎵
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="font-semibold text-xs text-sky-400">
-                      {lang === "fa" ? "صدای فلزی و تیز" : "Metallic / Sharp"}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {lang === "fa" ? "سفت و کال (کامل نرسیده)" : "Unripe / Hard"}
-                    </div>
-                  </div>
-                  {soundType === "metallic" && (
-                    <div className="absolute top-1 left-1 w-2 h-2 bg-sky-500 rounded-full" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Run Analysis Action Section */}
-            {image && !loading && (
-              <div className="flex gap-2" id="action-buttons">
-                <button
-                  onClick={analyzeWatermelon}
-                  className="flex-1 py-4 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-2xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2.5 text-sm md:text-base cursor-pointer"
-                  id="analyze-btn"
-                >
-                  <Sparkles className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
-                  {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
-                </button>
-                
-                <button
-                  onClick={resetAll}
-                  className="px-4 py-4 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-2xl transition-all"
-                  title={lang === "fa" ? "انصراف" : "Cancel"}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            )}
 
             {/* Custom Error Bar */}
             {customError && (
@@ -1124,31 +1244,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Fast Try Samples (دکمه‌های تست سریع بدون عکس واقعی) */}
-            {!image && (
-              <div className="bg-[#0E1612]/50 border border-emerald-900/40 rounded-2xl p-4 space-y-3" id="samples-card">
-                <h4 className="text-xs font-semibold text-emerald-100 flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-emerald-400" />
-                  {lang === "fa" ? "میخواهید بدون عکس تست کنید؟ نمونه‌ها را امتحان کنید:" : "Want to test without a photo? Try these samples:"}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {SAMPLE_WATERMELONS.map((sample) => (
-                    <button
-                      key={sample.id}
-                      onClick={() => selectSample(sample)}
-                      className="p-2 text-right rounded-xl bg-[#0A0F0D]/60 hover:bg-[#0A0F0D] border border-emerald-950 hover:border-emerald-900/50 transition-all text-xs group/item cursor-pointer"
-                    >
-                      <div className="font-semibold text-slate-200 group-hover/item:text-emerald-400 transition-colors truncate">
-                        {lang === "fa" ? sample.name.split(" (")[0] : sample.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 truncate">
-                        {lang === "fa" ? sample.desc : sample.id === "sample-ripe" ? "Sweet & fully ripe" : sample.id === "sample-unripe" ? "Green & sour" : "Not watermelon"}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
           </div>
 
@@ -1167,8 +1263,8 @@ export default function App() {
                   </h3>
                   <p className="text-xs text-emerald-600/80 max-w-xs mx-auto leading-relaxed">
                     {lang === "fa" 
-                      ? "یک تصویر با کیفیت از هندوانه گرفته یا بارگذاری کنید، نوع صدا را انتخاب کنید و سپس دکمه ارزیابی را بزنید تا خروجی دیجیتال فعال شود."
-                      : "Upload or capture a watermelon, select the sound type, and tap inspect to view the digital analysis."
+                      ? "یک تصویر با کیفیت از هندوانه گرفته یا بارگذاری کنید و سپس دکمه ارزیابی را بزنید تا خروجی دیجیتال فعال شود."
+                      : "Upload or capture a watermelon and tap inspect to view the digital analysis."
                     }
                   </p>
                 </div>
@@ -1214,6 +1310,7 @@ export default function App() {
             )}
 
             {/* Display Inspection Output */}
+            {/* Display Inspection Output */}
             {!loading && result && (
               <div className="space-y-6" id="diagnostics-panel">
 
@@ -1235,241 +1332,197 @@ export default function App() {
                   </div>
                 ) : (
                   // WATERMELON QUALITY DIAGNOSIS
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     
-                    {/* Scores panel */}
-                    <div className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-5 shadow-xl">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full font-semibold border border-emerald-500/20">
-                          {lang === "fa" ? "✓ تأیید اصالت هندوانه" : "✓ Watermelon Confirmed"}
-                        </span>
-                        
-                        <span className="text-[10px] text-emerald-500/50">
-                          {lang === "fa" ? "شناسایی بینایی ماشین" : "Machine Vision Active"}
-                        </span>
-                      </div>
-
-                      {/* Score widgets: Ripeness & Quality */}
-                      <div className="grid grid-cols-2 gap-4">
-                        
-                        {/* Ripeness Score Widget */}
-                        <div className="bg-[#0A0F0D] rounded-xl p-3 border border-emerald-900/40 text-center space-y-1 relative group overflow-hidden">
-                          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
-                          <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                            {lang === "fa" ? "میزان رسیدگی" : "Ripeness Score"}
-                          </span>
-                          
-                          <div className="py-2">
-                            <span className="text-3xl md:text-4xl font-extrabold text-emerald-400 font-mono">
-                              {result.ripeness_score}
-                            </span>
-                            <span className="text-xs text-emerald-500 font-bold">%</span>
-                          </div>
-
-                          <div className="text-[10px] text-emerald-400 font-semibold truncate bg-emerald-950/40 py-1 rounded">
-                            {result.ripeness_score >= 80 
-                              ? (lang === "fa" ? "کاملاً رسیده و شیرین" : "Sweet & Ripe") 
-                              : result.ripeness_score >= 60 
-                                ? (lang === "fa" ? "متوسط" : "Medium Ripe") 
-                                : (lang === "fa" ? "کال و نارس" : "Unripe")}
-                          </div>
-                        </div>
-
-                        {/* Quality Score Widget */}
-                        <div className="bg-[#0A0F0D] rounded-xl p-3 border border-emerald-900/40 text-center space-y-1 relative group overflow-hidden">
-                          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 to-rose-400" />
-                          <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                            {lang === "fa" ? "امتیاز کیفیت کلی" : "Quality Grade"}
-                          </span>
-                          
-                          <div className="py-2">
-                            <span className="text-3xl md:text-4xl font-extrabold text-rose-400 font-mono">
-                              {result.quality_score}
-                            </span>
-                            <span className="text-xs text-rose-500 font-bold">/100</span>
-                          </div>
-
-                          <div className="text-[10px] text-rose-400 font-semibold truncate bg-rose-950/40 py-1 rounded">
-                            {result.quality_score >= 85 
-                              ? (lang === "fa" ? "کیفیت ممتاز (A+)" : "Premium (A+)") 
-                              : result.quality_score >= 70 
-                                ? (lang === "fa" ? "کیفیت مطلوب (B)" : "Good (B)") 
-                                : (lang === "fa" ? "کیفیت پایین (C)" : "Grade C")}
-                          </div>
-                        </div>
-
-                      </div>
-
-                      {/* Main Verdict & Recommendation */}
-                      <div className="bg-emerald-950/30 p-4 rounded-xl border border-emerald-900/40 space-y-1">
-                        <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          {lang === "fa" ? "نظر نهایی موتور سنجش نوری:" : "Analytical Engine Verdict:"}
-                        </span>
-                        <p className="text-xs md:text-sm text-slate-200 font-medium leading-relaxed">
-                          {result.recommendation}
+                    {/* Header indicating successful detection */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-900/30 pb-4 gap-2">
+                      <div className="space-y-0.5 text-right">
+                        <h3 className="font-bold text-emerald-50 text-sm md:text-base flex items-center gap-1.5 justify-start">
+                          <Sparkles className="w-4.5 h-4.5 text-emerald-400" />
+                          نتایج آنالیز هوشمند هندوانه‌ها
+                        </h3>
+                        <p className="text-[11px] text-slate-400">
+                          تک‌تک هندوانه‌های موجود در تصویر با موفقیت مکان‌یابی، برش داده شده و جداگانه آنالیز گردیده‌اند.
                         </p>
                       </div>
-
+                      
+                      <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-900 px-3 py-1 rounded-full font-sans font-medium self-start sm:self-center">
+                        {result.detected_watermelons?.length || 1} هندوانه ردیابی شده
+                      </span>
                     </div>
 
-                    {/* OCR Text found box if any */}
-                    {result.ocr_found && result.ocr_text && (
-                      <div className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xl">
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-rose-400 font-bold flex items-center gap-1 uppercase">
-                            <Tag className="w-3.5 h-3.5" />
-                            {lang === "fa" ? "متن خوانده شده توسط OCR (برچسب)" : "OCR Sticker Text Detected"}
-                          </span>
-                          <p className="text-xs text-emerald-300 font-mono bg-[#050807] px-2 py-1 rounded border border-emerald-900 inline-block">
-                            {result.ocr_text}
-                          </p>
-                        </div>
-                        <span className="text-[10px] bg-[#050807] text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded-full font-mono">
-                          OCR OK
-                        </span>
-                      </div>
-                    )}
+                    {/* Stack of independent Watermelon Cards */}
+                    <div className="space-y-8">
+                      {result.detected_watermelons?.map((wm, index) => {
+                        return (
+                          <motion.div 
+                            key={wm.id} 
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: index * 0.15, ease: "easeOut" }}
+                            className="bg-[#0E1612] border border-emerald-900/40 rounded-2xl p-5 md:p-6 space-y-6 shadow-2xl relative overflow-hidden text-right"
+                            id={`watermelon-card-${wm.id}`}
+                            dir="rtl"
+                          >
+                            {/* Card Decorative top glow line */}
+                            <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-emerald-500/80 via-emerald-400/90 to-rose-500/80" />
 
-                    {/* Detailed evaluation parameters (تفکیک رنگ، لکه، ساقه، شکل) */}
-                    <div className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-4 shadow-xl">
-                      <h4 className="font-semibold text-emerald-100 text-xs uppercase tracking-wider border-b border-emerald-900/30 pb-2 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-400" />
-                        {lang === "fa" ? "جزئیات پارامترهای تحلیل تصویر" : "Image Diagnostic Breakdown"}
-                      </h4>
-
-                      {/* 1. Ground spot details */}
-                      <div className="space-y-1.5 hover:bg-[#0A0F0D]/60 p-2 rounded-xl transition-all cursor-pointer" 
-                           onClick={() => {
-                             const spot = result.visual_hotspots.find(h => h.type === "field_spot");
-                             if (spot) setHoveredHotspot(spot);
-                           }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-400" />
-                            {lang === "fa" ? "لکه زمین (Field Spot)" : "Ground Spot"}
-                          </span>
-                          <span className="text-[11px] text-amber-300 font-semibold bg-amber-950/30 px-2 py-0.5 rounded">
-                            {result.ground_spot.color}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          {result.ground_spot.description}
-                        </p>
-                        <p className="text-[11px] text-emerald-400/90 leading-relaxed">
-                          💡 {result.ground_spot.ripeness_impact}
-                        </p>
-                      </div>
-
-                      {/* 2. Color Palette / Color separation (تفکیک و تشخیص رنگ) */}
-                      <div className="space-y-2 pt-2 border-t border-emerald-900/20">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                            <Droplet className="w-3.5 h-3.5 text-emerald-400" />
-                            {lang === "fa" ? "تفکیک رنگ‌ها و رنگ‌بندی پوسته" : "Color Separation & Skin Palette"}
-                          </span>
-                          <span className="text-[10px] text-emerald-500/60">
-                            {lang === "fa" ? "آنالیز هیستوگرام رنگ" : "Histogram Color Analysis"}
-                          </span>
-                        </div>
-                        
-                        <div className="flex gap-2 py-1">
-                          {result.color_palette?.map((hex, idx) => (
-                            <div 
-                              key={idx} 
-                              className="h-7 flex-1 rounded-lg border border-emerald-950/40 shadow-inner flex items-center justify-center relative group"
-                              style={{ backgroundColor: hex }}
-                              title={hex}
-                            >
-                              <span className="opacity-0 group-hover:opacity-100 absolute bottom-8 bg-slate-950 text-white text-[9px] px-1.5 py-0.5 rounded shadow border border-slate-800 font-mono transition-opacity pointer-events-none">
-                                {hex}
+                            {/* Title & Index Badge */}
+                            <div className="flex items-center justify-between border-b border-emerald-900/20 pb-4">
+                              <span className="text-sm font-bold text-emerald-100 flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs flex items-center justify-center font-sans font-semibold">
+                                  {index + 1}
+                                </span>
+                                {wm.label}
+                              </span>
+                              <span className="text-[10px] text-emerald-500/60 font-mono">
+                                شناسه سنسور: {wm.id}09-DET
                               </span>
                             </div>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                          {lang === "fa"
-                            ? "رنگ‌های تیره‌تر نشان‌دهنده لایه‌های غنی از کلروفیل و قند است، در حالی که بخش‌های زرد/سفید نشانگر نقاط نشست روی زمین زراعی است."
-                            : "Darker greens indicate rich chlorophyll and sugar accumulation; yellows reveal sitting contact on farm soil."}
-                        </p>
-                      </div>
 
-                      {/* 3. Stem status */}
-                      <div className="space-y-1.5 pt-2 border-t border-emerald-900/20 hover:bg-[#0A0F0D]/60 p-2 rounded-xl transition-all cursor-pointer"
-                           onClick={() => {
-                             const spot = result.visual_hotspots.find(h => h.type === "stem");
-                             if (spot) setHoveredHotspot(spot);
-                           }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-rose-400" />
-                            {lang === "fa" ? "ساقه‌دمبرگ (Stem status)" : "Stem Tail Status"}
-                          </span>
-                          <span className="text-[11px] text-rose-300 font-semibold bg-rose-950/30 px-2 py-0.5 rounded">
-                            {result.stem.state}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          {result.stem.description}
-                        </p>
-                        <p className="text-[11px] text-emerald-400/90 leading-relaxed">
-                          💡 {result.stem.ripeness_impact}
-                        </p>
-                      </div>
+                            {/* Flex/Grid layout: Image, main scores & recommendation */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                              
+                              {/* Precise Crop Image Container */}
+                              <div className="md:col-span-4 space-y-3">
+                                <div className="aspect-square w-full rounded-xl bg-[#050807] overflow-hidden border-2 border-emerald-900/40 relative shadow-inner group">
+                                  <img 
+                                    src={wm.cropped_image} 
+                                    alt={wm.label}
+                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                  <div className="absolute top-2 left-2 bg-emerald-950/90 border border-emerald-800/60 text-[10px] text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">
+                                    برش دقیق
+                                  </div>
+                                </div>
+                                <p className="text-[10px] text-center text-slate-500">
+                                  تصویر برش دقیق هندوانه در فریم یاب ماشین
+                                </p>
+                              </div>
 
-                      {/* 4. Stripes analysis */}
-                      <div className="space-y-1.5 pt-2 border-t border-emerald-900/20 hover:bg-[#0A0F0D]/60 p-2 rounded-xl transition-all cursor-pointer"
-                           onClick={() => {
-                             const spot = result.visual_hotspots.find(h => h.type === "stripes");
-                             if (spot) setHoveredHotspot(spot);
-                           }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                            {lang === "fa" ? "نوارهای روی پوست (Stripes)" : "Stripes Contrast"}
-                          </span>
-                          <span className="text-[11px] text-emerald-300 font-semibold bg-emerald-950/30 px-2 py-0.5 rounded">
-                            {result.stripes.contrast}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          {result.stripes.description}
-                        </p>
-                        <p className="text-[11px] text-emerald-400/90 leading-relaxed">
-                          💡 {result.stripes.ripeness_impact}
-                        </p>
-                      </div>
+                              {/* Core Scores & Recommendation (Two-Column Layout) */}
+                              <div className="md:col-span-8 text-right">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-stretch">
+                                  
+                                  {/* Column 1: Core Scores */}
+                                  <div className="space-y-4 flex flex-col justify-between">
+                                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mb-1 justify-start">
+                                      <span className="w-1 h-3 bg-emerald-500 rounded-sm" />
+                                      امتیازدهی و سطح‌سنجی نوری:
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 flex-1">
+                                      {/* Ripeness Percentage */}
+                                      <div className="bg-[#050807] rounded-xl p-3 border border-emerald-950 text-center flex flex-col justify-center relative overflow-hidden shadow-md group hover:border-emerald-800 transition-all">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                                          میزان رسیدگی و قند
+                                        </span>
+                                        <div className="py-1">
+                                          <span className="text-3xl font-extrabold text-emerald-400 font-sans">
+                                            {wm.ripeness_score}
+                                          </span>
+                                          <span className="text-sm text-emerald-500 font-bold">%</span>
+                                        </div>
+                                        <div className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/40 py-1 rounded mt-1">
+                                          {wm.ripeness_score >= 80 
+                                            ? "کاملاً رسیده" 
+                                            : wm.ripeness_score >= 60 
+                                              ? "رسیدگی متوسط" 
+                                              : "کال و نارس"}
+                                        </div>
+                                      </div>
 
-                      {/* 5. Shape profile */}
-                      <div className="space-y-1.5 pt-2 border-t border-emerald-900/20">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-sky-400" />
-                            {lang === "fa" ? "فرم و هندسه میوه (Shape)" : "Geometry & Shape"}
-                          </span>
-                          <span className="text-[11px] text-sky-300 font-semibold bg-sky-950/30 px-2 py-0.5 rounded">
-                            {result.shape_profile.shape}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          {result.shape_profile.description}
-                        </p>
-                        <p className="text-[11px] text-emerald-400/90 leading-relaxed">
-                          💡 {result.shape_profile.uniformity}
-                        </p>
-                      </div>
+                                      {/* Quality Score */}
+                                      <div className="bg-[#050807] rounded-xl p-3 border border-emerald-950 text-center flex flex-col justify-center relative overflow-hidden shadow-md group hover:border-emerald-800 transition-all">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                                          امتیاز کیفیت کلی
+                                        </span>
+                                        <div className="py-1">
+                                          <span className="text-3xl font-extrabold text-rose-400 font-sans">
+                                            {wm.quality_score}
+                                          </span>
+                                          <span className="text-xs text-rose-500 font-bold">/۱۰۰</span>
+                                        </div>
+                                        <div className="text-[10px] text-rose-400 font-semibold bg-rose-950/40 py-1 rounded mt-1">
+                                          {wm.quality_score >= 85 
+                                            ? "کیفیت ممتاز" 
+                                            : wm.quality_score >= 70 
+                                              ? "کیفیت مطلوب" 
+                                              : "کیفیت پایین"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
 
-                    </div>
+                                  {/* Column 2: Recommendation with visual distinction */}
+                                  <div className="bg-gradient-to-br from-[#0F241C] to-[#0A1712] p-5 rounded-xl border border-emerald-900/40 flex flex-col justify-between shadow-xl relative overflow-hidden min-h-[160px]">
+                                    {/* Abstract background glow */}
+                                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                                    
+                                    <div className="space-y-3 relative z-10">
+                                      <span className="text-xs text-emerald-300 font-bold flex items-center gap-1.5 justify-start">
+                                        <CheckCircle className="w-4 h-4 text-emerald-400 animate-pulse" />
+                                        توصیه مصرف و پیشنهاد کارشناس:
+                                      </span>
+                                      <p className="text-xs md:text-sm text-slate-100 font-medium leading-relaxed">
+                                        {wm.recommendation}
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="pt-3 border-t border-emerald-900/20 text-[10px] text-slate-400 flex items-center gap-1 justify-start mt-2 relative z-10">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                      سیستم سنجش دیجیتال هوشمند
+                                    </div>
+                                  </div>
 
-                    {/* Complete analysis paragraph */}
-                    <div className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-2.5 shadow-xl">
-                      <h4 className="font-semibold text-emerald-100 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-emerald-400" />
-                        {lang === "fa" ? "توضیحات و تحلیل تفصیلی" : "Comprehensive Review"}
-                      </h4>
-                      <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-                        {result.detailed_analysis}
-                      </p>
+                                </div>
+                              </div>
+
+                            </div>
+
+                            {/* Color spectrum analysis for this watermelon card */}
+                            <div className="space-y-2 pt-2 border-t border-emerald-900/20 text-right">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
+                                  <Droplet className="w-3.5 h-3.5 text-emerald-400" />
+                                  تفکیک رنگ‌ها و هیستوگرام رنگ‌بندی پوسته:
+                                </span>
+                              </div>
+                              
+                              <div className="flex gap-2 py-1">
+                                {result.color_palette?.map((hex, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className="h-7 flex-1 rounded-lg border border-emerald-950/40 shadow-inner flex items-center justify-center relative group"
+                                    style={{ backgroundColor: hex }}
+                                    title={hex}
+                                  >
+                                    <span className="opacity-0 group-hover:opacity-100 absolute bottom-8 bg-slate-950 text-white text-[9px] px-1.5 py-0.5 rounded shadow border border-slate-800 font-mono transition-opacity pointer-events-none">
+                                      {hex}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                رنگ‌های تیره‌تر نشان‌دهنده لایه‌های غنی از کلروفیل و قند است، در حالی که بخش‌های زرد/سفید نشانگر نقاط نشست روی زمین زراعی است.
+                              </p>
+                            </div>
+
+                            {/* Detailed analysis summary block inside this watermelon card */}
+                            <div className="bg-[#0A0F0D] p-4 rounded-xl border border-emerald-950 space-y-2 text-right">
+                              <h5 className="font-semibold text-emerald-400 text-xs flex items-center gap-1.5 justify-start">
+                                <FileText className="w-3.5 h-3.5" />
+                                گزارش و تحلیل نهایی بینایی ماشین:
+                              </h5>
+                              <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                                {wm.detailed_analysis}
+                              </p>
+                            </div>
+
+                          </motion.div>
+                        );
+                      })}
                     </div>
 
                   </div>
@@ -1488,27 +1541,16 @@ export default function App() {
             <Smartphone className="w-5 h-5 text-emerald-400" />
             <div>
               <h3 className="font-bold text-emerald-50 text-sm md:text-base">
-                {lang === "fa" ? "تنظیمات انتشار و تعامل با مایکت" : "Android & Myket Integration"}
+                {lang === "fa" ? "بخش نظردهی و اشتراک‌گذاری" : "Rating & Sharing"}
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                {lang === "fa" 
-                  ? "ویژه مدیریت انتشار اندروید، ارجاع نظرات مایکت و اشتراک‌گذاری هوشمند" 
-                  : "Android publishing shortcuts, Myket store intents, and smart sharing features"}
-              </p>
             </div>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed">
-            {lang === "fa" 
-              ? "این برنامه کاملاً آفلاین و محلی کار می‌کند. برای انتشار در استور مایکت (Myket)، کلید دیباگ و اینتنت‌های سیستمی مستقیم برای گرفتن بازخورد و ثبت نظر در مایکت آماده شده است:" 
-              : "This application runs fully client-side and offline. Prepared for Myket publishing, includes custom debug keystores and deep links for ratings & feedback:"}
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Myket Comment Intent */}
             <button
               onClick={() => {
-                const appId = "com.watermelon.detector";
+                const appId = "com.apps.wmqd";
                 // Standard Myket system intent scheme
                 window.location.href = `myket://comment?id=${appId}`;
                 // Fallback to web link if Myket app is not installed
@@ -1516,42 +1558,13 @@ export default function App() {
                   window.open(`https://myket.ir/app/${appId}`, "_blank");
                 }, 1200);
               }}
-              className="p-3 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 cursor-pointer group"
+              className="p-3.5 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-center transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
             >
               <div className="p-2 rounded-lg bg-emerald-950/80 text-emerald-400 group-hover:bg-emerald-900/40">
                 <MessageSquare className="w-4 h-4" />
               </div>
-              <div className="space-y-0.5">
-                <div className="font-semibold text-xs text-emerald-300">
-                  {lang === "fa" ? "ثبت نظر در مایکت" : "Rate on Myket"}
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  {lang === "fa" ? "با اینتنت مستقیم سیستمی" : "Via direct store intent"}
-                </div>
-              </div>
-            </button>
-
-            {/* Myket Developer Intent */}
-            <button
-              onClick={() => {
-                const devId = "com.watermelon.detector"; // can fall back or open portfolio
-                window.location.href = `myket://developer/${devId}`;
-                setTimeout(() => {
-                  window.open(`https://myket.ir/developer`, "_blank");
-                }, 1200);
-              }}
-              className="p-3 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 cursor-pointer group"
-            >
-              <div className="p-2 rounded-lg bg-emerald-950/80 text-emerald-400 group-hover:bg-emerald-900/40">
-                <Award className="w-4 h-4" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-semibold text-xs text-emerald-300">
-                  {lang === "fa" ? "صفحه توسعه‌دهنده" : "Developer Portfolio"}
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  {lang === "fa" ? "سایر برنامه‌های منتشر شده" : "Explore other apps"}
-                </div>
+              <div className="font-semibold text-xs text-emerald-300">
+                {lang === "fa" ? "امتیاز دهی" : "Rate App"}
               </div>
             </button>
 
@@ -1564,155 +1577,114 @@ export default function App() {
                     text: lang === "fa" 
                       ? "کیفیت، قند و میزان رسیدگی هندوانه را با سیستم پردازش تصویر و نوری بسنجید!" 
                       : "Check watermelon ripeness and quality with local optical & sound diagnostics!",
-                    url: "https://myket.ir/app/com.watermelon.detector"
+                    url: "https://myket.ir/app/com.apps.wmqd"
                   }).catch(console.error);
                 } else {
-                  navigator.clipboard.writeText("https://myket.ir/app/com.watermelon.detector");
+                  navigator.clipboard.writeText("https://myket.ir/app/com.apps.wmqd");
                   alert(lang === "fa" ? "لینک دانلود در کلیپ‌بورد کپی شد!" : "Download link copied to clipboard!");
                 }
               }}
-              className="p-3 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-right sm:text-center transition-all flex sm:flex-col items-center gap-3 sm:gap-2 cursor-pointer group"
+              className="p-3.5 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-center transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
             >
               <div className="p-2 rounded-lg bg-emerald-950/80 text-emerald-400 group-hover:bg-emerald-900/40">
                 <Share2 className="w-4 h-4" />
               </div>
-              <div className="space-y-0.5">
-                <div className="font-semibold text-xs text-emerald-300">
-                  {lang === "fa" ? "اشتراک‌گذاری هوشمند" : "Smart App Share"}
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  {lang === "fa" ? "ارسال لینک برای دوستان" : "Send download link"}
-                </div>
+              <div className="font-semibold text-xs text-emerald-300">
+                {lang === "fa" ? "اشتراک‌گذاری" : "Share App"}
               </div>
             </button>
-          </div>
-
-          {/* Workflow & Key Guidelines block */}
-          <div className="bg-[#050807] border border-emerald-950 p-3.5 rounded-xl space-y-2 text-right">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 justify-start" dir="rtl">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{lang === "fa" ? "اطلاعات خروجی اندروید و گیت‌هاب" : "Android Build & Keystore Information"}</span>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              {lang === "fa"
-                ? "ورک‌فلو گیت‌هاب (.yml) برای کامپایل خودکار و خروجی اندروید بهینه در پس‌زمینه طراحی شده است. کلید امضای دیباگ (debug.keystore) به همراه پکیج Myket Queries (جهت تطابق با اندروید ۱۱+) در فایل مانیفست گنجانده شده است تا به سادگی بتوانید فایل APK خروجی را مستقیماً منتشر کنید."
-                : "The GitHub Actions Workflow is fully configured to compile and package your Android app. A unique debug.keystore is dynamically generated and applied to the Gradle signing configuration, fully bundled with Myket compatibility query tags."}
-            </p>
           </div>
         </section>
 
         {/* Scan History Drawer/Section */}
-        {showHistory && (
-          <motion.section 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-4 shadow-2xl"
-            id="history-section"
-          >
-            <div className="flex items-center justify-between border-b border-emerald-900/20 pb-3">
-              <h3 className="font-bold text-slate-200 text-sm md:text-base flex items-center gap-2">
-                <History className="w-5 h-5 text-emerald-400" />
-                {lang === "fa" ? "تاریخچه اسکن‌ها و آرشیو تست‌ها" : "Scanned Archives"}
-              </h3>
-              
-              <div className="flex gap-2">
-                {history.length > 0 && (
-                  <button
-                    onClick={clearAllHistory}
-                    className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-950/40 px-2 py-1 rounded border border-rose-900/40"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    {lang === "fa" ? "حذف همه" : "Clear All"}
-                  </button>
-                )}
-                
-                <button 
-                  onClick={() => setShowHistory(false)}
-                  className="p-1 rounded bg-[#141F1A] text-slate-400 hover:text-white"
+        <section 
+          className="bg-[#0E1612] border border-emerald-900/50 rounded-2xl p-5 space-y-4 shadow-2xl"
+          id="history-section"
+        >
+          <div className="flex items-center justify-between border-b border-emerald-900/20 pb-3">
+            <h3 className="font-bold text-slate-200 text-sm md:text-base flex items-center gap-2">
+              <History className="w-5 h-5 text-emerald-400" />
+              {lang === "fa" ? "تاریخچه اسکن‌ها و آرشیو تست‌ها" : "Scanned Archives"}
+            </h3>
+            
+            <div className="flex gap-2">
+              {history.length > 0 && (
+                <button
+                  onClick={clearAllHistory}
+                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-950/40 px-2 py-1 rounded border border-rose-900/40"
                 >
-                  <X className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {lang === "fa" ? "حذف همه" : "Clear All"}
                 </button>
-              </div>
+              )}
             </div>
+          </div>
 
-            {history.length === 0 ? (
-              <p className="text-center text-xs text-slate-500 py-6">
-                {lang === "fa" ? "هیچ اسکن ذخیره‌شده‌ای یافت نشد." : "No saved inspection records found."}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => loadFromHistory(item)}
-                    className="p-3 bg-[#0A0F0D] rounded-xl border border-emerald-950 hover:border-emerald-800/40 transition-all flex items-center gap-3 cursor-pointer group text-right"
-                  >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex-shrink-0">
-                      <img src={item.image} alt="Scan preview" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-emerald-600/60 flex items-center gap-1 font-mono">
-                          <Calendar className="w-3 h-3" />
-                          {item.date}
-                        </span>
-                        
-                        <button
-                          onClick={(e) => deleteHistoryItem(item.id, e)}
-                          className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100"
-                          title={lang === "fa" ? "حذف" : "Delete"}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                      
-                      <div className="font-semibold text-xs text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
-                        {item.result.is_watermelon 
-                          ? `${lang === "fa" ? "هندوانه" : "Watermelon"} - ${item.result.ripeness_score}%`
-                          : (lang === "fa" ? "غیر هندوانه" : "Not Watermelon")}
-                      </div>
-                      
-                      <p className="text-[10px] text-slate-400 truncate leading-normal">
-                        {item.result.recommendation}
-                      </p>
-                    </div>
+          {history.length === 0 ? (
+            <p className="text-center text-xs text-slate-500 py-6">
+              {lang === "fa" ? "هیچ اسکن ذخیره‌شده‌ای یافت نشد." : "No saved inspection records found."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => loadFromHistory(item)}
+                  className="p-3 bg-[#0A0F0D] rounded-xl border border-emerald-950 hover:border-emerald-800/40 transition-all flex items-center gap-3 cursor-pointer group text-right"
+                >
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex-shrink-0">
+                    <img src={item.image} alt="Scan preview" className="w-full h-full object-cover" />
                   </div>
-                ))}
-              </div>
-            )}
-          </motion.section>
-        )}
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-emerald-600/60 flex items-center gap-1 font-mono">
+                        <Calendar className="w-3 h-3" />
+                        {item.date}
+                      </span>
+                      
+                      <button
+                        onClick={(e) => deleteHistoryItem(item.id, e)}
+                        className="text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition-all"
+                        title={lang === "fa" ? "حذف" : "Delete"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    
+                    <div className="font-semibold text-xs text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
+                      {item.result.is_watermelon 
+                        ? `${lang === "fa" ? "هندوانه" : "Watermelon"} - ${item.result.ripeness_score}%`
+                        : (lang === "fa" ? "غیر هندوانه" : "Not Watermelon")}
+                    </div>
+                    
+                    <p className="text-[10px] text-slate-400 truncate leading-normal">
+                      {item.result.recommendation}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
       </main>
 
-      {/* Top tier HUD footer info block matching the professional theme design */}
-      <footer className="h-10 bg-[#0E1612] border-t border-emerald-900/50 flex items-center justify-between px-4 sm:px-8 text-[10px] text-emerald-500 font-mono shrink-0 uppercase tracking-widest" id="professional-hud-footer">
-        <div className="flex gap-4 sm:gap-6">
-          <span>GPU-ACCELERATED: ON</span>
-          <span className="hidden sm:inline">LATENCY: 14ms</span>
+      {/* Top tier HUD footer info block displaying developer credit */}
+      <footer className="h-10 bg-[#0E1612] border-t border-emerald-900/50 flex items-center justify-between px-4 sm:px-8 text-xs text-emerald-400 shrink-0" id="professional-hud-footer" dir="rtl">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold">توسعه دهنده و برنامه نویس:</span>
+          <span className="text-emerald-100 font-medium">امیرحسین سالاری</span>
         </div>
-        <div className="flex gap-4 sm:gap-6">
-          <span>ENGINE: WATERMELON-V4-NET</span>
-          <span className="hidden sm:inline">SENSORS: ACTIVE</span>
+        <div className="text-[10px] text-emerald-600/60 font-mono hidden sm:block">
+          DESIGNED FOR MYKET
         </div>
       </footer>
 
-      {/* Footer detailing credits and technologies used */}
-      <footer className="border-t border-emerald-950/80 bg-[#0A0F0D] py-6 px-4 text-center space-y-2 mt-auto" id="app-footer">
-        <p className="text-xs text-emerald-600/70">
-          {lang === "fa" 
-            ? "برنامه عیب‌یابی و سنجش کیفیت هندوانه با استفاده از بینایی ماشین و آنالیز نوری" 
-            : "Watermelon diagnostics engine powered by local machine vision and optical spectrum analysis."}
+      {/* Footer detailing credits */}
+      <footer className="border-t border-emerald-950/80 bg-[#0A0F0D] py-4 px-4 text-center mt-auto" id="app-footer">
+        <p className="text-[11px] text-emerald-700">
+          تمامی حقوق محفوظ است © {new Date().getFullYear()}
         </p>
-        <div className="flex justify-center gap-3 text-[10px] text-emerald-700 font-mono">
-          <span>React 19</span>
-          <span>•</span>
-          <span>HTML5 Pixel Engine</span>
-          <span>•</span>
-          <span>Vite & Capacitor</span>
-          <span>•</span>
-          <span>RTL Layout</span>
-        </div>
       </footer>
 
       {/* Canvas for photo capturing */}

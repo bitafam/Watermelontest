@@ -1,8 +1,8 @@
 import { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.watermelon.detector",
-  appName: "Watermelon Detector",
+  appId: "com.apps.wmqd",
+  appName: "هندوانه سنج هوشمند",
   webDir: "dist",
   server: {
     androidScheme: "https"

@@ -1,0 +1,10 @@
+{
+  "name": "Watermelon Quality Detector",
+  "description": "برنامه سنجش دیجیتال و آنالیز نوری هندوانه رسیده با قابلیت تفکیک رنگ، پردازش تصویر دمبرگ و لکه زمین و بازخوانی متون (OCR) کاملا محلی",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

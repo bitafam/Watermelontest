@@ -47,6 +47,11 @@ jobs:
             npx cap add android
           fi
 
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
       - name: Generate Custom Android App Launcher Icons
         run: |
           # Convert our custom watermelon app icon to various mipmap resolutions for Android

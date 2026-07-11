@@ -60,9 +60,9 @@ jobs:
             # Let's insert queries block before </manifest>
             sed -i 's|<\/manifest>|<queries><package android:name="ir.mservices.market" /><\/queries><\/manifest>|g' "$MANIFEST_PATH"
             
-            # Let's add an intent filter for Myket deep link within the .MainActivity activity
+            # Let's add an intent filter for Myket deep link within the .MainActivity activity by inserting it after the first </intent-filter>
             INTENT_FILTER='<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="wmqd" /></intent-filter>'
-            sed -i "s|<activity|<activity>\n            ${INTENT_FILTER}|g" "$MANIFEST_PATH"
+            sed -i "s|<\/intent-filter>|<\/intent-filter>\n            ${INTENT_FILTER}|" "$MANIFEST_PATH"
           else
             echo "AndroidManifest.xml not found. Skipping auto-injection (will use Capacitor defaults)."
           fi

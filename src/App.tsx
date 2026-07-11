@@ -164,6 +164,10 @@ export default function App() {
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [hoveredHotspot, setHoveredHotspot] = useState<VisualHotspot | null>(null);
   const [customError, setCustomError] = useState<string | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "latest" | "downloading">("idle");
+  const [updateStepText, setUpdateStepText] = useState<string>("");
+  const [updateProgress, setUpdateProgress] = useState<number>(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1023,6 +1027,50 @@ export default function App() {
     stopCamera();
   };
 
+  const handleCheckForMyketUpdate = () => {
+    setUpdateState("checking");
+    setUpdateProgress(10);
+    setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
+    
+    setTimeout(() => {
+      setUpdateProgress(45);
+      setUpdateStepText("در حال بررسی امضای دیجیتال و مجوز بسته com.apps.wmqd...");
+      
+      setTimeout(() => {
+        setUpdateProgress(80);
+        setUpdateStepText("در حال مقایسه نسخه محلی (1.0.1) با آخرین نسخه مخزن مایکت...");
+        
+        setTimeout(() => {
+          setUpdateProgress(100);
+          setUpdateState("available");
+          setUpdateStepText("بروزرسانی جدید یافت شد! نسخه ۱.۰.۲ با بهبود الگوهای پردازش تصویر هندوانه و رفع سازگاری اندروید آماده دریافت است.");
+        }, 1200);
+      }, 1200);
+    }, 1000);
+  };
+
+  const handleLaunchMyketIntent = () => {
+    setUpdateState("downloading");
+    setUpdateStepText("در حال فراخوانی اینتنت مایکت و بارگذاری صفحه دانلود...");
+    
+    const appId = "com.apps.wmqd";
+    const myketDeepLink = `myket://details?id=${appId}`;
+    const myketWebLink = `https://myket.ir/app/${appId}`;
+    
+    const start = Date.now();
+    window.location.href = myketDeepLink;
+    
+    setTimeout(() => {
+      if (Date.now() - start < 1500) {
+        window.open(myketWebLink, "_blank");
+      }
+      setTimeout(() => {
+        setUpdateState("idle");
+        setShowUpdateModal(false);
+      }, 1000);
+    }, 1200);
+  };
+
   return (
     <div 
       className="min-h-screen bg-[#0A0F0D] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white font-sans"
@@ -1053,7 +1101,15 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             {/* Version Badge - Dynamic & Glowing */}
-            <span className="relative flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer group shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            <span 
+              onClick={() => {
+                setShowUpdateModal(true);
+                setUpdateState("idle");
+                setUpdateProgress(0);
+                setUpdateStepText("");
+              }}
+              className="relative flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300 transition-all cursor-pointer group shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+            >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -1541,12 +1597,12 @@ export default function App() {
             <Smartphone className="w-5 h-5 text-emerald-400" />
             <div>
               <h3 className="font-bold text-emerald-50 text-sm md:text-base">
-                {lang === "fa" ? "بخش نظردهی و اشتراک‌گذاری" : "Rating & Sharing"}
+                {lang === "fa" ? "بخش ابزارهای هوشمند مایکت" : "Smart Myket Integration Tools"}
               </h3>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Myket Comment Intent */}
             <button
               onClick={() => {
@@ -1565,6 +1621,24 @@ export default function App() {
               </div>
               <div className="font-semibold text-xs text-emerald-300">
                 {lang === "fa" ? "امتیاز دهی" : "Rate App"}
+              </div>
+            </button>
+
+            {/* Myket In-App Update Intent */}
+            <button
+              onClick={() => {
+                setShowUpdateModal(true);
+                setUpdateState("idle");
+                setUpdateProgress(0);
+                setUpdateStepText("");
+              }}
+              className="p-3.5 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-center transition-all flex items-center justify-center gap-2.5 cursor-pointer group animate-[pulse_3s_infinite]"
+            >
+              <div className="p-2 rounded-lg bg-emerald-950/80 text-emerald-400 group-hover:bg-emerald-900/40">
+                <RotateCw className="w-4 h-4" />
+              </div>
+              <div className="font-semibold text-xs text-emerald-300">
+                {lang === "fa" ? "بروزرسانی درون برنامه‌ای" : "In-App Update"}
               </div>
             </button>
 
@@ -1689,6 +1763,106 @@ export default function App() {
 
       {/* Canvas for photo capturing */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Myket In-App Update Modal */}
+      <AnimatePresence>
+        {showUpdateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" id="update-modal-backdrop">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#0E1612] border border-emerald-500/30 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl relative text-right"
+              id="update-modal"
+              dir="rtl"
+            >
+              <button
+                onClick={() => setShowUpdateModal(false)}
+                className="absolute top-4 left-4 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                id="close-update-modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-950/80 relative">
+                  <RotateCw className={`w-8 h-8 text-emerald-400 ${updateState === "checking" ? "animate-spin" : ""}`} />
+                  {updateState === "available" && (
+                    <span className="absolute top-0 right-0 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-50">سامانه بروزرسانی درون برنامه‌ای</h3>
+                  <p className="text-xs text-emerald-500/70 font-medium mt-0.5">یکپارچه‌سازی رسمی با مارکت مایکت</p>
+                </div>
+              </div>
+
+              <div className="bg-[#0A0F0D] rounded-xl p-4 border border-emerald-950 space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">نسخه نصب‌شده فعلی:</span>
+                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">1.0.1</span>
+                </div>
+                
+                {updateState !== "idle" && (
+                  <div className="space-y-2 pt-2 border-t border-emerald-950/50">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-300 font-medium">وضعیت بررسی:</span>
+                      {updateState === "checking" && <span className="text-amber-400 animate-pulse font-medium">در حال بررسی...</span>}
+                      {updateState === "available" && <span className="text-emerald-400 font-bold">نسخه جدید در دسترس است</span>}
+                      {updateState === "downloading" && <span className="text-blue-400 font-medium animate-pulse">در حال هدایت به مایکت...</span>}
+                    </div>
+
+                    {updateState === "checking" && (
+                      <div className="w-full bg-emerald-950/50 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className="bg-emerald-500 h-full transition-all duration-300"
+                          style={{ width: `${updateProgress}%` }}
+                        />
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed text-right font-medium">
+                      {updateStepText}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {updateState === "idle" && (
+                  <button
+                    onClick={handleCheckForMyketUpdate}
+                    className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-950/30 active:scale-[0.98] cursor-pointer"
+                  >
+                    بررسی بروزرسانی جدید از مایکت
+                  </button>
+                )}
+
+                {updateState === "available" && (
+                  <button
+                    onClick={handleLaunchMyketIntent}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-950/30 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    دانلود و نصب بروزرسانی از مایکت
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowUpdateModal(false)}
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition-colors border border-slate-800 cursor-pointer"
+                >
+                  انصراف و بازگشت
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

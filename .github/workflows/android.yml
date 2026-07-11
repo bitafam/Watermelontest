@@ -134,30 +134,29 @@ jobs:
           echo "Successfully generated custom release-ready keystore."
 
       - name: Configure Gradle to Sign Release Build
+        env:
+          SIGNING_CONFIG: |
+            
+            android {
+                signingConfigs {
+                    release {
+                        storeFile file("release.keystore")
+                        storePassword "watermelon123"
+                        keyAlias "watermelonkey"
+                        keyPassword "watermelon123"
+                    }
+                }
+                buildTypes {
+                    release {
+                        signingConfig signingConfigs.release
+                    }
+                }
+            }
         run: |
           GRADLE_PATH="android/app/build.gradle"
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom release signing configuration using our generated keystore..."
-            
-            # Use a robust appending approach with heredoc to append the signing configuration
-            cat >> "$GRADLE_PATH" << 'EOF'
-
-android {
-    signingConfigs {
-        release {
-            storeFile file("release.keystore")
-            storePassword "watermelon123"
-            keyAlias "watermelonkey"
-            keyPassword "watermelon123"
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
-EOF
+            printf '%s\n' "$SIGNING_CONFIG" >> "$GRADLE_PATH"
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

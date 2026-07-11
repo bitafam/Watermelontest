@@ -30,6 +30,7 @@ import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./
 // @ts-ignore
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
+import ContactUs from "./components/ContactUs";
 import { Crop } from "lucide-react";
 
 // Standard sample watermelons for testing/reviewing
@@ -153,7 +154,7 @@ const SAMPLE_WATERMELONS = [
 
 export default function App() {
   const lang = "fa";
-  const [activeTab, setActiveTab] = useState<"scanner" | "guide">("scanner");
+  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact">("scanner");
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -1192,10 +1193,10 @@ export default function App() {
 
         {/* Tab switcher */}
         <div className="flex justify-center mb-2" id="nav-tabs-container">
-          <div className="bg-[#050807]/90 border border-emerald-900/40 p-1.5 rounded-2xl flex items-center gap-1 shadow-xl">
+          <div className="bg-[#050807]/90 border border-emerald-900/40 p-1.5 rounded-2xl flex flex-wrap justify-center items-center gap-1 shadow-xl">
             <button
               onClick={() => setActiveTab("scanner")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "scanner"
                   ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
@@ -1206,7 +1207,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab("guide")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "guide"
                   ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
@@ -1215,11 +1216,24 @@ export default function App() {
               <HelpCircle className="w-4 h-4" />
               {lang === "fa" ? "راهنمای جامع دقت" : "Accuracy Guide"}
             </button>
+            <button
+              onClick={() => setActiveTab("contact")}
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "contact"
+                  ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
+                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              {lang === "fa" ? "تماس با ما" : "Contact Us"}
+            </button>
           </div>
         </div>
 
         {activeTab === "guide" ? (
           <AccuracyGuide />
+        ) : activeTab === "contact" ? (
+          <ContactUs onBack={() => setActiveTab("scanner")} />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
@@ -1860,13 +1874,27 @@ export default function App() {
       </main>
 
       {/* Top tier HUD footer info block displaying developer credit */}
-      <footer className="h-10 bg-[#0E1612] border-t border-emerald-900/50 flex items-center justify-between px-4 sm:px-8 text-xs text-emerald-400 shrink-0" id="professional-hud-footer" dir="rtl">
-        <div className="flex items-center gap-1.5">
-          <span className="font-semibold">توسعه دهنده و برنامه نویس:</span>
-          <span className="text-emerald-100 font-medium">امیرحسین سالاری</span>
+      <footer className="h-12 bg-[#0E1612] border-t border-emerald-900/50 flex items-center justify-between px-4 sm:px-8 text-xs text-emerald-400 shrink-0" id="professional-hud-footer" dir="rtl">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold">توسعه دهنده:</span>
+          <button 
+            onClick={() => setActiveTab("contact")}
+            className="text-emerald-100 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-500/40 hover:decoration-emerald-400 transition-colors cursor-pointer flex items-center gap-1"
+          >
+            امیرحسین سالاری
+            <MessageSquare className="w-3 h-3 text-emerald-400 animate-pulse" />
+          </button>
         </div>
-        <div className="text-[10px] text-emerald-600/60 font-mono hidden sm:block">
-          DESIGNED FOR MYKET
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveTab("contact")}
+            className="text-[10px] text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+          >
+            تماس با ما / ارسال پیام
+          </button>
+          <div className="text-[10px] text-emerald-600/60 font-mono hidden sm:block">
+            DESIGNED FOR MYKET
+          </div>
         </div>
       </footer>
 

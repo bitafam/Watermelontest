@@ -59,8 +59,9 @@ jobs:
           if [ -f "$ICON_SRC" ]; then
             echo "Generating custom Android app launcher icons from $ICON_SRC..."
             
-            # Delete default adaptive launcher icon XML files to force Android 8+ to use our custom PNG launcher icons
+            # Delete default adaptive launcher icon XML files and find/delete any other ic_launcher XMLs to force Android 8+ to use our custom PNG launcher icons
             rm -rf android/app/src/main/res/mipmap-anydpi-v26
+            find android/app/src/main/res/ -name "ic_launcher*.xml" -delete
             
             # Ensure target directories exist
             mkdir -p android/app/src/main/res/mipmap-mdpi
@@ -112,18 +113,17 @@ jobs:
           # Create keystore directory if not exists
           mkdir -p android/app/
           
-          # Delete default keystore if it exists to prevent keytool conflict
-          rm -f android/app/debug.keystore
+          # Delete any previous keystore to prevent keytool conflict
+          rm -f android/app/release.keystore
           
-          # Generate a custom keystore signed with developers professional details.
-          # We sign with professional developer details (CN=Smart Watermelon Detector, O=Amirhossein Salari, etc.)
-          keytool -genkey -v -keystore android/app/debug.keystore \
-            -alias androiddebugkey \
+          # Generate a custom release keystore signed with developers professional details (not a debug key).
+          keytool -genkey -v -keystore android/app/release.keystore \
+            -alias watermelonkey \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass android \
-            -keypass android \
+            -storepass watermelon123 \
+            -keypass watermelon123 \
             -dname "CN=Smart Watermelon Detector, OU=Production, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
           
           echo "Successfully generated custom release-ready keystore."
@@ -133,9 +133,32 @@ jobs:
           GRADLE_PATH="android/app/build.gradle"
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom release signing configuration using our generated keystore..."
-            # Instruct Gradle's release build type to use the signingConfig from debug block
-            # This turns the output of assembleRelease into a fully signed production APK!
-            sed -i 's|release {|release {\n            signingConfig signingConfigs.debug|g' "$GRADLE_PATH"
+            python3 -c "
+import re
+with open('$GRADLE_PATH', 'r') as f:
+    content = f.read()
+
+# 1. Add release signingConfig under signingConfigs
+if 'signingConfigs {' in content:
+    content = re.sub(
+        r'(signingConfigs\s*\{)',
+        r'\1\n        release {\n            storeFile file(\"release.keystore\")\n            storePassword \"watermelon123\"\n            keyAlias \"watermelonkey\"\n            keyPassword \"watermelon123\"\n        }',
+        content
+    )
+    print('Added release signingConfig successfully.')
+
+# 2. Assign release signingConfig inside buildTypes.release
+if 'buildTypes' in content:
+    content = re.sub(
+        r'(buildTypes\s*\{\s*release\s*\{)',
+        r'\1\n            signingConfig signingConfigs.release',
+        content
+    )
+    print('Assigned signingConfig to release build type successfully.')
+
+with open('$GRADLE_PATH', 'w') as f:
+    f.write(content)
+"
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

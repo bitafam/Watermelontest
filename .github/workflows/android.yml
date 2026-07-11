@@ -99,7 +99,7 @@ jobs:
             echo "AndroidManifest.xml not found. Skipping auto-injection (will use Capacitor defaults)."
           fi
 
-      - name: Generate Custom Debug Keystore (Debug Key)
+      - name: Generate Custom Production Release Keystore
         run: |
           # Create keystore directory if not exists
           mkdir -p android/app/
@@ -107,9 +107,8 @@ jobs:
           # Delete default keystore if it exists to prevent keytool conflict
           rm -f android/app/debug.keystore
           
-          # Generate a custom debug keystore signed with developers professional details
-          # Using the default 'androiddebugkey' alias & 'android' password so that standard
-          # Gradle debug signing works automatically with ZERO configuration/sed replacements!
+          # Generate a custom keystore signed with developers professional details.
+          # We sign with professional developer details (CN=Smart Watermelon Detector, O=Amirhossein Salari, etc.)
           keytool -genkey -v -keystore android/app/debug.keystore \
             -alias androiddebugkey \
             -keyalg RSA \
@@ -117,18 +116,31 @@ jobs:
             -validity 10000 \
             -storepass android \
             -keypass android \
-            -dname "CN=Smart Watermelon Detector, OU=Development, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
+            -dname "CN=Smart Watermelon Detector, OU=Production, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
           
-          echo "Successfully generated custom debug.keystore with custom developer credentials."
+          echo "Successfully generated custom release-ready keystore."
 
-      - name: Build Android APK
+      - name: Configure Gradle to Sign Release Build
+        run: |
+          GRADLE_PATH="android/app/build.gradle"
+          if [ -f "$GRADLE_PATH" ]; then
+            echo "Injecting custom release signing configuration using our generated keystore..."
+            # Instruct Gradle's release build type to use the signingConfig from debug block
+            # This turns the output of assembleRelease into a fully signed production APK!
+            sed -i 's|release {|release {\n            signingConfig signingConfigs.debug|g' "$GRADLE_PATH"
+            echo "Successfully updated build.gradle."
+          else
+            echo "Error: build.gradle not found at $GRADLE_PATH"
+          fi
+
+      - name: Build Signed Production Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
-      - name: Upload APK Artifact
+      - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Smart-Watermelon-Detector-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Smart-Watermelon-Detector-Release-APK
+          path: android/app/build/outputs/apk/release/app-release.apk

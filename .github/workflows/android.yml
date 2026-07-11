@@ -30,22 +30,22 @@ jobs:
         run: |
           npm run build
 
-      - name: Set up Java JDK 21
+      - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '17'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Initialize Capacitor Android
         run: |
-          # If the android folder doesn't exist, initialize and add it dynamically
-          npx cap sync
+          # Ensure android platform folder is initialized and synced correctly
           if [ ! -d "android" ]; then
             npx cap add android
           fi
+          npx cap sync android
 
       - name: Install ImageMagick
         run: |
@@ -56,6 +56,11 @@ jobs:
         run: |
           # Convert our custom watermelon app icon to various mipmap resolutions for Android
           ICON_SRC="src/assets/images/watermelon_app_icon_1783756956652.jpg"
+          ALT_ICON="src/assets/images/watermelon_icon_1783707024080.jpg"
+          if [ ! -f "$ICON_SRC" ] && [ -f "$ALT_ICON" ]; then
+            ICON_SRC="$ALT_ICON"
+          fi
+          
           if [ -f "$ICON_SRC" ]; then
             echo "Generating custom Android app launcher icons from $ICON_SRC..."
             
@@ -133,7 +138,25 @@ jobs:
           GRADLE_PATH="android/app/build.gradle"
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom release signing configuration using our generated keystore..."
-            python3 -c 'p="android/app/build.gradle"; c=open(p).read(); c=c.replace("signingConfigs {", "signingConfigs {\n        release {\n            storeFile file(\"release.keystore\")\n            storePassword \"watermelon123\"\n            keyAlias \"watermelonkey\"\n            keyPassword \"watermelon123\"\n        }"); c=c.replace("release {", "release {\n            signingConfig signingConfigs.release") if "release {" in c else c; open(p, "w").write(c)'
+            python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+            import sys
+            p = "android/app/build.gradle"
+            s = open(p, "r", encoding="utf-8").read()
+            if "signingConfigs.release" in s:
+                print("Signing config already present — skipping.")
+                sys.exit(0)
+            if "signingConfigs {" in s:
+                s = s.replace("signingConfigs {", 'signingConfigs {\n        release {\n            storeFile file("release.keystore")\n            storePassword "watermelon123"\n            keyAlias "watermelonkey"\n            keyPassword "watermelon123"\n        }')
+            else:
+                s = s.replace("android {", 'android {\n    signingConfigs {\n        release {\n            storeFile file("release.keystore")\n            storePassword "watermelon123"\n            keyAlias "watermelonkey"\n            keyPassword "watermelon123"\n        }\n    }')
+            if "release {" in s:
+                s = s.replace("release {", 'release {\n            signingConfig signingConfigs.release')
+            else:
+                print("Error: Could not find release build type block in build.gradle.")
+                sys.exit(1)
+            open(p, "w", encoding="utf-8").write(s)
+            print("Successfully injected signing configuration.")
+EOF
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

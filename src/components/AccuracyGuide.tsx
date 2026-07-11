@@ -55,18 +55,12 @@ export default function AccuracyGuide() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-emerald-100">بایدهای اسکن موفق (بهترین عملکرد)</h3>
+              <h3 className="font-bold text-sm text-emerald-100">روش‌های تست بهتر (بهترین عملکرد)</h3>
               <p className="text-[10px] text-emerald-500/60">رعایت این موارد دقت را به حداکثر می‌رساند</p>
             </div>
           </div>
 
           <div className="space-y-3 text-xs text-slate-300">
-            <div className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-              <p className="leading-relaxed">
-                <strong className="text-emerald-300">برش دقیق هندوانه:</strong> حتماً هندوانه را دقیقاً در مرکز کادر بیضی شکل (چه در دوربین و چه در بخش برش گالری) قرار دهید تا فضای خالی و پس‌زمینه کاملاً حذف شود.
-              </p>
-            </div>
             <div className="flex items-start gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
               <p className="leading-relaxed">

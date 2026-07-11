@@ -59,6 +59,9 @@ jobs:
           if [ -f "$ICON_SRC" ]; then
             echo "Generating custom Android app launcher icons from $ICON_SRC..."
             
+            # Delete default adaptive launcher icon XML files to force Android 8+ to use our custom PNG launcher icons
+            rm -rf android/app/src/main/res/mipmap-anydpi-v26
+            
             # Ensure target directories exist
             mkdir -p android/app/src/main/res/mipmap-mdpi
             mkdir -p android/app/src/main/res/mipmap-hdpi

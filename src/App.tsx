@@ -2133,7 +2133,7 @@ export default function App() {
                       top: `${(288 - cropImageSize.h) / 2}px`,
                       transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
                       transformOrigin: 'center center',
-                      transition: isDraggingCrop ? 'none' : 'transform 0.1s ease-out',
+                      transition: 'none',
                     }}
                   />
                   
@@ -2242,8 +2242,21 @@ export default function App() {
                       const canvasSize = 400;
                       const scaleFactor = canvasSize / containerSize;
                       
-                      const drawWidth = cropImageSize.w * scaleFactor;
-                      const drawHeight = cropImageSize.h * scaleFactor;
+                      // Calculate image dimensions directly to avoid stale state lag
+                      const w = img.naturalWidth || img.width || 288;
+                      const h = img.naturalHeight || img.height || 288;
+                      let w_cov = 288;
+                      let h_cov = 288;
+                      if (w > h) {
+                        h_cov = 288;
+                        w_cov = 288 * (w / h);
+                      } else {
+                        w_cov = 288;
+                        h_cov = 288 * (h / w);
+                      }
+                      
+                      const drawWidth = w_cov * scaleFactor;
+                      const drawHeight = h_cov * scaleFactor;
                       
                       ctx.translate(canvasSize / 2, canvasSize / 2);
                       ctx.translate(cropOffset.x * scaleFactor, cropOffset.y * scaleFactor);

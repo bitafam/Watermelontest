@@ -53,18 +53,4 @@ try {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
 
-android {
-    signingConfigs {
-        release {
-            storeFile file("release.keystore")
-            storePassword "watermelon123"
-            keyAlias "watermelonkey"
-            keyPassword "watermelon123"
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
+

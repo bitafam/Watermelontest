@@ -133,43 +133,30 @@ jobs:
           
           echo "Successfully generated custom release-ready keystore."
 
-      - name: Configure Gradle to Sign Release Build
-        env:
-          SIGNING_CONFIG: |
-            
-            android {
-                signingConfigs {
-                    release {
-                        storeFile file("release.keystore")
-                        storePassword "watermelon123"
-                        keyAlias "watermelonkey"
-                        keyPassword "watermelon123"
-                    }
-                }
-                buildTypes {
-                    release {
-                        signingConfig signingConfigs.release
-                    }
-                }
-            }
-        run: |
-          GRADLE_PATH="android/app/build.gradle"
-          if [ -f "$GRADLE_PATH" ]; then
-            echo "Injecting custom release signing configuration using our generated keystore..."
-            printf '%s\n' "$SIGNING_CONFIG" >> "$GRADLE_PATH"
-            echo "Successfully updated build.gradle."
-          else
-            echo "Error: build.gradle not found at $GRADLE_PATH"
-          fi
-
-      - name: Build Signed Production Release APK
+      - name: Build Production Release APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
 
+      - name: Prepare Keystore Base64 for Signing Action
+        id: prep_keystore
+        run: |
+          KEYSTORE_BASE64=$(base64 -w 0 android/app/release.keystore)
+          echo "signing_key=$KEYSTORE_BASE64" >> "$GITHUB_OUTPUT"
+
+      - name: Sign Release APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ steps.prep_keystore.outputs.signing_key }}
+          alias: watermelonkey
+          keyStorePassword: watermelon123
+          keyPassword: watermelon123
+
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Smart-Watermelon-Detector-Release-APK
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: ${{ steps.sign_app.outputs.signedReleaseFile }}

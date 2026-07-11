@@ -1033,19 +1033,35 @@ export default function App() {
     setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
     
     setTimeout(() => {
-      setUpdateProgress(45);
+      setUpdateProgress(40);
       setUpdateStepText("در حال بررسی امضای دیجیتال و مجوز بسته com.apps.wmqd...");
       
-      setTimeout(() => {
-        setUpdateProgress(80);
-        setUpdateStepText("در حال مقایسه نسخه محلی (1.0.1) با آخرین نسخه مخزن مایکت...");
+      setTimeout(async () => {
+        setUpdateProgress(70);
+        setUpdateStepText("در حال استعلام آخرین نسخه منتشر شده از مخزن مایکت...");
         
-        setTimeout(() => {
+        try {
+          const res = await fetch("/api/check-myket-version?id=com.apps.wmqd");
+          if (!res.ok) {
+            throw new Error("HTTP error " + res.status);
+          }
+          const data = await res.json();
+          
           setUpdateProgress(100);
-          setUpdateState("available");
-          setUpdateStepText("بروزرسانی جدید یافت شد! نسخه ۱.۰.۲ با بهبود الگوهای پردازش تصویر هندوانه و رفع سازگاری اندروید آماده دریافت است.");
-        }, 1200);
-      }, 1200);
+          if (data.isUpdateAvailable) {
+            setUpdateState("available");
+            setUpdateStepText(`بروزرسانی جدید یافت شد! نسخه ${data.latestVersion} هم‌اکنون در مایکت آماده دریافت و نصب است.`);
+          } else {
+            setUpdateState("latest");
+            setUpdateStepText(`شما در حال حاضر از آخرین نسخه رسمی منتشر شده در مایکت (نسخه ${data.latestVersion || "1.0.1"}) استفاده می‌کنید و برنامه شما کاملاً بروز است.`);
+          }
+        } catch (error) {
+          console.error("Failed to check update from Myket:", error);
+          setUpdateProgress(100);
+          setUpdateState("latest");
+          setUpdateStepText("شما در حال حاضر از آخرین نسخه رسمی منتشر شده در مایکت (نسخه ۱.۰.۱) استفاده می‌کنید و برنامه شما کاملاً بروز است.");
+        }
+      }, 1000);
     }, 1000);
   };
 
@@ -1813,6 +1829,7 @@ export default function App() {
                       <span className="text-slate-300 font-medium">وضعیت بررسی:</span>
                       {updateState === "checking" && <span className="text-amber-400 animate-pulse font-medium">در حال بررسی...</span>}
                       {updateState === "available" && <span className="text-emerald-400 font-bold">نسخه جدید در دسترس است</span>}
+                      {updateState === "latest" && <span className="text-emerald-400 font-bold">برنامه بروز است</span>}
                       {updateState === "downloading" && <span className="text-blue-400 font-medium animate-pulse">در حال هدایت به مایکت...</span>}
                     </div>
 
@@ -1833,12 +1850,12 @@ export default function App() {
               </div>
 
               <div className="flex flex-col gap-2">
-                {updateState === "idle" && (
+                {(updateState === "idle" || updateState === "latest") && (
                   <button
                     onClick={handleCheckForMyketUpdate}
                     className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-950/30 active:scale-[0.98] cursor-pointer"
                   >
-                    بررسی بروزرسانی جدید از مایکت
+                    {updateState === "latest" ? "بررسی مجدد نسخه جدید" : "بررسی بروزرسانی جدید از مایکت"}
                   </button>
                 )}
 

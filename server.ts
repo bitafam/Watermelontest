@@ -232,6 +232,88 @@ Provide your analysis strictly matching the JSON schema. Use natural Persian for
   }
 });
 
+// Endpoint to check the latest version of the app from Myket store
+app.get("/api/check-myket-version", async (req, res) => {
+  try {
+    const appId = req.query.id || "com.apps.wmqd";
+    const myketUrl = `https://myket.ir/app/${appId}`;
+    
+    const response = await fetch(myketUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+    
+    if (!response.ok) {
+      // If 404 or other network error, the app is likely not published yet or is inaccessible
+      return res.json({
+        latestVersion: "1.0.1",
+        isUpdateAvailable: false,
+        message: "برنامه شما بروز است (نسخه فعلی: ۱.۰.۱)"
+      });
+    }
+    
+    const html = await response.text();
+    
+    // Look for softwareVersion in Schema.org JSON-LD structured data
+    let version = "";
+    const jsonLdRegex = /"softwareVersion"\s*:\s*"([^"]+)"/i;
+    const jsonLdMatch = html.match(jsonLdRegex);
+    if (jsonLdMatch && jsonLdMatch[1]) {
+      version = jsonLdMatch[1].trim();
+    } else {
+      // Fallback regex to search for common Persian/English version text patterns
+      const versionRegex = /نسخه\s*(?:کد|فعلی|کنونی)?\s*[:：]?\s*([\d\.]+)/i;
+      const versionMatch = html.match(versionRegex);
+      if (versionMatch && versionMatch[1]) {
+        version = versionMatch[1].trim();
+      }
+    }
+    
+    // Convert Farsi digits to standard English digits if any
+    const farsiToEnglish = (str: string) => {
+      const farsiDigits = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
+      for (let i = 0; i < 10; i++) {
+        str = str.replace(farsiDigits[i], i.toString());
+      }
+      return str;
+    };
+    
+    const cleanVersion = farsiToEnglish(version || "1.0.1");
+    const localVersion = "1.0.1";
+    
+    // Simple semver comparison helper
+    const compareVersions = (v1: string, v2: string) => {
+      const p1 = v1.split(".").map(Number);
+      const p2 = v2.split(".").map(Number);
+      for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const num1 = p1[i] || 0;
+        const num2 = p2[i] || 0;
+        if (num1 > num2) return 1;
+        if (num1 < num2) return -1;
+      }
+      return 0;
+    };
+    
+    const isUpdateAvailable = compareVersions(cleanVersion, localVersion) > 0;
+    
+    res.json({
+      latestVersion: cleanVersion,
+      isUpdateAvailable,
+      message: isUpdateAvailable 
+        ? `نسخه جدید ${cleanVersion} در مایکت موجود است.`
+        : "شما از آخرین نسخه رسمی منتشر شده استفاده می‌کنید."
+    });
+  } catch (err) {
+    console.error("Error checking Myket version:", err);
+    res.json({
+      latestVersion: "1.0.1",
+      isUpdateAvailable: false,
+      message: "برنامه بروز است (نسخه فعلی: ۱.۰.۱)"
+    });
+  }
+});
+
 async function bootstrap() {
   // Serve frontend build files
   if (process.env.NODE_ENV !== "production") {

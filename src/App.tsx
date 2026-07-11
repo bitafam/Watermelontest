@@ -29,6 +29,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./types";
 // @ts-ignore
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
+import AccuracyGuide from "./components/AccuracyGuide";
+import { Crop } from "lucide-react";
 
 // Standard sample watermelons for testing/reviewing
 const SAMPLE_WATERMELONS = [
@@ -151,6 +153,7 @@ const SAMPLE_WATERMELONS = [
 
 export default function App() {
   const lang = "fa";
+  const [activeTab, setActiveTab] = useState<"scanner" | "guide">("scanner");
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -169,6 +172,14 @@ export default function App() {
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "latest" | "downloading">("idle");
   const [updateStepText, setUpdateStepText] = useState<string>("");
   const [updateProgress, setUpdateProgress] = useState<number>(0);
+
+  // Gallery Cropping States
+  const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
+  const [galleryImageToCrop, setGalleryImageToCrop] = useState<string | null>(null);
+  const [cropScale, setCropScale] = useState<number>(1.2);
+  const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDraggingCrop, setIsDraggingCrop] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -913,8 +924,17 @@ export default function App() {
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
+        const videoWidth = video.videoWidth || 640;
+        const videoHeight = video.videoHeight || 480;
+        
+        // Crop exactly the center square matching our 70% visual scanning frame
+        const minDim = Math.min(videoWidth, videoHeight);
+        const cropSize = minDim * 0.70;
+        const cropX = (videoWidth - cropSize) / 2;
+        const cropY = (videoHeight - cropSize) / 2;
+
+        canvas.width = 400;
+        canvas.height = 400;
         
         // Mirror if user camera
         if (facingMode === "user") {
@@ -922,9 +942,13 @@ export default function App() {
           ctx.scale(-1, 1);
         }
 
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          video, 
+          cropX, cropY, cropSize, cropSize, // source coords
+          0, 0, 400, 400                    // target coords
+        );
         
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.90);
         setImage(dataUrl);
         stopCamera();
       }
@@ -941,7 +965,10 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setImage(event.target.result as string);
+          setGalleryImageToCrop(event.target.result as string);
+          setCropScale(1.2);
+          setCropOffset({ x: 0, y: 0 });
+          setCropModalOpen(true);
         }
       };
       reader.readAsDataURL(file);
@@ -1170,7 +1197,39 @@ export default function App() {
       {/* Main Content Space */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:py-8 space-y-6" id="main-content">
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
+        {/* Tab switcher */}
+        <div className="flex justify-center mb-2" id="nav-tabs-container">
+          <div className="bg-[#050807]/90 border border-emerald-900/40 p-1.5 rounded-2xl flex items-center gap-1 shadow-xl">
+            <button
+              onClick={() => setActiveTab("scanner")}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "scanner"
+                  ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
+                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              {lang === "fa" ? "اسکنر هوشمند" : "Smart Scanner"}
+            </button>
+            <button
+              onClick={() => setActiveTab("guide")}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "guide"
+                  ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
+                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+              }`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              {lang === "fa" ? "راهنمای جامع دقت" : "Accuracy Guide"}
+            </button>
+          </div>
+        </div>
+
+        {activeTab === "guide" ? (
+          <AccuracyGuide />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
           
           {/* LEFT SIDE: Media Capture & Input (7 Cols) */}
           <div className="md:col-span-7 space-y-6" id="input-column">
@@ -1197,23 +1256,44 @@ export default function App() {
                 
                 {/* 1. Live Camera Stream */}
                 {cameraActive && (
-                  <div className="absolute inset-0 w-full h-full">
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center">
                     <video 
                       ref={videoRef}
                       autoPlay 
                       playsInline 
                       muted
-                      className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
+                      className={`absolute inset-0 w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
                     />
                     
-                    {/* Bounding Box Simulation Line */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_#10b981] animate-scan z-10" />
+                    {/* Visual Cropping Mask */}
+                    <div className="absolute inset-0 bg-black/50 pointer-events-none z-10" style={{
+                      clipPath: 'polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%, 0% 0%, 15% 15%, 85% 15%, 85% 85%, 15% 85%, 15% 15%)'
+                    }} />
+
+                    {/* Centered Camera Bounding Frame */}
+                    <div className="w-[70%] max-w-[280px] aspect-square relative border border-emerald-500/30 rounded-2xl pointer-events-none z-20 flex items-center justify-center">
+                      {/* Corner Brackets */}
+                      <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                      <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                      <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+
+                      {/* Laser scanning line */}
+                      <div className="absolute left-1 right-1 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_#10b981] animate-scan" />
+                      
+                      {/* Label badge */}
+                      <div className="absolute -bottom-10 inset-x-0 text-center">
+                        <span className="bg-[#050807]/90 text-emerald-300 text-[10px] md:text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20 shadow-lg">
+                          هندوانه را در این کادر قرار دهید
+                        </span>
+                      </div>
+                    </div>
                     
                     {/* Camera Control overlay */}
-                    <div className="absolute bottom-4 inset-x-0 flex justify-center items-center gap-3 z-20">
+                    <div className="absolute bottom-4 inset-x-0 flex justify-center items-center gap-3 z-30">
                       <button
                         onClick={capturePhoto}
-                        className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 border-4 border-[#0E1612] flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95"
+                        className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 border-4 border-[#0E1612] flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                         title={lang === "fa" ? "گرفتن عکس" : "Take Photo"}
                       >
                         <Camera className="w-6 h-6 text-white" />
@@ -1221,7 +1301,7 @@ export default function App() {
 
                       <button
                         onClick={toggleCameraFacing}
-                        className="p-3 rounded-full bg-[#0E1612]/80 hover:bg-[#0E1612] border border-emerald-900/60 text-emerald-100 transition-all"
+                        className="p-3 rounded-full bg-[#0E1612]/80 hover:bg-[#0E1612] border border-emerald-900/60 text-emerald-100 transition-all cursor-pointer"
                         title={lang === "fa" ? "چرخش دوربین" : "Switch Camera"}
                       >
                         <RotateCw className="w-5 h-5" />
@@ -1229,7 +1309,7 @@ export default function App() {
 
                       <button
                         onClick={stopCamera}
-                        className="p-3 rounded-full bg-[#0E1612]/80 hover:bg-[#0E1612] border border-emerald-900/60 text-rose-400 transition-all"
+                        className="p-3 rounded-full bg-[#0E1612]/80 hover:bg-[#0E1612] border border-emerald-900/60 text-rose-400 transition-all cursor-pointer"
                         title={lang === "fa" ? "لغو" : "Cancel"}
                       >
                         <X className="w-5 h-5" />
@@ -1787,6 +1867,8 @@ export default function App() {
             </div>
           )}
         </section>
+          </>
+        )}
 
       </main>
 
@@ -1968,6 +2050,213 @@ export default function App() {
                   className="w-full py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 text-slate-400 font-semibold text-xs transition-colors border border-slate-900 cursor-pointer"
                 >
                   بعداً / آپلود تصویر از گالری
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Gallery Cropping Modal */}
+      <AnimatePresence>
+        {cropModalOpen && galleryImageToCrop && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" id="gallery-crop-modal-backdrop">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#0E1612] border border-emerald-500/30 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl relative text-right"
+              id="gallery-crop-modal"
+              dir="rtl"
+            >
+              <button
+                onClick={() => {
+                  setCropModalOpen(false);
+                  setGalleryImageToCrop(null);
+                }}
+                className="absolute top-4 left-4 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-2 border-b border-emerald-950">
+                <Crop className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-50">برش تصویر هندوانه (بارگذاری از گالری)</h3>
+                  <p className="text-[10px] text-emerald-500/70">هندوانه را در کادر تنظیم کنید تا دقت سنجش ارتقاء یابد</p>
+                </div>
+              </div>
+
+              {/* Crop Box Container */}
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div 
+                  className="w-72 h-72 relative overflow-hidden bg-[#050807] border-2 border-emerald-500/60 rounded-2xl shadow-lg cursor-move select-none touch-none"
+                  onMouseDown={(e) => {
+                    setIsDraggingCrop(true);
+                    setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y });
+                  }}
+                  onMouseMove={(e) => {
+                    if (!isDraggingCrop) return;
+                    setCropOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                  }}
+                  onMouseUp={() => setIsDraggingCrop(false)}
+                  onMouseLeave={() => setIsDraggingCrop(false)}
+                  onTouchStart={(e) => {
+                    if (e.touches[0]) {
+                      setIsDraggingCrop(true);
+                      setDragStart({ 
+                        x: e.touches[0].clientX - cropOffset.x, 
+                        y: e.touches[0].clientY - cropOffset.y 
+                      });
+                    }
+                  }}
+                  onTouchMove={(e) => {
+                    if (!isDraggingCrop || !e.touches[0]) return;
+                    setCropOffset({ 
+                      x: e.touches[0].clientX - dragStart.x, 
+                      y: e.touches[0].clientY - dragStart.y 
+                    });
+                  }}
+                  onTouchEnd={() => setIsDraggingCrop(false)}
+                >
+                  <img
+                    src={galleryImageToCrop}
+                    alt="Target to Crop"
+                    className="absolute pointer-events-none max-none"
+                    style={{
+                      transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
+                      transition: isDraggingCrop ? 'none' : 'transform 0.1s ease-out',
+                      top: '50%',
+                      left: '50%',
+                      transformOrigin: 'center center',
+                      marginTop: '-144px',
+                      marginLeft: '-144px',
+                      width: '288px',
+                      height: 'auto',
+                    }}
+                  />
+                  
+                  {/* Semi-transparent boundaries */}
+                  <div className="absolute inset-0 bg-black/40 pointer-events-none" style={{
+                    clipPath: 'polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%, 0% 0%, 10% 10%, 90% 10%, 90% 90%, 10% 90%, 10% 10%)'
+                  }} />
+
+                  {/* Aesthetic Inner Bracket corners */}
+                  <div className="absolute inset-6 pointer-events-none border border-emerald-500/25 rounded-xl">
+                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-emerald-400" />
+                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-emerald-400" />
+                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-emerald-400" />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-emerald-400" />
+                  </div>
+                </div>
+
+                {/* Controller Controls: Slider + Direct fine tune buttons */}
+                <div className="w-full space-y-3 px-2">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">بزرگنمایی (زوم)</span>
+                      <span className="text-emerald-400 font-bold font-mono">{Math.round(cropScale * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1.0" 
+                      max="3.0" 
+                      step="0.05"
+                      value={cropScale}
+                      onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                      className="w-full accent-emerald-500 h-1 bg-[#0A0F0D] rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Arrow fine-tuning for maximum accessibility */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-emerald-950/40">
+                    <span className="text-[10px] text-slate-500">تنظیم دقیق با جهت‌ها:</span>
+                    <div className="flex gap-1" dir="ltr">
+                      <button 
+                        onClick={() => setCropOffset(prev => ({ ...prev, x: prev.x - 10 }))}
+                        className="w-7 h-7 bg-[#0A0F0D] border border-emerald-950 rounded flex items-center justify-center text-xs text-emerald-400 hover:border-emerald-700 hover:text-white cursor-pointer"
+                        title="چپ"
+                      >
+                        ←
+                      </button>
+                      <button 
+                        onClick={() => setCropOffset(prev => ({ ...prev, y: prev.y + 10 }))}
+                        className="w-7 h-7 bg-[#0A0F0D] border border-emerald-950 rounded flex items-center justify-center text-xs text-emerald-400 hover:border-emerald-700 hover:text-white cursor-pointer"
+                        title="پایین"
+                      >
+                        ↓
+                      </button>
+                      <button 
+                        onClick={() => setCropOffset(prev => ({ ...prev, y: prev.y - 10 }))}
+                        className="w-7 h-7 bg-[#0A0F0D] border border-emerald-950 rounded flex items-center justify-center text-xs text-emerald-400 hover:border-emerald-700 hover:text-white cursor-pointer"
+                        title="بالا"
+                      >
+                        ↑
+                      </button>
+                      <button 
+                        onClick={() => setCropOffset(prev => ({ ...prev, x: prev.x + 10 }))}
+                        className="w-7 h-7 bg-[#0A0F0D] border border-emerald-950 rounded flex items-center justify-center text-xs text-emerald-400 hover:border-emerald-700 hover:text-white cursor-pointer"
+                        title="راست"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => {
+                    if (!galleryImageToCrop) return;
+                    
+                    const img = new Image();
+                    img.src = galleryImageToCrop;
+                    img.onload = () => {
+                      const canvas = document.createElement("canvas");
+                      canvas.width = 400;
+                      canvas.height = 400;
+                      const ctx = canvas.getContext("2d");
+                      if (!ctx) return;
+                      
+                      ctx.fillStyle = "#000000";
+                      ctx.fillRect(0, 0, 400, 400);
+                      
+                      const containerSize = 288;
+                      const canvasSize = 400;
+                      const scaleFactor = canvasSize / containerSize;
+                      
+                      const baseWidth = 288;
+                      const baseHeight = (img.height / img.width) * baseWidth;
+                      
+                      ctx.save();
+                      ctx.translate(canvasSize / 2, canvasSize / 2);
+                      ctx.translate(cropOffset.x * scaleFactor, cropOffset.y * scaleFactor);
+                      ctx.scale(cropScale, cropScale);
+                      ctx.drawImage(img, -baseWidth / 2, -baseHeight / 2, baseWidth, baseHeight);
+                      ctx.restore();
+                      
+                      const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+                      setImage(croppedDataUrl);
+                      setCropModalOpen(false);
+                      setGalleryImageToCrop(null);
+                    };
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all text-xs active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Crop className="w-4 h-4" />
+                  برش و ذخیره عکس هندوانه
+                </button>
+                <button
+                  onClick={() => {
+                    setCropModalOpen(false);
+                    setGalleryImageToCrop(null);
+                  }}
+                  className="px-4 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl text-xs transition-all cursor-pointer"
+                >
+                  انصراف
                 </button>
               </div>
             </motion.div>

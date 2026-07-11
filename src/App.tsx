@@ -28,7 +28,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./types";
 // @ts-ignore
-import AppLogo from "./assets/images/watermelon_icon_1783707024080.jpg";
+import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 
 // Standard sample watermelons for testing/reviewing
 const SAMPLE_WATERMELONS = [
@@ -165,6 +165,7 @@ export default function App() {
   const [hoveredHotspot, setHoveredHotspot] = useState<VisualHotspot | null>(null);
   const [customError, setCustomError] = useState<string | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [showCameraPermissionModal, setShowCameraPermissionModal] = useState<boolean>(false);
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "latest" | "downloading">("idle");
   const [updateStepText, setUpdateStepText] = useState<string>("");
   const [updateProgress, setUpdateProgress] = useState<number>(0);
@@ -227,22 +228,34 @@ export default function App() {
     }
   }, []);
 
-  // Request required camera permissions automatically on first startup entry
-  useEffect(() => {
-    const requestInitialPermissions = async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "environment" } 
-          });
-          // Stop stream immediately to release the camera after obtaining permission
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (err) {
-        console.warn("Initial camera permission request was rejected or failed:", err);
+  const handleRequestCameraPermission = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
+        });
+        stream.getTracks().forEach(track => track.stop());
+        localStorage.setItem("camera_permission_granted", "true");
+        setShowCameraPermissionModal(false);
+      } else {
+        throw new Error("Camera API not available");
       }
-    };
-    requestInitialPermissions();
+    } catch (err) {
+      console.warn("Camera permission request failed:", err);
+      localStorage.setItem("camera_permission_granted", "false");
+      setShowCameraPermissionModal(false);
+    }
+  };
+
+  // Check for camera permissions on startup and show custom beautiful explanation dialog if not granted yet
+  useEffect(() => {
+    const isGranted = localStorage.getItem("camera_permission_granted") === "true";
+    if (!isGranted) {
+      const timer = setTimeout(() => {
+        setShowCameraPermissionModal(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Set up sequential loading steps simulation
@@ -1892,6 +1905,69 @@ export default function App() {
                   className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition-colors border border-slate-800 cursor-pointer"
                 >
                   انصراف و بازگشت
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showCameraPermissionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" id="camera-permission-modal">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="w-full max-w-md bg-[#0E1612]/95 border border-emerald-500/20 rounded-2xl p-6 shadow-2xl shadow-emerald-950/50 space-y-5 text-right"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-950/80">
+                    <Camera className="w-8 h-8 text-emerald-400 animate-pulse" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-50">درخواست دسترسی به دوربین</h3>
+                  <p className="text-xs text-emerald-400/80 font-medium mt-1">برای اسکن و تحلیل هوشمند هندوانه</p>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 text-right bg-[#060908] p-4 rounded-xl border border-emerald-950">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  برنامه هندوانه‌سنج هوشمند برای شروع آنالیز تصویر، سنجش الگوهای رنگی، لکه‌های زمین و قند بافت هندوانه به دوربین گوشی شما نیاز دارد.
+                </p>
+                <div className="space-y-2 border-t border-emerald-950/60 pt-3">
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>اسکن و تشخیص خودکار لکه زمین زرد و ساقه خشکیده</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>سنجش کنتراست خطوط پوسته و ابعاد فیزیکی میوه</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>پردازش سریع و کاملاً آفلاین روی دستگاه شما (امنیت ۱۰۰٪)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <button
+                  onClick={handleRequestCameraPermission}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-950/30 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  تایید و اعطای دسترسی دوربین
+                </button>
+                <button
+                  onClick={() => setShowCameraPermissionModal(false)}
+                  className="w-full py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 text-slate-400 font-semibold text-xs transition-colors border border-slate-900 cursor-pointer"
+                >
+                  بعداً / آپلود تصویر از گالری
                 </button>
               </div>
             </motion.div>

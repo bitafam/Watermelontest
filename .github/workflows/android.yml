@@ -47,20 +47,52 @@ jobs:
             npx cap add android
           fi
 
+      - name: Generate Custom Android App Launcher Icons
+        run: |
+          # Convert our custom watermelon app icon to various mipmap resolutions for Android
+          ICON_SRC="src/assets/images/watermelon_app_icon_1783756956652.jpg"
+          if [ -f "$ICON_SRC" ]; then
+            echo "Generating custom Android app launcher icons from $ICON_SRC..."
+            
+            # Ensure target directories exist
+            mkdir -p android/app/src/main/res/mipmap-mdpi
+            mkdir -p android/app/src/main/res/mipmap-hdpi
+            mkdir -p android/app/src/main/res/mipmap-xhdpi
+            mkdir -p android/app/src/main/res/mipmap-xxhdpi
+            mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+            
+            # Standard Launcher Icons
+            convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            
+            # Round Launcher Icons
+            convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            
+            echo "Successfully generated and replaced all Android launcher icons."
+          else
+            echo "Error: Source app icon not found at $ICON_SRC"
+          fi
+
       - name: Inject Myket Intent & DeepLink configurations to AndroidManifest.xml
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST_PATH" ]; then
-            echo "Modifying AndroidManifest.xml for Myket and external Intents..."
+            echo "Modifying AndroidManifest.xml for Myket, Camera, Internet, and external Intents..."
             
-            # Insert Myket schemes, deep links, and queries to AndroidManifest
-            # 1. Add Myket Package Query so Myket can be queried from Android 11+
-            # 2. Add custom scheme deep link (e.g., com.watermelon.detector://)
+            # 1. Inject Camera and Internet permissions right before <application
+            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <application|g' "$MANIFEST_PATH"
             
-            # Let's insert queries block before </manifest>
+            # 2. Add Myket Package Query so Myket can be queried from Android 11+
             sed -i 's|<\/manifest>|<queries><package android:name="ir.mservices.market" /><\/queries><\/manifest>|g' "$MANIFEST_PATH"
             
-            # Let's add an intent filter for Myket deep link within the .MainActivity activity by inserting it after the first </intent-filter>
+            # 3. Add an intent filter for Myket deep link within the .MainActivity activity by inserting it after the first </intent-filter>
             INTENT_FILTER='<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="wmqd" /></intent-filter>'
             sed -i "s|<\/intent-filter>|<\/intent-filter>\n            ${INTENT_FILTER}|" "$MANIFEST_PATH"
           else
@@ -72,9 +104,14 @@ jobs:
           # Create keystore directory if not exists
           mkdir -p android/app/
           
-          # Generate a robust debug keystore automatically with custom professional identity
+          # Delete default keystore if it exists to prevent keytool conflict
+          rm -f android/app/debug.keystore
+          
+          # Generate a custom debug keystore signed with developers professional details
+          # Using the default 'androiddebugkey' alias & 'android' password so that standard
+          # Gradle debug signing works automatically with ZERO configuration/sed replacements!
           keytool -genkey -v -keystore android/app/debug.keystore \
-            -alias wmqd_debug_key \
+            -alias androiddebugkey \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
@@ -82,17 +119,7 @@ jobs:
             -keypass android \
             -dname "CN=Smart Watermelon Detector, OU=Development, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
           
-          echo "Successfully generated local debug.keystore for Myket publishing preparation."
-
-      - name: Configure Gradle Signing
-        run: |
-          # Customize build.gradle in android/app/ to ensure it uses the newly generated debug key
-          GRADLE_PATH="android/app/build.gradle"
-          if [ -f "$GRADLE_PATH" ]; then
-            echo "Injecting custom debug signing configurations into build.gradle..."
-            # Replace the standard debug signing configs with our own generated debug.keystore details
-            sed -i "s|storeFile file('debug.keystore')|storeFile file('debug.keystore')\n            storePassword 'android'\n            keyAlias 'wmqd_debug_key'\n            keyPassword 'android'|g" "$GRADLE_PATH"
-          fi
+          echo "Successfully generated custom debug.keystore with custom developer credentials."
 
       - name: Build Android APK
         run: |

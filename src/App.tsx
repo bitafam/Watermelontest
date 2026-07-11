@@ -180,6 +180,7 @@ export default function App() {
   const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDraggingCrop, setIsDraggingCrop] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cropImageSize, setCropImageSize] = useState<{ w: number; h: number }>({ w: 288, h: 288 });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -585,11 +586,7 @@ export default function App() {
           
           let detectedCount = 0;
           if (isWatermelon) {
-            if (isSliced) {
-              detectedCount = 1;
-            } else {
-              detectedCount = Math.max(1, Math.min(3, colPeaks.length));
-            }
+            detectedCount = 1;
           }
 
           const getCropForPeak = (peakX: number) => {
@@ -608,17 +605,11 @@ export default function App() {
           const detected_watermelons: WatermelonItem[] = [];
 
           if (detectedCount >= 1) {
-            const peak1 = colPeaks[0] !== undefined ? colPeaks[0] : 40;
-            const crop1 = detectedCount === 1 
-              ? cropToDataUrl(img.width * 0.12, img.height * 0.12, img.width * 0.76, img.height * 0.76)
-              : (() => {
-                  const box = getCropForPeak(peak1);
-                  return cropToDataUrl(box.x, box.y, box.w, box.h);
-                })();
+            const crop1 = imageSrc;
 
             detected_watermelons.push({
               id: 1,
-              label: isSliced ? "هندوانه قاچ شده" : "هندوانه شماره ۱ (اصلی)",
+              label: isSliced ? "هندوانه قاچ شده" : "هندوانه اسکن شده",
               cropped_image: crop1,
               ripeness_score,
               quality_score,
@@ -926,30 +917,32 @@ export default function App() {
       if (ctx) {
         const videoWidth = video.videoWidth || 640;
         const videoHeight = video.videoHeight || 480;
-        
-        // Crop exactly the center square matching our 70% visual scanning frame
-        const minDim = Math.min(videoWidth, videoHeight);
-        const cropSize = minDim * 0.70;
-        const cropX = (videoWidth - cropSize) / 2;
-        const cropY = (videoHeight - cropSize) / 2;
 
-        canvas.width = 400;
-        canvas.height = 400;
-        
-        // Mirror if user camera
+        // Take a center square from the camera stream to feed into the manual crop template
+        const size = Math.min(videoWidth, videoHeight);
+        const sx = (videoWidth - size) / 2;
+        const sy = (videoHeight - size) / 2;
+
+        canvas.width = 600;
+        canvas.height = 600;
+
+        // Mirror if front camera
         if (facingMode === "user") {
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
         }
 
         ctx.drawImage(
-          video, 
-          cropX, cropY, cropSize, cropSize, // source coords
-          0, 0, 400, 400                    // target coords
+          video,
+          sx, sy, size, size,
+          0, 0, 600, 600
         );
-        
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.90);
-        setImage(dataUrl);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+        setGalleryImageToCrop(dataUrl);
+        setCropScale(1.2);
+        setCropOffset({ x: 0, y: 0 });
+        setCropModalOpen(true);
         stopCamera();
       }
     }
@@ -1265,26 +1258,20 @@ export default function App() {
                       className={`absolute inset-0 w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
                     />
                     
-                    {/* Visual Cropping Mask */}
-                    <div className="absolute inset-0 bg-black/50 pointer-events-none z-10" style={{
-                      clipPath: 'polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%, 0% 0%, 15% 15%, 85% 15%, 85% 85%, 15% 85%, 15% 15%)'
+                    {/* Visual Cropping Mask (Elliptical) */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'radial-gradient(ellipse 38% 28% at 50% 50%, transparent 98%, rgba(5, 8, 7, 0.8) 100%)'
                     }} />
 
-                    {/* Centered Camera Bounding Frame */}
-                    <div className="w-[70%] max-w-[280px] aspect-square relative border border-emerald-500/30 rounded-2xl pointer-events-none z-20 flex items-center justify-center">
-                      {/* Corner Brackets */}
-                      <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
-                      <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
-                      <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
-
+                    {/* Centered Camera Bounding Frame (Elliptical) */}
+                    <div className="w-[76%] max-w-[300px] aspect-[4/3] rounded-full border-2 border-dashed border-emerald-500/60 relative pointer-events-none z-20 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)]">
                       {/* Laser scanning line */}
-                      <div className="absolute left-1 right-1 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_#10b981] animate-scan" />
+                      <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_#10b981] animate-scan" />
                       
                       {/* Label badge */}
-                      <div className="absolute -bottom-10 inset-x-0 text-center">
+                      <div className="absolute -bottom-12 inset-x-0 text-center">
                         <span className="bg-[#050807]/90 text-emerald-300 text-[10px] md:text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20 shadow-lg">
-                          هندوانه را در این کادر قرار دهید
+                          هندوانه را در این کادر بیضی قرار دهید
                         </span>
                       </div>
                     </div>
@@ -1522,15 +1509,15 @@ export default function App() {
                       <div className="space-y-0.5 text-right">
                         <h3 className="font-bold text-emerald-50 text-sm md:text-base flex items-center gap-1.5 justify-start">
                           <Sparkles className="w-4.5 h-4.5 text-emerald-400" />
-                          نتایج آنالیز هوشمند هندوانه‌ها
+                          نتایج آنالیز هوشمند هندوانه
                         </h3>
                         <p className="text-[11px] text-slate-400">
-                          تک‌تک هندوانه‌های موجود در تصویر با موفقیت مکان‌یابی، برش داده شده و جداگانه آنالیز گردیده‌اند.
+                          تصویر هندوانه انتخابی با موفقیت در کادر بیضی برش داده شده و آنالیز گردید.
                         </p>
                       </div>
                       
                       <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-900 px-3 py-1 rounded-full font-sans font-medium self-start sm:self-center">
-                        {result.detected_watermelons?.length || 1} هندوانه ردیابی شده
+                        هندوانه اسکن شده
                       </span>
                     </div>
 
@@ -2083,8 +2070,8 @@ export default function App() {
               <div className="flex items-center gap-2 pb-2 border-b border-emerald-950">
                 <Crop className="w-5 h-5 text-emerald-400" />
                 <div>
-                  <h3 className="text-sm font-bold text-emerald-50">برش تصویر هندوانه (بارگذاری از گالری)</h3>
-                  <p className="text-[10px] text-emerald-500/70">هندوانه را در کادر تنظیم کنید تا دقت سنجش ارتقاء یابد</p>
+                  <h3 className="text-sm font-bold text-emerald-50">برش بیضی شکل تصویر هندوانه</h3>
+                  <p className="text-[10px] text-emerald-500/70">هندوانه را درون کادر بیضی قرار دهید تا کادرگیری دقیق انجام شود</p>
                 </div>
               </div>
 
@@ -2121,34 +2108,53 @@ export default function App() {
                   onTouchEnd={() => setIsDraggingCrop(false)}
                 >
                   <img
-                    src={galleryImageToCrop}
+                    src={galleryImageToCrop || ""}
                     alt="Target to Crop"
                     className="absolute pointer-events-none max-none"
+                    onLoad={(e) => {
+                      const imgEl = e.currentTarget;
+                      const w = imgEl.naturalWidth || 288;
+                      const h = imgEl.naturalHeight || 288;
+                      let w_cov = 288;
+                      let h_cov = 288;
+                      if (w > h) {
+                        h_cov = 288;
+                        w_cov = 288 * (w / h);
+                      } else {
+                        w_cov = 288;
+                        h_cov = 288 * (h / w);
+                      }
+                      setCropImageSize({ w: w_cov, h: h_cov });
+                    }}
                     style={{
+                      width: `${cropImageSize.w}px`,
+                      height: `${cropImageSize.h}px`,
+                      left: `${(288 - cropImageSize.w) / 2}px`,
+                      top: `${(288 - cropImageSize.h) / 2}px`,
                       transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
-                      transition: isDraggingCrop ? 'none' : 'transform 0.1s ease-out',
-                      top: '50%',
-                      left: '50%',
                       transformOrigin: 'center center',
-                      marginTop: '-144px',
-                      marginLeft: '-144px',
-                      width: '288px',
-                      height: 'auto',
+                      transition: isDraggingCrop ? 'none' : 'transform 0.1s ease-out',
                     }}
                   />
                   
-                  {/* Semi-transparent boundaries */}
-                  <div className="absolute inset-0 bg-black/40 pointer-events-none" style={{
-                    clipPath: 'polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%, 0% 0%, 10% 10%, 90% 10%, 90% 90%, 10% 90%, 10% 10%)'
-                  }} />
-
-                  {/* Aesthetic Inner Bracket corners */}
-                  <div className="absolute inset-6 pointer-events-none border border-emerald-500/25 rounded-xl">
-                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-emerald-400" />
-                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-emerald-400" />
-                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-emerald-400" />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-emerald-400" />
-                  </div>
+                  {/* Elliptical Mask Vignette */}
+                  <div 
+                    className="absolute inset-0 pointer-events-none z-10" 
+                    style={{
+                      background: 'radial-gradient(ellipse 129.6px 97.2px at 144px 144px, transparent 99%, rgba(5, 8, 7, 0.85) 100%)'
+                    }} 
+                  />
+                  
+                  {/* Dashed Elliptical Border */}
+                  <div 
+                    className="absolute pointer-events-none z-20 border-2 border-dashed border-emerald-400/85 rounded-full"
+                    style={{
+                      left: '14.4px',
+                      top: '46.8px',
+                      width: '259.2px',
+                      height: '194.4px'
+                    }}
+                  />
                 </div>
 
                 {/* Controller Controls: Slider + Direct fine tune buttons */}
@@ -2221,24 +2227,31 @@ export default function App() {
                       const ctx = canvas.getContext("2d");
                       if (!ctx) return;
                       
+                      ctx.save();
+                      
+                      // First fill with black
                       ctx.fillStyle = "#000000";
                       ctx.fillRect(0, 0, 400, 400);
+                      
+                      // Apply Elliptical clipping mask
+                      ctx.beginPath();
+                      ctx.ellipse(200, 200, 180, 135, 0, 0, 2 * Math.PI);
+                      ctx.clip();
                       
                       const containerSize = 288;
                       const canvasSize = 400;
                       const scaleFactor = canvasSize / containerSize;
                       
-                      const baseWidth = 288;
-                      const baseHeight = (img.height / img.width) * baseWidth;
+                      const drawWidth = cropImageSize.w * scaleFactor;
+                      const drawHeight = cropImageSize.h * scaleFactor;
                       
-                      ctx.save();
                       ctx.translate(canvasSize / 2, canvasSize / 2);
                       ctx.translate(cropOffset.x * scaleFactor, cropOffset.y * scaleFactor);
                       ctx.scale(cropScale, cropScale);
-                      ctx.drawImage(img, -baseWidth / 2, -baseHeight / 2, baseWidth, baseHeight);
+                      ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
                       ctx.restore();
                       
-                      const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+                      const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.95);
                       setImage(croppedDataUrl);
                       setCropModalOpen(false);
                       setGalleryImageToCrop(null);

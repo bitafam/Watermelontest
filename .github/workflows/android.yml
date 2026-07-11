@@ -134,30 +134,30 @@ jobs:
           echo "Successfully generated custom release-ready keystore."
 
       - name: Configure Gradle to Sign Release Build
-        env:
-          PYTHON_SCRIPT: |
-            import sys
-            p = "android/app/build.gradle"
-            s = open(p, "r", encoding="utf-8").read()
-            if "signingConfigs.release" in s:
-                print("Signing config already present — skipping.")
-                sys.exit(0)
-            if "signingConfigs {" in s:
-                s = s.replace("signingConfigs {", 'signingConfigs {\n        release {\n            storeFile file("release.keystore")\n            storePassword "watermelon123"\n            keyAlias "watermelonkey"\n            keyPassword "watermelon123"\n        }')
-            else:
-                s = s.replace("android {", 'android {\n    signingConfigs {\n        release {\n            storeFile file("release.keystore")\n            storePassword "watermelon123"\n            keyAlias "watermelonkey"\n            keyPassword "watermelon123"\n        }\n    }')
-            if "release {" in s:
-                s = s.replace("release {", 'release {\n            signingConfig signingConfigs.release')
-            else:
-                print("Error: Could not find release build type block in build.gradle.")
-                sys.exit(1)
-            open(p, "w", encoding="utf-8").write(s)
-            print("Successfully injected signing configuration.")
         run: |
           GRADLE_PATH="android/app/build.gradle"
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom release signing configuration using our generated keystore..."
-            python3 -c "$PYTHON_SCRIPT"
+            
+            # Use a robust appending approach with heredoc to append the signing configuration
+            cat >> "$GRADLE_PATH" << 'EOF'
+
+android {
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storePassword "watermelon123"
+            keyAlias "watermelonkey"
+            keyPassword "watermelon123"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+EOF
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

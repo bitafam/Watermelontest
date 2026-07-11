@@ -227,6 +227,24 @@ export default function App() {
     }
   }, []);
 
+  // Request required camera permissions automatically on first startup entry
+  useEffect(() => {
+    const requestInitialPermissions = async () => {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment" } 
+          });
+          // Stop stream immediately to release the camera after obtaining permission
+          stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (err) {
+        console.warn("Initial camera permission request was rejected or failed:", err);
+      }
+    };
+    requestInitialPermissions();
+  }, []);
+
   // Set up sequential loading steps simulation
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -1613,7 +1631,7 @@ export default function App() {
             <Smartphone className="w-5 h-5 text-emerald-400" />
             <div>
               <h3 className="font-bold text-emerald-50 text-sm md:text-base">
-                {lang === "fa" ? "بخش ابزارهای هوشمند مایکت" : "Smart Myket Integration Tools"}
+                {lang === "fa" ? "بخش تعاملات" : "Interaction Section"}
               </h3>
             </div>
           </div>

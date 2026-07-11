@@ -133,32 +133,7 @@ jobs:
           GRADLE_PATH="android/app/build.gradle"
           if [ -f "$GRADLE_PATH" ]; then
             echo "Injecting custom release signing configuration using our generated keystore..."
-            python3 -c "
-import re
-with open('$GRADLE_PATH', 'r') as f:
-    content = f.read()
-
-# 1. Add release signingConfig under signingConfigs
-if 'signingConfigs {' in content:
-    content = re.sub(
-        r'(signingConfigs\s*\{)',
-        r'\1\n        release {\n            storeFile file(\"release.keystore\")\n            storePassword \"watermelon123\"\n            keyAlias \"watermelonkey\"\n            keyPassword \"watermelon123\"\n        }',
-        content
-    )
-    print('Added release signingConfig successfully.')
-
-# 2. Assign release signingConfig inside buildTypes.release
-if 'buildTypes' in content:
-    content = re.sub(
-        r'(buildTypes\s*\{\s*release\s*\{)',
-        r'\1\n            signingConfig signingConfigs.release',
-        content
-    )
-    print('Assigned signingConfig to release build type successfully.')
-
-with open('$GRADLE_PATH', 'w') as f:
-    f.write(content)
-"
+            python3 -c 'p="android/app/build.gradle"; c=open(p).read(); c=c.replace("signingConfigs {", "signingConfigs {\n        release {\n            storeFile file(\"release.keystore\")\n            storePassword \"watermelon123\"\n            keyAlias \"watermelonkey\"\n            keyPassword \"watermelon123\"\n        }"); c=c.replace("release {", "release {\n            signingConfig signingConfigs.release") if "release {" in c else c; open(p, "w").write(c)'
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

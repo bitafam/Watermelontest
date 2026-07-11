@@ -134,11 +134,8 @@ jobs:
           echo "Successfully generated custom release-ready keystore."
 
       - name: Configure Gradle to Sign Release Build
-        run: |
-          GRADLE_PATH="android/app/build.gradle"
-          if [ -f "$GRADLE_PATH" ]; then
-            echo "Injecting custom release signing configuration using our generated keystore..."
-            python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+        env:
+          PYTHON_SCRIPT: |
             import sys
             p = "android/app/build.gradle"
             s = open(p, "r", encoding="utf-8").read()
@@ -156,7 +153,11 @@ jobs:
                 sys.exit(1)
             open(p, "w", encoding="utf-8").write(s)
             print("Successfully injected signing configuration.")
-EOF
+        run: |
+          GRADLE_PATH="android/app/build.gradle"
+          if [ -f "$GRADLE_PATH" ]; then
+            echo "Injecting custom release signing configuration using our generated keystore..."
+            python3 -c "$PYTHON_SCRIPT"
             echo "Successfully updated build.gradle."
           else
             echo "Error: build.gradle not found at $GRADLE_PATH"

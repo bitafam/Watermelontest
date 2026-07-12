@@ -68,7 +68,7 @@ export default function ContactUs({ onBack }: ContactUsProps) {
     const formattedSubject = encodeURIComponent(`پیام از طرف ${name} - موضوع: ${subject}`);
     const formattedBody = encodeURIComponent(
       `فرستنده: ${name}\n` +
-      `اطلاعات تماس: ${contact || "وارد نشده"}\n` +
+      `ایمیل فرستنده: ${contact || "وارد نشده"}\n` +
       `موضوع: ${subject}\n\n` +
       `متن پیام:\n${message}`
     );
@@ -77,7 +77,7 @@ export default function ContactUs({ onBack }: ContactUsProps) {
 
   const getStructuredMessage = () => {
     return `فرستنده: ${name}\n` +
-           `اطلاعات تماس: ${contact || "وارد نشده"}\n` +
+           `ایمیل فرستنده: ${contact || "وارد نشده"}\n` +
            `موضوع: ${subject}\n\n` +
            `متن پیام:\n${message}`;
   };
@@ -209,12 +209,12 @@ export default function ContactUs({ onBack }: ContactUsProps) {
               {/* Email / Contact Info */}
               <div className="space-y-1.5">
                 <label className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-emerald-500" />
-                  ایمیل یا شماره تماس
+                  <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                  آدرس ایمیل
                 </label>
                 <input 
-                  type="text"
-                  placeholder="مثال: salary@example.com یا 09123456789"
+                  type="email"
+                  placeholder="مثال: user@example.com"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
                   className="w-full bg-[#050807] border border-emerald-900/40 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-xs text-slate-100 outline-none transition-colors left-to-right"

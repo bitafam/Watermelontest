@@ -1116,40 +1116,28 @@ export default function App() {
         console.log(`LOG: Sending version query to Myket API for ${PACKAGE_ID}...`);
         
         try {
-          const origin = window.location.origin;
-          const isRealWebServer = origin.includes(".run.app") || 
-                                  origin.includes("localhost:3000") || 
-                                  origin.includes("127.0.0.1:3000");
+          const targetUrl = `https://ais-pre-mjtk6nza5i3nj7ti2kkaqg-970278040665.europe-west2.run.app/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`;
+          console.log(`LOG: Direct fetch to: ${targetUrl}`);
           
-          const baseUrl = isRealWebServer 
-            ? "" 
-            : "https://ais-pre-mjtk6nza5i3nj7ti2kkaqg-970278040665.europe-west2.run.app";
+          const res = await fetch(targetUrl);
           
-          let res;
-          try {
-            res = await fetch(`${baseUrl}/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
-          } catch (fetchErr) {
-            if (!isRealWebServer) {
-              console.warn("Primary fetch to absolute URL failed, trying relative fallback...", fetchErr);
-              res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
-            } else {
-              throw fetchErr;
-            }
-          }
-
           if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
             if (res.status === 404) {
               setUpdateProgress(100);
               setUpdateState("idle");
-              setUpdateStepText(`خطای ۴۰۴: برنامه هنوز در مایکت منتشر نشده است یا شناسه بسته "${PACKAGE_ID}" اشتباه است.`);
-              showToast(`خطای ۴۰۴: برنامه با شناسه "${PACKAGE_ID}" هنوز در مایکت منتشر نشده است یا شناسه اشتباه است.`, "error");
+              const msg = "ارتباط با سرور ابری برقرار شد، اما برنامه هنوز در مایکت منتشر نشده است (خطای ۴۰۴)";
+              setUpdateStepText(`خطای ۴۰۴: ${msg}`);
+              showToast(msg, "error");
+              if (typeof window !== "undefined" && window.alert) {
+                window.alert(msg);
+              }
               return;
             }
-            throw new Error(errData.error || `خطا در برقراری ارتباط: کد وضعیت ${res.status}`);
+            const errText = await res.text().catch(() => "پاسخ نامشخص");
+            throw new Error(`پاسخ خطا از سرور (${res.status}): ${errText}`);
           }
-          const data = await res.json();
           
+          const data = await res.json();
           setUpdateProgress(100);
           console.log("LOG: Received response from server:", data);
           
@@ -1174,8 +1162,14 @@ export default function App() {
           setUpdateProgress(100);
           setUpdateState("idle");
           
-          setUpdateStepText("خطا در برقراری ارتباط با سرور: لطفاً اتصال اینترنت خود یا وضعیت فیلترشکن (VPN) را بررسی کرده و مجدداً تلاش نمایید.");
-          showToast("خطا در ارتباط با سرور! لطفاً وضعیت فیلترشکن خود را بررسی کرده و مجدداً تلاش کنید.", "error");
+          const detailedError = error?.message || String(error);
+          const errorMsg = `خطا در اتصال به سرور ابری! جزئیات خطا: ${detailedError}`;
+          setUpdateStepText(errorMsg);
+          showToast("خطا در ارتباط با سرور ابری! لطفاً وضعیت فیلترشکن خود را بررسی کنید.", "error");
+          
+          if (typeof window !== "undefined" && window.alert) {
+            window.alert(errorMsg);
+          }
         }
       }, 1000);
     }, 1000);

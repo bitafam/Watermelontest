@@ -156,19 +156,20 @@ jobs:
           if [ -s gradle/wrapper/gradle-wrapper.jar ] && jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
             echo "Valid gradle-wrapper.jar present. Skipping regeneration."
           else
-            echo "gradle-wrapper.jar missing or invalid. Regenerating..."
+            echo "gradle-wrapper.jar missing or invalid. Downloading directly from official Gradle GitHub source..."
             
             mkdir -p gradle/wrapper
             
-            GRADLE_VERSION="8.14.3"
-            WRAPPER_JAR_URL="https://repo.gradle.org/gradle/dist/gradle-${GRADLE_VERSION}-wrapper.jar"
+            # آدرس مستقیم، قطعی و معتبر فایل از گیتهاب رسمی گریدل
+            WRAPPER_JAR_URL="https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar"
             
-            curl -fsSLo gradle/wrapper/gradle-wrapper.jar --retry 5 --retry-delay 3 --max-time 120 "$WRAPPER_JAR_URL"
+            # دانلود با فلگ -L برای دنبال کردن ریدایرکتهای احتمالی گیتهاب
+            curl -fsSLo gradle/wrapper/gradle-wrapper.jar --location --retry 5 --retry-delay 3 --max-time 120 "$WRAPPER_JAR_URL"
             
             if jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
-              echo "gradle-wrapper.jar downloaded and validated OK."
+              echo "gradle-wrapper.jar successfully downloaded and validated OK."
             else
-              echo "::error::Downloaded gradle-wrapper.jar is invalid."
+              echo "::error::Downloaded gradle-wrapper.jar is invalid or corrupted."
               exit 1
             fi
           fi

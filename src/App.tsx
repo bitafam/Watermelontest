@@ -1098,81 +1098,35 @@ export default function App() {
     stopCamera();
   };
 
-  const handleCheckForMyketUpdate = () => {
-    setUpdateState("checking");
-    setUpdateProgress(10);
-    setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
-    showToast("در حال استعلام نسخه از مخزن توزیع رسمی مایکت...", "info");
-    console.log(`LOG: Initiating update check from Myket market distribution servers for: ${PACKAGE_ID}...`);
-    
-    setTimeout(() => {
-      setUpdateProgress(40);
-      setUpdateStepText(`در حال بررسی امضای دیجیتال و مجوز بسته ${PACKAGE_ID}...`);
-      console.log(`LOG: Verifying package ${PACKAGE_ID} digital signature security clearance...`);
+  const handleCheckForMyketUpdate = async () => {
+    try {
+      setUpdateState("downloading");
+      setUpdateProgress(100);
+      setUpdateStepText("در حال فراخوانی مستقیم مایکت جهت بررسی و نصب بروزرسانی...");
+      showToast("در حال فراخوانی برنامه مایکت...", "info");
       
-      setTimeout(async () => {
-        setUpdateProgress(70);
-        setUpdateStepText("در حال استعلام آخرین نسخه منتشر شده از مخزن مایکت...");
-        console.log(`LOG: Sending version query to Myket API for ${PACKAGE_ID}...`);
-        
-        try {
-          const targetUrl = `https://ais-pre-mjtk6nza5i3nj7ti2kkaqg-970278040665.europe-west2.run.app/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`;
-          console.log(`LOG: Direct fetch to: ${targetUrl}`);
-          
-          const res = await fetch(targetUrl);
-          
-          if (!res.ok) {
-            if (res.status === 404) {
-              setUpdateProgress(100);
-              setUpdateState("idle");
-              const msg = "ارتباط با سرور ابری برقرار شد، اما برنامه هنوز در مایکت منتشر نشده است (خطای ۴۰۴)";
-              setUpdateStepText(`خطای ۴۰۴: ${msg}`);
-              showToast(msg, "error");
-              if (typeof window !== "undefined" && window.alert) {
-                window.alert(msg);
-              }
-              return;
-            }
-            const errText = await res.text().catch(() => "پاسخ نامشخص");
-            throw new Error(`پاسخ خطا از سرور (${res.status}): ${errText}`);
-          }
-          
-          const data = await res.json();
-          setUpdateProgress(100);
-          console.log("LOG: Received response from server:", data);
-          
-          if (data.isUpdateAvailable) {
-            setUpdateState("available");
-            setUpdateStepText(`بروزرسانی جدید یافت شد! نسخه ${data.latestVersion} هم‌اکنون در مایکت آماده دریافت و نصب است. در حال انتقال به صفحه دانلود...`);
-            showToast(`بروزرسانی جدید یافت شد (نسخه ${data.latestVersion})! در حال هدایت به مایکت...`, "success");
-            console.log(`LOG: Update available. Current: 1.0.1, Latest: ${data.latestVersion}`);
-            
-            // Auto redirect to Myket after 1.5 seconds
-            setTimeout(() => {
-              handleLaunchMyketIntent();
-            }, 1500);
-          } else {
-            setUpdateState("latest");
-            setUpdateStepText(`شما در حال حاضر از آخرین نسخه رسمی منتشر شده در مایکت (نسخه ${data.latestVersion || "1.0.1"}) استفاده می‌کنید و برنامه شما کاملاً بروز است.`);
-            showToast("برنامه شما کاملاً بروز است! آخرین نسخه رسمی هم‌اکنون روی دستگاه شما نصب می‌باشد.", "success");
-            console.log("LOG: App is up to date.");
-          }
-        } catch (error: any) {
-          console.error("Failed to check update from Myket:", error);
-          setUpdateProgress(100);
-          setUpdateState("idle");
-          
-          const detailedError = error?.message || String(error);
-          const errorMsg = `خطا در اتصال به سرور ابری! جزئیات خطا: ${detailedError}`;
-          setUpdateStepText(errorMsg);
-          showToast("خطا در ارتباط با سرور ابری! لطفاً وضعیت فیلترشکن خود را بررسی کنید.", "error");
-          
-          if (typeof window !== "undefined" && window.alert) {
-            window.alert(errorMsg);
-          }
+      const myketIntentUrl = `myket://check-update?id=${PACKAGE_ID}`;
+      console.log("LOG: Launching Myket In-App Update Intent:", myketIntentUrl);
+      
+      const start = Date.now();
+      window.location.href = myketIntentUrl;
+      
+      // Fallback if the user is in a standard web browser or Myket is not installed
+      setTimeout(() => {
+        if (Date.now() - start < 1500) {
+          console.log("LOG: Myket deep link intent failed to launch, falling back to web store link.");
+          window.open(`https://myket.ir/app/${PACKAGE_ID}`, "_blank");
         }
-      }, 1000);
-    }, 1000);
+        setTimeout(() => {
+          setUpdateState("idle");
+          setShowUpdateModal(false);
+        }, 1000);
+      }, 1200);
+    } catch (error) {
+      console.error("Failed to launch Myket intent:", error);
+      showToast("خطا در فراخوانی برنامه مایکت", "error");
+      setUpdateState("idle");
+    }
   };
 
   const handleLaunchMyketIntent = () => {

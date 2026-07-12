@@ -1117,12 +1117,11 @@ export default function App() {
         
         try {
           const origin = window.location.origin;
-          const isLocalOrCloud = origin.includes("run.app") || 
-                                 origin.includes("localhost") || 
-                                 origin.includes("127.0.0.1") ||
-                                 origin.includes("3000");
+          const isRealWebServer = origin.includes(".run.app") || 
+                                  origin.includes("localhost:3000") || 
+                                  origin.includes("127.0.0.1:3000");
           
-          const baseUrl = isLocalOrCloud 
+          const baseUrl = isRealWebServer 
             ? "" 
             : "https://ais-pre-mjtk6nza5i3nj7ti2kkaqg-970278040665.europe-west2.run.app";
           
@@ -1130,7 +1129,7 @@ export default function App() {
           try {
             res = await fetch(`${baseUrl}/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
           } catch (fetchErr) {
-            if (!isLocalOrCloud) {
+            if (!isRealWebServer) {
               console.warn("Primary fetch to absolute URL failed, trying relative fallback...", fetchErr);
               res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
             } else {
@@ -1175,14 +1174,8 @@ export default function App() {
           setUpdateProgress(100);
           setUpdateState("idle");
           
-          // Distinguish between actual internet disconnection and server communication issues
-          if (navigator.onLine === false) {
-            setUpdateStepText("خطا: اتصال اینترنت شما برقرار نیست. لطفاً اتصال دستگاه خود را بررسی کرده و مجدداً تلاش نمایید.");
-            showToast("اتصال اینترنت قطع است! لطفا اتصال اینترنت خود را بررسی نمایید.", "error");
-          } else {
-            setUpdateStepText("خطا در برقراری ارتباط با سرورهای استعلام نسخه: لطفاً مطمئن شوید فیلترشکن (VPN) شما خاموش است یا بعداً مجدداً تلاش نمایید.");
-            showToast("خطا در ارتباط با سرور! لطفاً وضعیت فیلترشکن خود را بررسی کرده و مجدداً تلاش کنید.", "error");
-          }
+          setUpdateStepText("خطا در برقراری ارتباط با سرور: لطفاً اتصال اینترنت خود یا وضعیت فیلترشکن (VPN) را بررسی کرده و مجدداً تلاش نمایید.");
+          showToast("خطا در ارتباط با سرور! لطفاً وضعیت فیلترشکن خود را بررسی کرده و مجدداً تلاش کنید.", "error");
         }
       }, 1000);
     }, 1000);

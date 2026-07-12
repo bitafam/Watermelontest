@@ -133,6 +133,20 @@ jobs:
           
           echo "Successfully generated custom release-ready keystore."
 
+      - name: Fix and Regenerate Gradle Wrapper
+        run: |
+          cd android
+          mkdir -p gradle/wrapper
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          curl -sSLo gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ] || [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "curl download failed, falling back to local gradle wrapper generation..."
+            gradle wrapper --gradle-version 8.14.3
+          else
+            echo "Successfully restored gradle-wrapper.jar from official Gradle repository."
+          fi
+          chmod +x gradlew
+
       - name: Build Production Release APK
         run: |
           cd android

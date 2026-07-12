@@ -168,19 +168,26 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Sign Release APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
-          alias: ${{ secrets.ANDROID_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: '34.0.0'
+      - name: Decode Keystore File
+        run: |
+          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | base64 -d > android/app/release.keystore
+
+      - name: Sign Release APK using Jarsigner
+        run: |
+          cd android/app/build/outputs/apk/release
+          # Find the unsigned APK name and sign it
+          UNSIGNED_APK=$(ls app-release-unsigned.apk 2>/dev/null || ls *-unsigned.apk | head -n 1)
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore ../../../../release.keystore \
+            -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
+            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            $UNSIGNED_APK "${{ secrets.ANDROID_ALIAS }}"
+          
+          # Rename it to final release name
+          mv $UNSIGNED_APK Smart-Watermelon-Detector-Signed.apk
 
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Smart-Watermelon-Detector-Release-APK
-          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          path: android/app/build/outputs/apk/release/Smart-Watermelon-Detector-Signed.apk

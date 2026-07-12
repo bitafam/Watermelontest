@@ -151,40 +151,51 @@ jobs:
       - name: Fix and Regenerate Gradle Wrapper
         shell: bash
         run: |
-          set -euo pipefail
           cd android
           mkdir -p gradle/wrapper
-          rm -f gradle/wrapper/gradle-wrapper.jar
-
-          max_attempts=3
-          attempt=1
-          while [ "$attempt" -le "$max_attempts" ]; do
-            echo "Attempt $attempt of $max_attempts to download gradle-wrapper.jar..."
-            if curl -fsSLo gradle/wrapper/gradle-wrapper.jar \
-              --max-time 30 \
-              --connect-timeout 10 \
-              --retry 2 \
-              --retry-delay 5 \
-              https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar; then
-              if [ -s gradle/wrapper/gradle-wrapper.jar ]; then
-                echo "Successfully restored gradle-wrapper.jar from official Gradle repository."
-                break
-              fi
-            fi
-
-            attempt=$((attempt + 1))
-            if [ "$attempt" -le "$max_attempts" ]; do
-              sleep $((2 ** (attempt - 1)))
-            fi
-          done
-
-          if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "curl download failed after $max_attempts attempts, falling back to local gradle wrapper generation..."
-            if ! ./gradlew wrapper --gradle-version 8.14.3 2>/dev/null; then
+          
+          # Check if gradle-wrapper.jar exists and is valid (size > 0)
+          if [ -s gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Success: Valid gradle-wrapper.jar already exists. Skipping network download."
+          else
+            echo "gradle-wrapper.jar is missing or empty. Regenerating..."
+            
+            # Try 1: Try using pre-installed gradle if available
+            if command -v gradle >/dev/null 2>&1; then
+              echo "Using system-installed gradle to generate wrapper..."
               gradle wrapper --gradle-version 8.14.3 || true
             fi
+            
+            # Try 2: If still missing, try curl with robust retries
+            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "Downloading gradle-wrapper.jar from official Gradle repo via curl..."
+              curl -fsSLo gradle/wrapper/gradle-wrapper.jar \
+                --retry 5 \
+                --retry-delay 5 \
+                --max-time 60 \
+                --connect-timeout 15 \
+                "https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar" || true
+            fi
+            
+            # Try 3: If still missing, try fallback Gradle version
+            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "First download failed. Trying fallback URL..."
+              curl -fsSLo gradle/wrapper/gradle-wrapper.jar \
+                --retry 5 \
+                --retry-delay 5 \
+                --max-time 60 \
+                --connect-timeout 15 \
+                "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" || true
+            fi
+            
+            # Verify the final state
+            if [ -s gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "Successfully restored gradle-wrapper.jar!"
+            else
+              echo "::error::Failed to restore gradle-wrapper.jar. Build may fail."
+            fi
           fi
-
+          
           chmod +x gradlew
 
       - name: Build Production Release APK

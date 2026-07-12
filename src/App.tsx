@@ -1116,7 +1116,28 @@ export default function App() {
         console.log(`LOG: Sending version query to Myket API for ${PACKAGE_ID}...`);
         
         try {
-          const res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
+          const origin = window.location.origin;
+          const isLocalOrCloud = origin.includes("run.app") || 
+                                 origin.includes("localhost") || 
+                                 origin.includes("127.0.0.1") ||
+                                 origin.includes("3000");
+          
+          const baseUrl = isLocalOrCloud 
+            ? "" 
+            : "https://ais-pre-mjtk6nza5i3nj7ti2kkaqg-970278040665.europe-west2.run.app";
+          
+          let res;
+          try {
+            res = await fetch(`${baseUrl}/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
+          } catch (fetchErr) {
+            if (!isLocalOrCloud) {
+              console.warn("Primary fetch to absolute URL failed, trying relative fallback...", fetchErr);
+              res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
+            } else {
+              throw fetchErr;
+            }
+          }
+
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             if (res.status === 404) {
@@ -1153,8 +1174,15 @@ export default function App() {
           console.error("Failed to check update from Myket:", error);
           setUpdateProgress(100);
           setUpdateState("idle");
-          setUpdateStepText(error.message || "خطا در برقراری ارتباط با سرور یا عدم دسترسی به اینترنت: لطفاً وضعیت اتصال اینترنت خود را مجدداً بررسی کنید.");
-          showToast("خطا در برقراری ارتباط با مایکت: لطفاً وضعیت اتصال اینترنت یا فعال بودن VPN خود را بررسی کنید.", "error");
+          
+          // Distinguish between actual internet disconnection and server communication issues
+          if (navigator.onLine === false) {
+            setUpdateStepText("خطا: اتصال اینترنت شما برقرار نیست. لطفاً اتصال دستگاه خود را بررسی کرده و مجدداً تلاش نمایید.");
+            showToast("اتصال اینترنت قطع است! لطفا اتصال اینترنت خود را بررسی نمایید.", "error");
+          } else {
+            setUpdateStepText("خطا در برقراری ارتباط با سرورهای استعلام نسخه: لطفاً مطمئن شوید فیلترشکن (VPN) شما خاموش است یا بعداً مجدداً تلاش نمایید.");
+            showToast("خطا در ارتباط با سرور! لطفاً وضعیت فیلترشکن خود را بررسی کرده و مجدداً تلاش کنید.", "error");
+          }
         }
       }, 1000);
     }, 1000);

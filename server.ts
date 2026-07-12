@@ -12,6 +12,17 @@ const PORT = 3000;
 // Increase body size limit for base64 images
 app.use(express.json({ limit: "15mb" }));
 
+// Enable CORS for all API endpoints to support PWAs and installed APKs
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Initialize Gemini API client
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;

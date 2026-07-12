@@ -151,42 +151,28 @@ jobs:
       - name: Fix and Regenerate Gradle Wrapper
         shell: bash
         run: |
-          set -euo pipefail
           cd android
-          mkdir -p gradle/wrapper
-
+          
           if [ -s gradle/wrapper/gradle-wrapper.jar ] && jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
             echo "Valid gradle-wrapper.jar present. Skipping regeneration."
           else
-            echo "gradle-wrapper.jar missing or invalid. Attempting to extract from official Gradle distribution..."
-
-            GRADLE_VERSION="8.14.3"
-            TMPDIR="$(mktemp -d)"
-            GRADLE_ZIP="$TMPDIR/gradle-${GRADLE_VERSION}-bin.zip"
-
-            curl -fsSLo "$GRADLE_ZIP" --retry 5 --retry-delay 3 --max-time 120 \
-              "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-
-            unzip -q "$GRADLE_ZIP" -d "$TMPDIR"
+            echo "gradle-wrapper.jar missing or invalid. Regenerating..."
             
-            if [ -f "$TMPDIR/gradle-${GRADLE_VERSION}/lib/gradle-wrapper.jar" ]; then
-              cp "$TMPDIR/gradle-${GRADLE_VERSION}/lib/gradle-wrapper.jar" gradle/wrapper/gradle-wrapper.jar
-              echo "Copied gradle-wrapper.jar from Gradle distribution."
-            else
-              echo "::error::Could not find gradle-wrapper.jar in the downloaded Gradle distribution."
-              exit 1
-            fi
-
+            mkdir -p gradle/wrapper
+            
+            GRADLE_VERSION="8.14.3"
+            WRAPPER_JAR_URL="https://repo.gradle.org/gradle/dist/gradle-${GRADLE_VERSION}-wrapper.jar"
+            
+            curl -fsSLo gradle/wrapper/gradle-wrapper.jar --retry 5 --retry-delay 3 --max-time 120 "$WRAPPER_JAR_URL"
+            
             if jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
-              echo "gradle-wrapper.jar validated OK."
+              echo "gradle-wrapper.jar downloaded and validated OK."
             else
               echo "::error::Downloaded gradle-wrapper.jar is invalid."
               exit 1
             fi
-
-            rm -rf "$TMPDIR"
           fi
-
+          
           chmod +x gradlew
 
       - name: Build Production Release APK

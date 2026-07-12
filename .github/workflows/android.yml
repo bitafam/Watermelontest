@@ -170,20 +170,29 @@ jobs:
 
       - name: Decode Keystore File
         run: |
-          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | base64 -d > android/app/release.keystore
+          if [ -z "${{ secrets.ANDROID_SIGNING_KEY }}" ]; then
+            echo "::error::ANDROID_SIGNING_KEY secret is empty!"
+            exit 1
+          fi
+          # Clean whitespace/newlines and decode safely
+          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | tr -d '\r\n ' | base64 -d > android/app/release.keystore
+          
+          if [ ! -s android/app/release.keystore ]; then
+            echo "::error::Keystore file decoding failed or file is empty!"
+            exit 1
+          fi
 
       - name: Sign Release APK using Jarsigner
         run: |
           cd android/app/build/outputs/apk/release
-          # Find the unsigned APK name and sign it
           UNSIGNED_APK=$(ls app-release-unsigned.apk 2>/dev/null || ls *-unsigned.apk | head -n 1)
+          
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore ../../../../release.keystore \
             -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
             -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
             $UNSIGNED_APK "${{ secrets.ANDROID_ALIAS }}"
           
-          # Rename it to final release name
           mv $UNSIGNED_APK Smart-Watermelon-Detector-Signed.apk
 
       - name: Upload Signed Release APK Artifact

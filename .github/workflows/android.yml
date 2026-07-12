@@ -148,26 +148,6 @@ jobs:
             echo "::warning::Source app icon not found at $ICON_SRC. Skipping custom icon generation and keeping default/existing assets."
           fi
 
-      - name: Generate Custom Production Release Keystore
-        run: |
-          # Create keystore directory if not exists
-          mkdir -p android/app/
-          
-          # Delete any previous keystore to prevent keytool conflict
-          rm -f android/app/release.keystore
-          
-          # Generate a custom release keystore signed with developers professional details (not a debug key).
-          keytool -genkey -v -keystore android/app/release.keystore \
-            -alias watermelonkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass watermelon123 \
-            -keypass watermelon123 \
-            -dname "CN=Smart Watermelon Detector, OU=Production, O=Amirhossein Salari, L=Tehran, S=Tehran, C=IR"
-          
-          echo "Successfully generated custom release-ready keystore."
-
       - name: Fix and Regenerate Gradle Wrapper
         run: |
           cd android
@@ -188,21 +168,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Prepare Keystore Base64 for Signing Action
-        id: prep_keystore
-        run: |
-          KEYSTORE_BASE64=$(base64 -w 0 android/app/release.keystore)
-          echo "signing_key=$KEYSTORE_BASE64" >> "$GITHUB_OUTPUT"
-
       - name: Sign Release APK
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
           releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ steps.prep_keystore.outputs.signing_key }}
-          alias: watermelonkey
-          keyStorePassword: watermelon123
-          keyPassword: watermelon123
+          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
+          alias: ${{ secrets.ANDROID_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
           buildToolsVersion: '34.0.0'
 
       - name: Upload Signed Release APK Artifact

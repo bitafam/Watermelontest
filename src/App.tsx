@@ -31,7 +31,7 @@ import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
-import { Crop } from "lucide-react";
+import { Crop, Copy } from "lucide-react";
 
 // Standard sample watermelons for testing/reviewing
 const SAMPLE_WATERMELONS = [
@@ -173,6 +173,10 @@ export default function App() {
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "latest" | "downloading">("idle");
   const [updateStepText, setUpdateStepText] = useState<string>("");
   const [updateProgress, setUpdateProgress] = useState<number>(0);
+  const [testPackageId, setTestPackageId] = useState<string>("com.apps.wmqd");
+  const [showTestSettings, setShowTestSettings] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
   // Gallery Cropping States
   const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
@@ -1092,7 +1096,7 @@ export default function App() {
     setUpdateState("checking");
     setUpdateProgress(10);
     setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
-    console.log("LOG: Initiating update check from Myket market distribution servers...");
+    console.log(`LOG: Initiating update check from Myket market distribution servers for: ${testPackageId}...`);
     
     setTimeout(() => {
       // Check online status again in case it disconnected during the process
@@ -1105,8 +1109,8 @@ export default function App() {
       }
       
       setUpdateProgress(40);
-      setUpdateStepText("در حال بررسی امضای دیجیتال و مجوز بسته com.apps.wmqd...");
-      console.log("LOG: Verifying package digital signature security clearance...");
+      setUpdateStepText(`در حال بررسی امضای دیجیتال و مجوز بسته ${testPackageId}...`);
+      console.log(`LOG: Verifying package ${testPackageId} digital signature security clearance...`);
       
       setTimeout(async () => {
         if (!navigator.onLine) {
@@ -1119,10 +1123,10 @@ export default function App() {
         
         setUpdateProgress(70);
         setUpdateStepText("در حال استعلام آخرین نسخه منتشر شده از مخزن مایکت...");
-        console.log("LOG: Sending version query to Myket API...");
+        console.log(`LOG: Sending version query to Myket API for ${testPackageId}...`);
         
         try {
-          const res = await fetch("/api/check-myket-version?id=com.apps.wmqd");
+          const res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(testPackageId)}`);
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             throw new Error(errData.error || `خطا در برقراری ارتباط: کد وضعیت ${res.status}`);
@@ -1160,7 +1164,7 @@ export default function App() {
     setUpdateState("downloading");
     setUpdateStepText("در حال فراخوانی اینتنت مایکت و بارگذاری صفحه دانلود...");
     
-    const appId = "com.apps.wmqd";
+    const appId = testPackageId;
     const myketDeepLink = `myket://details?id=${appId}`;
     const myketWebLink = `https://myket.ir/app/${appId}`;
     
@@ -1812,17 +1816,21 @@ export default function App() {
             {/* Smart Android Share */}
             <button
               onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: lang === "fa" ? "هندوانه‌سنج دیجیتال" : "Watermelon Detector",
-                    text: lang === "fa" 
-                      ? "کیفیت، قند و میزان رسیدگی هندوانه را با سیستم پردازش تصویر و نوری بسنجید!" 
-                      : "Check watermelon ripeness and quality with local optical & sound diagnostics!",
-                    url: "https://myket.ir/app/com.apps.wmqd"
-                  }).catch(console.error);
+                const shareData = {
+                  title: lang === "fa" ? "هندوانه‌سنج هوشمند" : "Watermelon Detector",
+                  text: lang === "fa" 
+                    ? "کیفیت، قند و میزان رسیدگی هندوانه را با سیستم پردازش تصویر و نوری بسنجید!" 
+                    : "Check watermelon ripeness and quality with local optical & sound diagnostics!",
+                  url: "https://myket.ir/app/com.apps.wmqd"
+                };
+                if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                  navigator.share(shareData)
+                    .catch((err) => {
+                      console.warn("Native share failed, using custom share modal:", err);
+                      setShowShareModal(true);
+                    });
                 } else {
-                  navigator.clipboard.writeText("https://myket.ir/app/com.apps.wmqd");
-                  alert(lang === "fa" ? "لینک دانلود در کلیپ‌بورد کپی شد!" : "Download link copied to clipboard!");
+                  setShowShareModal(true);
                 }
               }}
               className="p-3.5 rounded-xl bg-[#0A0F0D] hover:bg-[#141F1A] border border-emerald-950 hover:border-emerald-800/40 text-center transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
@@ -1990,12 +1998,17 @@ export default function App() {
                   <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">1.0.1</span>
                 </div>
                 
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">شناسه بسته (Package ID):</span>
+                  <span className="font-mono font-bold text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">{testPackageId}</span>
+                </div>
+                
                 {updateState !== "idle" && (
                   <div className="space-y-2 pt-2 border-t border-emerald-950/50">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-300 font-medium">وضعیت بررسی:</span>
                       {updateState === "checking" && <span className="text-amber-400 animate-pulse font-medium">در حال بررسی...</span>}
-                      {updateState === "available" && <span className="text-emerald-400 font-bold">نسخه جدید در دسترس است</span>}
+                      {updateState === "available" && <span className="text-emerald-400 font-bold animate-pulse">بروزرسانی جدید در دسترس است</span>}
                       {updateState === "latest" && <span className="text-emerald-400 font-bold">برنامه بروز است</span>}
                       {updateState === "downloading" && <span className="text-blue-400 font-medium animate-pulse">در حال هدایت به مایکت...</span>}
                     </div>
@@ -2012,6 +2025,104 @@ export default function App() {
                     <p className="text-[11px] text-slate-400 leading-relaxed text-right font-medium">
                       {updateStepText}
                     </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Developer Testing Tools Panel */}
+              <div className="border border-emerald-950/50 rounded-xl overflow-hidden bg-emerald-950/5">
+                <button
+                  type="button"
+                  onClick={() => setShowTestSettings(!showTestSettings)}
+                  className="w-full px-4 py-2 bg-emerald-950/20 hover:bg-emerald-950/30 text-right text-xs font-semibold text-emerald-400 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span>🛠️ تست کارکرد واقعی با سایر برنامه‌ها (مخصوص توسعه‌دهنده)</span>
+                  <span className="text-[10px] text-slate-500">{showTestSettings ? "بستن ▲" : "مشاهده ▼"}</span>
+                </button>
+                
+                {showTestSettings && (
+                  <div className="p-3 bg-[#0A0F0D]/60 border-t border-emerald-950 space-y-3 text-right">
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      از آنجا که برنامه شما هنوز به طور عمومی در مایکت منتشر نشده است، استعلام بسته <code className="text-emerald-500 font-mono">com.apps.wmqd</code> با خطای ۴۰۴ مواجه می‌شود. برای راستی‌آزمایی و مشاهده عملکرد واقعی آپدیت، یکی از برنامه‌های منتشر شده زیر را انتخاب و مجدداً تست کنید:
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-1.5" dir="rtl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTestPackageId("com.apps.wmqd");
+                          setUpdateState("idle");
+                          setUpdateStepText("");
+                        }}
+                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
+                          testPackageId === "com.apps.wmqd" 
+                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
+                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        هندوانه‌سنج (فعلی - منتشرنشده)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTestPackageId("ir.mservices.market");
+                          setUpdateState("idle");
+                          setUpdateStepText("");
+                        }}
+                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
+                          testPackageId === "ir.mservices.market" 
+                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
+                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        برنامه مایکت (منتشر شده)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTestPackageId("com.farsitel.bazaar");
+                          setUpdateState("idle");
+                          setUpdateStepText("");
+                        }}
+                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
+                          testPackageId === "com.farsitel.bazaar" 
+                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
+                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        برنامه بازار (منتشر شده)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTestPackageId("com.lenovo.anyshare.gps");
+                          setUpdateState("idle");
+                          setUpdateStepText("");
+                        }}
+                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
+                          testPackageId === "com.lenovo.anyshare.gps" 
+                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
+                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        برنامه SHAREit (منتشر شده)
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400">یا وارد کردن شناسه بسته دلخواه:</label>
+                      <input
+                        type="text"
+                        value={testPackageId}
+                        onChange={(e) => {
+                          setTestPackageId(e.target.value.trim());
+                          setUpdateState("idle");
+                          setUpdateStepText("");
+                        }}
+                        placeholder="e.g. com.instagram.android"
+                        className="w-full bg-[#050807] border border-emerald-950 rounded p-1 text-xs font-mono text-left text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -2352,6 +2463,151 @@ export default function App() {
                   انصراف
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Smart Share Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" id="share-app-modal-backdrop">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#0E1612] border border-emerald-500/30 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl relative text-right"
+              id="share-app-modal"
+              dir="rtl"
+            >
+              <button
+                onClick={() => {
+                  setShowShareModal(false);
+                  setCopiedShareLink(false);
+                }}
+                className="absolute top-4 left-4 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                id="close-share-modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-950/80">
+                  <Share2 className="w-8 h-8 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-50">منوی اشتراک‌گذاری برنامه</h3>
+                  <p className="text-xs text-emerald-500/70 font-medium mt-0.5">ارسال لینک دانلود مستقیم مایکت به دوستان</p>
+                </div>
+              </div>
+
+              {/* Copy link block */}
+              <div className="space-y-2">
+                <label className="text-xs text-slate-400 block text-right font-semibold">لینک مستقیم مایکت:</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://myket.ir/app/com.apps.wmqd");
+                      setCopiedShareLink(true);
+                      setTimeout(() => setCopiedShareLink(false), 2000);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                      copiedShareLink 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md hover:shadow-emerald-500/10"
+                    }`}
+                  >
+                    {copiedShareLink ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        کپی شد
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        کپی لینک
+                      </>
+                    )}
+                  </button>
+                  <input
+                    type="text"
+                    readOnly
+                    value="https://myket.ir/app/com.apps.wmqd"
+                    className="flex-1 bg-[#050807] border border-emerald-950 rounded-xl px-3 py-2 text-xs font-mono text-left text-slate-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Social sharing grid */}
+              <div className="space-y-3 pt-2">
+                <span className="text-xs text-slate-400 block text-right font-semibold">ارسال از طریق پیام‌رسان‌ها:</span>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Eitaa */}
+                  <a
+                    href={`https://eitaa.com/share/url?url=${encodeURIComponent("https://myket.ir/app/com.apps.wmqd")}&text=${encodeURIComponent("هندوانه‌سنج هوشمند! کیفیت، قند و میزان رسیدگی هندوانه را با پردازش تصویر پیشرفته بسنجید:")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 rounded-xl bg-[#0F1411] border border-emerald-950 hover:border-[#E8751A]/40 flex items-center justify-between transition-all group hover:bg-[#141F1A]"
+                  >
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">ایتا (Eitaa)</span>
+                    <span className="text-sm bg-[#E8751A]/10 text-[#E8751A] px-1.5 py-0.5 rounded-lg text-[10px] font-bold">داخلی</span>
+                  </a>
+
+                  {/* Rubika */}
+                  <a
+                    href={`https://rubika.ir/share?url=${encodeURIComponent("https://myket.ir/app/com.apps.wmqd")}&text=${encodeURIComponent("هندوانه‌سنج هوشمند! کیفیت، قند و میزان رسیدگی هندوانه را با پردازش تصویر پیشرفته بسنجید:")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 rounded-xl bg-[#0F1411] border border-emerald-950 hover:border-[#9C27B0]/40 flex items-center justify-between transition-all group hover:bg-[#141F1A]"
+                  >
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">روبیکا (Rubika)</span>
+                    <span className="text-sm bg-[#9C27B0]/10 text-[#9C27B0] px-1.5 py-0.5 rounded-lg text-[10px] font-bold">داخلی</span>
+                  </a>
+
+                  {/* Telegram */}
+                  <a
+                    href={`https://t.me/share/url?url=${encodeURIComponent("https://myket.ir/app/com.apps.wmqd")}&text=${encodeURIComponent("هندوانه‌سنج هوشمند! کیفیت، قند و میزان رسیدگی هندوانه را با پردازش تصویر پیشرفته بسنجید:")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 rounded-xl bg-[#0F1411] border border-emerald-950 hover:border-[#0088cc]/40 flex items-center justify-between transition-all group hover:bg-[#141F1A]"
+                  >
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">تلگرام (Telegram)</span>
+                    <span className="text-xs text-[#0088cc]">✈️</span>
+                  </a>
+
+                  {/* WhatsApp */}
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent("هندوانه‌سنج هوشمند! کیفیت، قند و میزان رسیدگی هندوانه را با پردازش تصویر پیشرفته بسنجید: https://myket.ir/app/com.apps.wmqd")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 rounded-xl bg-[#0F1411] border border-emerald-950 hover:border-[#25D366]/40 flex items-center justify-between transition-all group hover:bg-[#141F1A]"
+                  >
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">واتساپ (WhatsApp)</span>
+                    <span className="text-xs text-[#25D366]">💬</span>
+                  </a>
+                </div>
+
+                {/* Direct SMS */}
+                <a
+                  href={`sms:?body=${encodeURIComponent("هندوانه‌سنج هوشمند! کیفیت، قند و میزان رسیدگی هندوانه را با پردازش تصویر پیشرفته بسنجید: https://myket.ir/app/com.apps.wmqd")}`}
+                  className="w-full p-3 rounded-xl bg-[#0F1411] border border-emerald-950 hover:border-emerald-700 flex items-center justify-center gap-2 transition-all hover:bg-[#141F1A] mt-2 block text-center text-xs font-semibold text-slate-300 hover:text-white"
+                >
+                  ✉️ ارسال مستقیم با پیامک (SMS)
+                </a>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowShareModal(false);
+                  setCopiedShareLink(false);
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 font-semibold text-xs transition-colors border border-slate-900 cursor-pointer"
+              >
+                بستن منو
+              </button>
             </motion.div>
           </div>
         )}

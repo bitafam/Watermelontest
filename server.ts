@@ -245,12 +245,15 @@ app.get("/api/check-myket-version", async (req, res) => {
     });
     
     if (!response.ok) {
-      // If 404 or other network error, the app is likely not published yet or is inaccessible
-      return res.json({
-        latestVersion: "1.0.1",
-        isUpdateAvailable: false,
-        message: "برنامه شما بروز است (نسخه فعلی: ۱.۰.۱)"
-      });
+      if (response.status === 404) {
+        return res.status(404).json({
+          error: "برنامه هنوز در مایکت منتشر نشده است یا شناسه بسته اشتباه است.",
+          message: `بسته نرم‌افزاری با شناسه "${appId}" روی مارکت مایکت یافت نشد (خطای ۴۰۴).`,
+          appId,
+          isPublished: false
+        });
+      }
+      throw new Error(`خطای دریافت اطلاعات از مایکت (کد وضعیت ${response.status})`);
     }
     
     const html = await response.text();
@@ -270,11 +273,13 @@ app.get("/api/check-myket-version", async (req, res) => {
       }
     }
     
-    // Convert Farsi digits to standard English digits if any
+    // Convert Farsi/Arabic digits to standard English digits if any
     const farsiToEnglish = (str: string) => {
       const farsiDigits = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
+      const arabicDigits = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
       for (let i = 0; i < 10; i++) {
         str = str.replace(farsiDigits[i], i.toString());
+        str = str.replace(arabicDigits[i], i.toString());
       }
       return str;
     };
@@ -300,6 +305,7 @@ app.get("/api/check-myket-version", async (req, res) => {
     res.json({
       latestVersion: cleanVersion,
       isUpdateAvailable,
+      isPublished: true,
       message: isUpdateAvailable 
         ? `نسخه جدید ${cleanVersion} در مایکت موجود است.`
         : "شما از آخرین نسخه رسمی منتشر شده استفاده می‌کنید."

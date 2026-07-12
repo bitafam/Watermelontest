@@ -116,7 +116,7 @@ export default function AccuracyGuide() {
             <div className="flex items-start gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 shrink-0" />
               <p className="leading-relaxed">
-                <strong className="text-rose-300">عکاسی از میوه‌های متفرقه:</strong> الگوریتم‌های برنامه منحصراً برای هندوانه کامل یا قاچ‌شده آموزش دیده‌اند و برای خربزه، طالبی یا آناناس نتایج نادرست بازمی‌گردانند.
+                <strong className="text-rose-300">عکاسی از میوه‌های متفرقه یا قاچ شده:</strong> این برنامه منحصراً برای بررسی هندوانه کامل و قاچ‌نشده طراحی شده است؛ لذا اسکن میوه‌های دیگر (مانند خربزه یا طالبی) و یا هندوانه قاچ‌خورده و قطعه‌قطعه نتایج نادرستی به همراه دارد.
               </p>
             </div>
           </div>

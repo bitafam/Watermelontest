@@ -1124,7 +1124,8 @@ export default function App() {
         try {
           const res = await fetch("/api/check-myket-version?id=com.apps.wmqd");
           if (!res.ok) {
-            throw new Error("HTTP response status error: " + res.status);
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `خطا در برقراری ارتباط: کد وضعیت ${res.status}`);
           }
           const data = await res.json();
           
@@ -1133,8 +1134,13 @@ export default function App() {
           
           if (data.isUpdateAvailable) {
             setUpdateState("available");
-            setUpdateStepText(`بروزرسانی جدید یافت شد! نسخه ${data.latestVersion} هم‌اکنون در مایکت آماده دریافت و نصب است.`);
+            setUpdateStepText(`بروزرسانی جدید یافت شد! نسخه ${data.latestVersion} هم‌اکنون در مایکت آماده دریافت و نصب است. در حال انتقال به صفحه دانلود...`);
             console.log(`LOG: Update available. Current: 1.0.1, Latest: ${data.latestVersion}`);
+            
+            // Auto redirect to Myket after 1.5 seconds
+            setTimeout(() => {
+              handleLaunchMyketIntent();
+            }, 1500);
           } else {
             setUpdateState("latest");
             setUpdateStepText(`شما در حال حاضر از آخرین نسخه رسمی منتشر شده در مایکت (نسخه ${data.latestVersion || "1.0.1"}) استفاده می‌کنید و برنامه شما کاملاً بروز است.`);
@@ -1144,7 +1150,7 @@ export default function App() {
           console.error("Failed to check update from Myket:", error);
           setUpdateProgress(100);
           setUpdateState("idle");
-          setUpdateStepText("خطا در برقراری ارتباط با سرور یا عدم دسترسی به اینترنت: لطفاً وضعیت اتصال اینترنت خود را مجدداً بررسی کنید.");
+          setUpdateStepText(error.message || "خطا در برقراری ارتباط با سرور یا عدم دسترسی به اینترنت: لطفاً وضعیت اتصال اینترنت خود را مجدداً بررسی کنید.");
         }
       }, 1000);
     }, 1000);

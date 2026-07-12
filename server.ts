@@ -304,12 +304,11 @@ app.get("/api/check-myket-version", async (req, res) => {
         ? `نسخه جدید ${cleanVersion} در مایکت موجود است.`
         : "شما از آخرین نسخه رسمی منتشر شده استفاده می‌کنید."
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error checking Myket version:", err);
-    res.json({
-      latestVersion: "1.0.1",
-      isUpdateAvailable: false,
-      message: "برنامه بروز است (نسخه فعلی: ۱.۰.۱)"
+    res.status(502).json({
+      error: "خطا در برقراری ارتباط با مایکت. لطفاً اتصال اینترنت خود را بررسی کنید.",
+      details: err.message || ""
     });
   }
 });

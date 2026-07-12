@@ -33,6 +33,9 @@ import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
 import { Crop, Copy } from "lucide-react";
 
+// Official package ID for Myket publication
+const PACKAGE_ID = "com.apps.wmqd";
+
 // Standard sample watermelons for testing/reviewing
 const SAMPLE_WATERMELONS = [
   {
@@ -173,10 +176,22 @@ export default function App() {
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "latest" | "downloading">("idle");
   const [updateStepText, setUpdateStepText] = useState<string>("");
   const [updateProgress, setUpdateProgress] = useState<number>(0);
-  const [testPackageId, setTestPackageId] = useState<string>("com.apps.wmqd");
-  const [showTestSettings, setShowTestSettings] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Gallery Cropping States
   const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
@@ -1089,6 +1104,7 @@ export default function App() {
       setUpdateState("idle");
       setUpdateProgress(0);
       setUpdateStepText("خطا: اتصال اینترنت شما قطع است. لطفاً ارتباط خود را برقرار کرده و مجدداً تلاش نمایید.");
+      showToast("اتصال اینترنت قطع است! لطفاً از اتصال دستگاه خود به اینترنت مطمئن شده و برای عملکرد درست فیلترشکن (VPN) خود را خاموش نمایید.", "error");
       console.warn("Myket update check failed: Network is offline.");
       return;
     }
@@ -1096,7 +1112,8 @@ export default function App() {
     setUpdateState("checking");
     setUpdateProgress(10);
     setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
-    console.log(`LOG: Initiating update check from Myket market distribution servers for: ${testPackageId}...`);
+    showToast("در حال استعلام نسخه از مخزن توزیع رسمی مایکت...", "info");
+    console.log(`LOG: Initiating update check from Myket market distribution servers for: ${PACKAGE_ID}...`);
     
     setTimeout(() => {
       // Check online status again in case it disconnected during the process
@@ -1104,31 +1121,40 @@ export default function App() {
         setUpdateState("idle");
         setUpdateProgress(0);
         setUpdateStepText("خطا: اتصال اینترنت شما در حین فرآیند بررسی قطع شد.");
+        showToast("اتصال اینترنت شما در حین فرآیند بررسی قطع شد. فیلترشکن خود را خاموش کنید.", "error");
         console.warn("Myket update check interrupted: Network went offline.");
         return;
       }
       
       setUpdateProgress(40);
-      setUpdateStepText(`در حال بررسی امضای دیجیتال و مجوز بسته ${testPackageId}...`);
-      console.log(`LOG: Verifying package ${testPackageId} digital signature security clearance...`);
+      setUpdateStepText(`در حال بررسی امضای دیجیتال و مجوز بسته ${PACKAGE_ID}...`);
+      console.log(`LOG: Verifying package ${PACKAGE_ID} digital signature security clearance...`);
       
       setTimeout(async () => {
         if (!navigator.onLine) {
           setUpdateState("idle");
           setUpdateProgress(0);
           setUpdateStepText("خطا: اتصال اینترنت شما قطع شد.");
+          showToast("اتصال اینترنت قطع است! لطفاً مجدداً بررسی نمایید.", "error");
           console.warn("Myket update check interrupted: Network went offline.");
           return;
         }
         
         setUpdateProgress(70);
         setUpdateStepText("در حال استعلام آخرین نسخه منتشر شده از مخزن مایکت...");
-        console.log(`LOG: Sending version query to Myket API for ${testPackageId}...`);
+        console.log(`LOG: Sending version query to Myket API for ${PACKAGE_ID}...`);
         
         try {
-          const res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(testPackageId)}`);
+          const res = await fetch(`/api/check-myket-version?id=${encodeURIComponent(PACKAGE_ID)}`);
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
+            if (res.status === 404) {
+              setUpdateProgress(100);
+              setUpdateState("idle");
+              setUpdateStepText(`خطای ۴۰۴: برنامه هنوز در مایکت منتشر نشده است یا شناسه بسته "${PACKAGE_ID}" اشتباه است.`);
+              showToast(`خطای ۴۰۴: برنامه با شناسه "${PACKAGE_ID}" هنوز در مایکت منتشر نشده است یا شناسه اشتباه است.`, "error");
+              return;
+            }
             throw new Error(errData.error || `خطا در برقراری ارتباط: کد وضعیت ${res.status}`);
           }
           const data = await res.json();
@@ -1139,6 +1165,7 @@ export default function App() {
           if (data.isUpdateAvailable) {
             setUpdateState("available");
             setUpdateStepText(`بروزرسانی جدید یافت شد! نسخه ${data.latestVersion} هم‌اکنون در مایکت آماده دریافت و نصب است. در حال انتقال به صفحه دانلود...`);
+            showToast(`بروزرسانی جدید یافت شد (نسخه ${data.latestVersion})! در حال هدایت به مایکت...`, "success");
             console.log(`LOG: Update available. Current: 1.0.1, Latest: ${data.latestVersion}`);
             
             // Auto redirect to Myket after 1.5 seconds
@@ -1148,6 +1175,7 @@ export default function App() {
           } else {
             setUpdateState("latest");
             setUpdateStepText(`شما در حال حاضر از آخرین نسخه رسمی منتشر شده در مایکت (نسخه ${data.latestVersion || "1.0.1"}) استفاده می‌کنید و برنامه شما کاملاً بروز است.`);
+            showToast("برنامه شما کاملاً بروز است! آخرین نسخه رسمی هم‌اکنون روی دستگاه شما نصب می‌باشد.", "success");
             console.log("LOG: App is up to date.");
           }
         } catch (error: any) {
@@ -1155,6 +1183,7 @@ export default function App() {
           setUpdateProgress(100);
           setUpdateState("idle");
           setUpdateStepText(error.message || "خطا در برقراری ارتباط با سرور یا عدم دسترسی به اینترنت: لطفاً وضعیت اتصال اینترنت خود را مجدداً بررسی کنید.");
+          showToast("خطا در برقراری ارتباط با مایکت: لطفاً وضعیت اتصال اینترنت یا فعال بودن VPN خود را بررسی کنید.", "error");
         }
       }, 1000);
     }, 1000);
@@ -1164,15 +1193,18 @@ export default function App() {
     setUpdateState("downloading");
     setUpdateStepText("در حال فراخوانی اینتنت مایکت و بارگذاری صفحه دانلود...");
     
-    const appId = testPackageId;
-    const myketDeepLink = `myket://details?id=${appId}`;
+    const appId = PACKAGE_ID;
+    // Official Myket in-app update intent format (Version 9.8.9+)
+    const myketDeepLink = `myket://check-update?id=${appId}`;
     const myketWebLink = `https://myket.ir/app/${appId}`;
     
+    console.log(`LOG: Launching Myket in-app update deep-link: ${myketDeepLink}`);
     const start = Date.now();
     window.location.href = myketDeepLink;
     
     setTimeout(() => {
       if (Date.now() - start < 1500) {
+        console.log("LOG: Myket deep link intent failed to launch within timeframe. Falling back to web link.");
         window.open(myketWebLink, "_blank");
       }
       setTimeout(() => {
@@ -2000,7 +2032,7 @@ export default function App() {
                 
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">شناسه بسته (Package ID):</span>
-                  <span className="font-mono font-bold text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">{testPackageId}</span>
+                  <span className="font-mono font-bold text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">{PACKAGE_ID}</span>
                 </div>
                 
                 {updateState !== "idle" && (
@@ -2025,104 +2057,6 @@ export default function App() {
                     <p className="text-[11px] text-slate-400 leading-relaxed text-right font-medium">
                       {updateStepText}
                     </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Developer Testing Tools Panel */}
-              <div className="border border-emerald-950/50 rounded-xl overflow-hidden bg-emerald-950/5">
-                <button
-                  type="button"
-                  onClick={() => setShowTestSettings(!showTestSettings)}
-                  className="w-full px-4 py-2 bg-emerald-950/20 hover:bg-emerald-950/30 text-right text-xs font-semibold text-emerald-400 flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <span>🛠️ تست کارکرد واقعی با سایر برنامه‌ها (مخصوص توسعه‌دهنده)</span>
-                  <span className="text-[10px] text-slate-500">{showTestSettings ? "بستن ▲" : "مشاهده ▼"}</span>
-                </button>
-                
-                {showTestSettings && (
-                  <div className="p-3 bg-[#0A0F0D]/60 border-t border-emerald-950 space-y-3 text-right">
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                      از آنجا که برنامه شما هنوز به طور عمومی در مایکت منتشر نشده است، استعلام بسته <code className="text-emerald-500 font-mono">com.apps.wmqd</code> با خطای ۴۰۴ مواجه می‌شود. برای راستی‌آزمایی و مشاهده عملکرد واقعی آپدیت، یکی از برنامه‌های منتشر شده زیر را انتخاب و مجدداً تست کنید:
-                    </p>
-                    
-                    <div className="grid grid-cols-2 gap-1.5" dir="rtl">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTestPackageId("com.apps.wmqd");
-                          setUpdateState("idle");
-                          setUpdateStepText("");
-                        }}
-                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
-                          testPackageId === "com.apps.wmqd" 
-                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
-                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        هندوانه‌سنج (فعلی - منتشرنشده)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTestPackageId("ir.mservices.market");
-                          setUpdateState("idle");
-                          setUpdateStepText("");
-                        }}
-                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
-                          testPackageId === "ir.mservices.market" 
-                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
-                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        برنامه مایکت (منتشر شده)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTestPackageId("com.farsitel.bazaar");
-                          setUpdateState("idle");
-                          setUpdateStepText("");
-                        }}
-                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
-                          testPackageId === "com.farsitel.bazaar" 
-                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
-                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        برنامه بازار (منتشر شده)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTestPackageId("com.lenovo.anyshare.gps");
-                          setUpdateState("idle");
-                          setUpdateStepText("");
-                        }}
-                        className={`text-[10px] p-1.5 rounded border text-center transition-colors cursor-pointer ${
-                          testPackageId === "com.lenovo.anyshare.gps" 
-                            ? "bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold" 
-                            : "bg-[#070A08] border-slate-800 text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        برنامه SHAREit (منتشر شده)
-                      </button>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-slate-400">یا وارد کردن شناسه بسته دلخواه:</label>
-                      <input
-                        type="text"
-                        value={testPackageId}
-                        onChange={(e) => {
-                          setTestPackageId(e.target.value.trim());
-                          setUpdateState("idle");
-                          setUpdateStepText("");
-                        }}
-                        placeholder="e.g. com.instagram.android"
-                        className="w-full bg-[#050807] border border-emerald-950 rounded p-1 text-xs font-mono text-left text-emerald-400 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
                   </div>
                 )}
               </div>
@@ -2610,6 +2544,44 @@ export default function App() {
               </button>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dynamic Toast System */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[90%] md:w-auto"
+            id="toast-notification"
+          >
+            <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl border shadow-2xl backdrop-blur-md text-right ${
+              toast.type === "success" 
+                ? "bg-emerald-950/95 border-emerald-500/40 text-emerald-100 shadow-emerald-950/50" 
+                : toast.type === "error"
+                ? "bg-rose-950/95 border-rose-500/40 text-rose-100 shadow-rose-950/50"
+                : "bg-slate-900/95 border-slate-800 text-slate-100 shadow-slate-950/50"
+            }`} dir="rtl">
+              <div className="flex-shrink-0">
+                {toast.type === "success" && <CheckCircle className="w-5 h-5 text-emerald-400" />}
+                {toast.type === "error" && <AlertTriangle className="w-5 h-5 text-rose-400" />}
+                {toast.type === "info" && <Info className="w-5 h-5 text-blue-400" />}
+              </div>
+              <p className="text-xs font-semibold leading-relaxed flex-1">
+                {toast.message}
+              </p>
+              <button
+                onClick={() => setToast(null)}
+                className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors cursor-pointer mr-2"
+                aria-label="بستن"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

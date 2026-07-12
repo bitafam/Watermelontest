@@ -234,15 +234,21 @@ Provide your analysis strictly matching the JSON schema. Use natural Persian for
 
 // Endpoint to check the latest version of the app from Myket store
 app.get("/api/check-myket-version", async (req, res) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+
   try {
     const appId = req.query.id || "com.apps.wmqd";
     const myketUrl = `https://myket.ir/app/${appId}`;
     
     const response = await fetch(myketUrl, {
+      signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -311,6 +317,7 @@ app.get("/api/check-myket-version", async (req, res) => {
         : "شما از آخرین نسخه رسمی منتشر شده استفاده می‌کنید."
     });
   } catch (err: any) {
+    clearTimeout(timeoutId);
     console.error("Error checking Myket version:", err);
     res.status(502).json({
       error: "خطا در برقراری ارتباط با مایکت. لطفاً اتصال اینترنت خود را بررسی کنید.",

@@ -182,18 +182,26 @@ jobs:
             exit 1
           fi
 
-      - name: Sign Release APK using Jarsigner
+      - name: Sign and ZipAlign Release APK
         run: |
           cd android/app/build/outputs/apk/release
           UNSIGNED_APK=$(ls app-release-unsigned.apk 2>/dev/null || ls *-unsigned.apk | head -n 1)
           
+          # 1. Sign the APK first
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore ../../../../release.keystore \
             -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
             -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
             $UNSIGNED_APK "${{ secrets.ANDROID_ALIAS }}"
           
-          mv $UNSIGNED_APK Smart-Watermelon-Detector-Signed.apk
+          # 2. Find zipalign tool path from Android SDK and align the signed APK
+          ZIPALIGN_PATH=$(find $ANDROID_HOME/build-tools/ -name "zipalign" | sort -V | tail -n 1)
+          if [ -z "$ZIPALIGN_PATH" ]; then
+            echo "::error::zipalign tool not found!"
+            exit 1
+          fi
+          
+          $ZIPALIGN_PATH -v 4 $UNSIGNED_APK Smart-Watermelon-Detector-Signed.apk
 
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4

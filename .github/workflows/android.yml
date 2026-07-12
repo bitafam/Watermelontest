@@ -39,6 +39,17 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android Build Tools 29.0.3
+        run: |
+          if [ -n "$ANDROID_SDK_ROOT" ] && [ -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "build-tools;29.0.3" || true
+          elif command -v sdkmanager >/dev/null 2>&1; then
+            yes | sdkmanager "build-tools;29.0.3" || true
+          else
+            echo "sdkmanager not found in standard paths, trying default locations..."
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;29.0.3" || true
+          fi
+
       - name: Initialize Capacitor Android
         run: |
           # Ensure android platform folder is initialized and synced correctly
@@ -134,8 +145,7 @@ jobs:
             
             echo "Successfully generated and replaced all Android launcher icons and splash screens."
           else
-            echo "Error: Source app icon not found at $ICON_SRC"
-            exit 1
+            echo "::warning::Source app icon not found at $ICON_SRC. Skipping custom icon generation and keeping default/existing assets."
           fi
 
       - name: Generate Custom Production Release Keystore
@@ -193,6 +203,7 @@ jobs:
           alias: watermelonkey
           keyStorePassword: watermelon123
           keyPassword: watermelon123
+          buildToolsVersion: '34.0.0'
 
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4

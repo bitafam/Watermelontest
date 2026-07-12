@@ -1099,16 +1099,6 @@ export default function App() {
   };
 
   const handleCheckForMyketUpdate = () => {
-    // 1. Check navigator.onLine first
-    if (!navigator.onLine) {
-      setUpdateState("idle");
-      setUpdateProgress(0);
-      setUpdateStepText("خطا: اتصال اینترنت شما قطع است. لطفاً ارتباط خود را برقرار کرده و مجدداً تلاش نمایید.");
-      showToast("اتصال اینترنت قطع است! لطفاً از اتصال دستگاه خود به اینترنت مطمئن شده و برای عملکرد درست فیلترشکن (VPN) خود را خاموش نمایید.", "error");
-      console.warn("Myket update check failed: Network is offline.");
-      return;
-    }
-
     setUpdateState("checking");
     setUpdateProgress(10);
     setUpdateStepText("در حال اتصال به سرورهای توزیع مایکت (ir.mservices.market)...");
@@ -1116,30 +1106,11 @@ export default function App() {
     console.log(`LOG: Initiating update check from Myket market distribution servers for: ${PACKAGE_ID}...`);
     
     setTimeout(() => {
-      // Check online status again in case it disconnected during the process
-      if (!navigator.onLine) {
-        setUpdateState("idle");
-        setUpdateProgress(0);
-        setUpdateStepText("خطا: اتصال اینترنت شما در حین فرآیند بررسی قطع شد.");
-        showToast("اتصال اینترنت شما در حین فرآیند بررسی قطع شد. فیلترشکن خود را خاموش کنید.", "error");
-        console.warn("Myket update check interrupted: Network went offline.");
-        return;
-      }
-      
       setUpdateProgress(40);
       setUpdateStepText(`در حال بررسی امضای دیجیتال و مجوز بسته ${PACKAGE_ID}...`);
       console.log(`LOG: Verifying package ${PACKAGE_ID} digital signature security clearance...`);
       
       setTimeout(async () => {
-        if (!navigator.onLine) {
-          setUpdateState("idle");
-          setUpdateProgress(0);
-          setUpdateStepText("خطا: اتصال اینترنت شما قطع شد.");
-          showToast("اتصال اینترنت قطع است! لطفاً مجدداً بررسی نمایید.", "error");
-          console.warn("Myket update check interrupted: Network went offline.");
-          return;
-        }
-        
         setUpdateProgress(70);
         setUpdateStepText("در حال استعلام آخرین نسخه منتشر شده از مخزن مایکت...");
         console.log(`LOG: Sending version query to Myket API for ${PACKAGE_ID}...`);

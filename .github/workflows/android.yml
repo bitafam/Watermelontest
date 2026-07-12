@@ -52,7 +52,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y imagemagick
 
-      - name: Generate Custom Android App Launcher Icons
+      - name: Generate Custom Android App Launcher Icons & Splash Screens
         run: |
           # Convert our custom watermelon app icon to various mipmap resolutions for Android
           ICON_SRC="src/assets/images/watermelon_app_icon_1783756956652.jpg"
@@ -74,43 +74,68 @@ jobs:
             mkdir -p android/app/src/main/res/mipmap-xhdpi
             mkdir -p android/app/src/main/res/mipmap-xxhdpi
             mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+            mkdir -p android/app/src/main/res/drawable
             
-            # Standard Launcher Icons
+            # Generate Standard, Round, and Foreground Launcher Icons
             convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-            
-            # Round Launcher Icons
             convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
             
-            echo "Successfully generated and replaced all Android launcher icons."
+            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+            
+            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+            
+            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+            
+            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+            
+            # Generate Fallback Splash Screen
+            convert "$ICON_SRC" -resize 512x512 android/app/src/main/res/drawable/splash.png
+            
+            # Generate Portrait Splash Screens
+            mkdir -p android/app/src/main/res/drawable-port-mdpi
+            convert "$ICON_SRC" -resize 150x150 -background "#ffffff" -gravity center -extent 320x480 android/app/src/main/res/drawable-port-mdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-port-hdpi
+            convert "$ICON_SRC" -resize 200x200 -background "#ffffff" -gravity center -extent 480x800 android/app/src/main/res/drawable-port-hdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-port-xhdpi
+            convert "$ICON_SRC" -resize 300x300 -background "#ffffff" -gravity center -extent 720x1280 android/app/src/main/res/drawable-port-xhdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-port-xxhdpi
+            convert "$ICON_SRC" -resize 400x400 -background "#ffffff" -gravity center -extent 960x1600 android/app/src/main/res/drawable-port-xxhdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-port-xxxhdpi
+            convert "$ICON_SRC" -resize 512x512 -background "#ffffff" -gravity center -extent 1280x1920 android/app/src/main/res/drawable-port-xxxhdpi/splash.png
+            
+            # Generate Landscape Splash Screens
+            mkdir -p android/app/src/main/res/drawable-land-mdpi
+            convert "$ICON_SRC" -resize 150x150 -background "#ffffff" -gravity center -extent 480x320 android/app/src/main/res/drawable-land-mdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-land-hdpi
+            convert "$ICON_SRC" -resize 200x200 -background "#ffffff" -gravity center -extent 800x480 android/app/src/main/res/drawable-land-hdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-land-xhdpi
+            convert "$ICON_SRC" -resize 300x300 -background "#ffffff" -gravity center -extent 1280x720 android/app/src/main/res/drawable-land-xhdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-land-xxhdpi
+            convert "$ICON_SRC" -resize 400x400 -background "#ffffff" -gravity center -extent 1600x960 android/app/src/main/res/drawable-land-xxhdpi/splash.png
+            
+            mkdir -p android/app/src/main/res/drawable-land-xxxhdpi
+            convert "$ICON_SRC" -resize 512x512 -background "#ffffff" -gravity center -extent 1920x1280 android/app/src/main/res/drawable-land-xxxhdpi/splash.png
+            
+            echo "Successfully generated and replaced all Android launcher icons and splash screens."
           else
             echo "Error: Source app icon not found at $ICON_SRC"
-          fi
-
-      - name: Inject Myket Intent & DeepLink configurations to AndroidManifest.xml
-        run: |
-          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          if [ -f "$MANIFEST_PATH" ]; then
-            echo "Modifying AndroidManifest.xml for Myket, Camera, Internet, and external Intents..."
-            
-            # 1. Inject Camera and Internet permissions right before <application
-            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <application|g' "$MANIFEST_PATH"
-            
-            # 2. Add Myket Package Query so Myket can be queried from Android 11+
-            sed -i 's|<\/manifest>|<queries><package android:name="ir.mservices.market" /><\/queries><\/manifest>|g' "$MANIFEST_PATH"
-            
-            # 3. Add an intent filter for Myket deep link within the .MainActivity activity by inserting it after the first </intent-filter>
-            INTENT_FILTER='<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="wmqd" /></intent-filter>'
-            sed -i "s|<\/intent-filter>|<\/intent-filter>\n            ${INTENT_FILTER}|" "$MANIFEST_PATH"
-          else
-            echo "AndroidManifest.xml not found. Skipping auto-injection (will use Capacitor defaults)."
+            exit 1
           fi
 
       - name: Generate Custom Production Release Keystore

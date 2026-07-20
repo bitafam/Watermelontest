@@ -2134,7 +2134,7 @@ export default function App() {
               <div className="bg-[#0A0F0D] rounded-xl p-4 border border-emerald-950 space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">نسخه نصب‌شده فعلی:</span>
-                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">1.0.1</span>
+                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">2.0.1</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-xs">

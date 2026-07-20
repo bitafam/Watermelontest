@@ -32,6 +32,16 @@ import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
 import { Crop, Copy } from "lucide-react";
+import {
+  initializeTapsell,
+  startBannerRefresh,
+  stopBannerRefresh,
+  isRewardedAdReady,
+  showRewardedAd,
+  completeSimulatedAd,
+  isNativePlatform,
+  REWARDED_ZONE_ID
+} from "./utils/tapsell";
 
 // Official package ID for Myket publication
 const PACKAGE_ID = "com.apps.wmqd";
@@ -179,6 +189,26 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
+  // Tapsell Ads & Rate Limit States
+  const [watchedAdTimes, setWatchedAdTimes] = useState<number[]>(() => {
+    const saved = localStorage.getItem("watermelon_watched_ads");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [cooldownTime, setCooldownTime] = useState<number>(() => {
+    const saved = localStorage.getItem("watermelon_cooldown_until");
+    if (saved) {
+      const until = parseInt(saved, 10);
+      const diff = Math.ceil((until - Date.now()) / 1000);
+      return diff > 0 ? diff : 0;
+    }
+    return 0;
+  });
+
+  const [adOverlayActive, setAdOverlayActive] = useState<boolean>(false);
+  const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
+  const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
+
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
@@ -316,6 +346,71 @@ export default function App() {
     "Inspecting the stem status and connective tissue moisture...",
     "Executing OCR to scan for any labels, price tags or codes..."
   ];
+
+  // Tapsell & Rate Limits Effects and Helpers
+  useEffect(() => {
+    initializeTapsell();
+    startBannerRefresh();
+    return () => {
+      stopBannerRefresh();
+    };
+  }, []);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (cooldownTime > 0) {
+      timer = setInterval(() => {
+        setCooldownTime((prev) => {
+          const next = prev - 1;
+          if (next <= 0) {
+            localStorage.removeItem("watermelon_cooldown_until");
+            return 0;
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [cooldownTime]);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (adOverlayActive) {
+      timer = setInterval(() => {
+        setAdOverlaySeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+        setAdOverlayProgress((prev) => {
+          const next = prev + (100 / 15);
+          return next > 100 ? 100 : next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [adOverlayActive]);
+
+  const recordAdWatched = () => {
+    const now = Date.now();
+    const updated = [...watchedAdTimes, now].filter(t => now - t < 5 * 60 * 1000);
+    setWatchedAdTimes(updated);
+    localStorage.setItem("watermelon_watched_ads", JSON.stringify(updated));
+
+    if (updated.length >= 3) {
+      const cooldownUntil = now + 5 * 60 * 1000;
+      localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+      setCooldownTime(300); // 300 seconds
+      setWatchedAdTimes([]);
+      localStorage.setItem("watermelon_watched_ads", JSON.stringify([]));
+    }
+  };
 
   // Helper function to analyze the watermelon image completely offline/client-side using HTML5 Canvas
   const analyzeWatermelonLocal = (imageSrc: string, sType: string | null): Promise<AnalysisResult> => {
@@ -988,8 +1083,8 @@ export default function App() {
     }
   };
 
-  // Trigger analysis
-  const analyzeWatermelon = async () => {
+  // Actual analysis execution
+  const executeAnalysis = async () => {
     if (!image) return;
     setLoading(true);
     setCustomError(null);
@@ -1032,6 +1127,44 @@ export default function App() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
+  const analyzeWatermelon = () => {
+    if (cooldownTime > 0) {
+      showToast(lang === "fa" ? "لطفاً تا اتمام زمان محدودیت صبور باشید." : "Please wait until the rate limit ends.", "error");
+      return;
+    }
+
+    if (isNativePlatform()) {
+      if (isRewardedAdReady()) {
+        showRewardedAd(
+          () => {
+            showToast(lang === "fa" ? "ویدیو اسپانسر باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened, please watch till the end...", "info");
+          },
+          () => {
+            // Closed
+          },
+          () => {
+            // Rewarded
+            recordAdWatched();
+            executeAnalysis();
+          },
+          (err) => {
+            console.warn("Tapsell rewarded ad failed to show, running inspection directly:", err);
+            executeAnalysis();
+          }
+        );
+      } else {
+        showToast(lang === "fa" ? "ویدیو اسپانسر هنوز لود نشده است؛ تحلیل مستقیم اجرا می‌شود." : "Sponsor video not loaded yet, running direct analysis.", "info");
+        executeAnalysis();
+      }
+    } else {
+      // Web Simulator Mode
+      setAdOverlayActive(true);
+      setAdOverlayProgress(0);
+      setAdOverlaySeconds(15);
     }
   };
 
@@ -1401,23 +1534,54 @@ export default function App() {
 
               {/* Run Analysis Action Section - placed higher directly under the image */}
               {image && !loading && (
-                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex gap-2" id="action-buttons">
-                  <button
-                    onClick={analyzeWatermelon}
-                    className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
-                    id="analyze-btn"
-                  >
-                    <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
-                    {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
-                  </button>
-                  
-                  <button
-                    onClick={resetAll}
-                    className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all"
-                    title={lang === "fa" ? "انصراف" : "Cancel"}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex flex-col gap-3" id="action-buttons">
+                  {cooldownTime > 0 ? (
+                    <div className="text-center p-4 bg-amber-950/20 border border-amber-900/30 rounded-2xl space-y-3" id="limit-box">
+                      <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-xs md:text-sm">
+                        <AlertTriangle className="w-5 h-5 animate-pulse text-amber-500" />
+                        <span>{lang === "fa" ? "محدودیت استفاده رایگان" : "Free Use Limit Reached"}</span>
+                      </div>
+                      <p className="text-slate-400 text-[11px] md:text-xs leading-relaxed">
+                        {lang === "fa" 
+                          ? "شما حداکثر تعداد ویدیوهای تبلیغاتی (۳ ویدیو در ۵ دقیقه) را مشاهده کرده‌اید. برای استفاده مجدد لطفاً صبور باشید." 
+                          : "You have watched the maximum sponsor ads in 5 minutes. Please wait to use again."}
+                      </p>
+                      <div className="py-2.5 px-4 bg-[#141F1A] rounded-xl border border-amber-950/50 text-amber-300 font-mono text-lg font-bold flex items-center justify-center gap-2">
+                        <RotateCw className="w-4 h-4 animate-spin text-amber-500" style={{ animationDuration: '4s' }} />
+                        <span>
+                          {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, "0")}
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={() => showToast(lang === "fa" ? "پرداخت تپسل و خرید به‌زودی فعال خواهد شد." : "Purchase system will be active soon.", "info")}
+                        className="w-full py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                        id="buy-full-app-btn"
+                      >
+                        <Sparkles className="w-4 h-4 text-black animate-pulse" />
+                        {lang === "fa" ? "خرید نسخه کامل و بدون تبلیغات" : "Purchase Premium Full Version"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={analyzeWatermelon}
+                        className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                        id="analyze-btn"
+                      >
+                        <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+                        {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
+                      </button>
+                      
+                      <button
+                        onClick={resetAll}
+                        className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                        title={lang === "fa" ? "انصراف" : "Cancel"}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -2524,6 +2688,121 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 1. Simulated Tapsell Rewarded Video Ad Overlay (Only shown on Web Browser/PC/AI Studio previews) */}
+      <AnimatePresence>
+        {adOverlayActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/95 flex flex-col justify-between p-6 md:p-10 font-sans select-none"
+            id="ad-video-overlay"
+            dir="rtl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between w-full max-w-4xl mx-auto border-b border-zinc-800/50 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] md:text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold tracking-wider">
+                  SPONSOR VIDEO / ویدیو حامی مالی
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {adOverlaySeconds > 0 ? (
+                  <span className="text-xs text-slate-400 font-mono bg-[#111] px-3 py-1 rounded-xl border border-zinc-800 flex items-center gap-1.5 font-bold">
+                    <RotateCw className="w-3.5 h-3.5 animate-spin text-emerald-500" style={{ animationDuration: '3s' }} />
+                    <span>{adOverlaySeconds} ثانیه تا دریافت جایزه</span>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setAdOverlayActive(false);
+                      recordAdWatched();
+                      executeAnalysis();
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-green-500 transition-all flex items-center gap-1.5 cursor-pointer"
+                    id="ad-close-btn"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>دریافت جایزه و شروع تحلیل هوشمند</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Simulated Video Player Stage */}
+            <div className="flex-1 max-w-4xl w-full mx-auto flex flex-col items-center justify-center py-6">
+              <div className="relative w-full max-w-2xl aspect-video rounded-3xl bg-[#090F0D] border border-emerald-950/40 flex flex-col items-center justify-center p-6 text-center space-y-6 overflow-hidden shadow-2xl">
+                {/* Visual scan pulse background */}
+                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent animate-pulse pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-emerald-500/20 animate-bounce" style={{ animationDuration: '4s' }} />
+                
+                <div className="w-20 h-20 rounded-full bg-[#141F1A] border border-emerald-900/50 flex items-center justify-center text-4xl shadow-xl shadow-emerald-950/40">
+                  🍉
+                </div>
+                
+                <div className="space-y-2 max-w-md">
+                  <h3 className="text-sm md:text-base font-extrabold text-white">
+                    برنامه هوشمند هندوانه‌سنج صوتی و دیجیتال
+                  </h3>
+                  <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed">
+                    با حمایت حامیان مالی برنامه، سنجش کیفیت برای شما به رایگان ارائه می‌شود. لطفاً تا اتمام ویدیو صبور باشید. از بردباری شما سپاسگزاریم.
+                  </p>
+                </div>
+
+                {/* Simulated Custom Progress bar */}
+                <div className="w-full max-w-md space-y-2 pt-4">
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>{Math.round(adOverlayProgress)}%</span>
+                    <span>15 ثانیه</span>
+                  </div>
+                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-green-500" 
+                      style={{ width: `${adOverlayProgress}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="w-full max-w-4xl mx-auto border-t border-zinc-800/50 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-500 text-[10px] md:text-xs">
+              <p>این شبیه‌ساز پس از اتمام تایمر، مجوز شروع آنالیز را صادر می‌کند.</p>
+              <div className="flex items-center gap-4">
+                <span>توسعه یافته با ❤️ برای مایکت و تپسل</span>
+                <span>شناسه زون: {REWARDED_ZONE_ID}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Simulated Standard Banner Ad (Only shown on Web Browser/PC/AI Studio previews) */}
+      {!isNativePlatform() && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 h-16 bg-zinc-950 border-t border-emerald-950/40 flex items-center justify-center z-[90] px-4 shadow-2xl backdrop-blur-md" 
+          id="simulated-banner-ad-web"
+          dir="rtl"
+        >
+          <div className="max-w-xl w-full flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded font-bold font-mono">AD / اسپانسر</span>
+              <div className="text-right">
+                <p className="text-slate-100 text-[11px] md:text-xs font-bold leading-tight">هندوانه‌سنج صوتی هوشمند را ارتقا دهید!</p>
+                <p className="text-slate-400 text-[9px] md:text-[10px] leading-tight mt-1">بدون محدودیت استفاده، بدون تبلیغات و با امکانات صوتی اختصاصی پوست هندوانه</p>
+              </div>
+            </div>
+            <button
+              onClick={() => showToast(lang === "fa" ? "امکان ارتقای طلایی به‌زودی در مایکت فعال خواهد شد." : "Premium Upgrade will be active soon.", "info")}
+              className="text-[11px] bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black px-3 py-2 rounded-xl font-extrabold shadow-lg transition-transform transform active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              {lang === "fa" ? "ارتقای طلایی" : "Premium Gold"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

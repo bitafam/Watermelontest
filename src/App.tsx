@@ -1153,11 +1153,32 @@ export default function App() {
           },
           (err) => {
             console.warn("Tapsell rewarded ad failed to show, running inspection directly:", err);
+            showToast(
+              lang === "fa"
+                ? "تبلیغ نمایش داده نشد؛ تحلیل انجام می‌شود اما محدودیت ۱ دقیقه‌ای برای بارگذاری مجدد تبلیغ اعمال شد."
+                : "Ad failed to show; analysis is performed but a 1-minute cooldown has been applied to let the ad load.",
+              "error"
+            );
+            // Apply 1 minute cooldown (60 seconds)
+            const cooldownUntil = Date.now() + 60 * 1000;
+            localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+            setCooldownTime(60);
+            
             executeAnalysis();
           }
         );
       } else {
-        showToast(lang === "fa" ? "ویدیو اسپانسر هنوز لود نشده است؛ تحلیل مستقیم اجرا می‌شود." : "Sponsor video not loaded yet, running direct analysis.", "info");
+        showToast(
+          lang === "fa"
+            ? "ویدیو اسپانسر هنوز بارگذاری نشده است؛ تحلیل انجام می‌شود اما محدودیت ۱ دقیقه‌ای برای بارگذاری مجدد تبلیغ اعمال شد."
+            : "Sponsor video not loaded yet; analysis is performed but a 1-minute cooldown has been applied to let the ad load.",
+          "info"
+        );
+        // Apply 1 minute cooldown (60 seconds)
+        const cooldownUntil = Date.now() + 60 * 1000;
+        localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+        setCooldownTime(60);
+        
         executeAnalysis();
       }
     } else {

@@ -8,6 +8,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
+import android.os.Bundle;
+import java.util.ArrayList;
+import ir.mservices.market.billing.IInAppBillingService;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -31,6 +40,12 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	private FrameLayout bannerLayout;
 	private String standardBannerResponseId = null;
 	
+	private IInAppBillingService mService;
+	private ServiceConnection mServiceConn;
+	private CallbackContext purchaseCallbackContext;
+	private static final int PURCHASE_REQUEST_CODE = 1001;
+	private boolean isBillingBound = false;
+	
 	public static final int TOP_LEFT = 0;
 	public static final int TOP_CENTER = 1;
 	public static final int TOP_RIGHT = 2;
@@ -47,6 +62,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		 cordova = initCordova;
 		 mActivity = cordova.getActivity();
 		 super.initialize(cordova, webView);
+		 initBilling();
 	}
 	
 	
@@ -104,6 +120,14 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			showRewardedVideo(responseId);
 		    return true;
 		}
+		if (action.equals("purchaseFullVersion")) {
+			purchaseFullVersion(CallbackContext);
+			return true;
+		}
+		if (action.equals("checkFullVersion")) {
+			checkFullVersion(CallbackContext);
+			return true;
+		}
 	    return false;
 	}
 	
@@ -142,38 +166,49 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		mActivity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				if (bannerLayout != null) {
-					_removeBanner();
-				}
-				bannerLayout = new FrameLayout(mActivity);
-				int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-				if (position == TOP_LEFT) {
-					gravity = Gravity.TOP | Gravity.LEFT;
-				} else if (position == TOP_CENTER) {
-					gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-				} else if (position == TOP_RIGHT) {
-					gravity = Gravity.TOP | Gravity.RIGHT;
-				} else if (position == LEFT) {
-					gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
-				} else if (position == CENTER) {
-					gravity = Gravity.CENTER;
-				} else if (position == RIGHT) {
-					gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
-				} else if (position == BOTTOM_LEFT) {
-					gravity = Gravity.BOTTOM | Gravity.LEFT;
-				} else if (position == BOTTOM_CENTER) {
-					gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-				} else if (position == BOTTOM_RIGHT) {
-					gravity = Gravity.BOTTOM | Gravity.RIGHT;
+				int containerId = mActivity.getResources().getIdentifier("tapsell_banner_container", "id", mActivity.getPackageName());
+				ViewGroup xmlContainer = null;
+				if (containerId != 0) {
+					xmlContainer = (ViewGroup) mActivity.findViewById(containerId);
 				}
 				
-				ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
-				
-				if (parentGroup != null) {
-					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-					params.gravity = gravity;
-					bannerLayout.setLayoutParams(params);
-					parentGroup.addView(bannerLayout);
+				if (xmlContainer != null) {
+					bannerLayout = (FrameLayout) xmlContainer;
+					bannerLayout.removeAllViews();
+				} else {
+					if (bannerLayout != null) {
+						_removeBanner();
+					}
+					bannerLayout = new FrameLayout(mActivity);
+					int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+					if (position == TOP_LEFT) {
+						gravity = Gravity.TOP | Gravity.LEFT;
+					} else if (position == TOP_CENTER) {
+						gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+					} else if (position == TOP_RIGHT) {
+						gravity = Gravity.TOP | Gravity.RIGHT;
+					} else if (position == LEFT) {
+						gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+					} else if (position == CENTER) {
+						gravity = Gravity.CENTER;
+					} else if (position == RIGHT) {
+						gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
+					} else if (position == BOTTOM_LEFT) {
+						gravity = Gravity.BOTTOM | Gravity.LEFT;
+					} else if (position == BOTTOM_CENTER) {
+						gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+					} else if (position == BOTTOM_RIGHT) {
+						gravity = Gravity.BOTTOM | Gravity.RIGHT;
+					}
+					
+					ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
+					
+					if (parentGroup != null) {
+						FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						params.gravity = gravity;
+						bannerLayout.setLayoutParams(params);
+						parentGroup.addView(bannerLayout);
+					}
 				}
 				
 				TapsellPlus.requestStandardBannerAd(
@@ -251,11 +286,16 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				standardBannerResponseId = null;
 	    			}
 					if (bannerLayout != null) {
-						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
-						if (parent != null) {
-							parent.removeView(bannerLayout);
+						int containerId = mActivity.getResources().getIdentifier("tapsell_banner_container", "id", mActivity.getPackageName());
+						if (containerId != 0 && bannerLayout.getId() == containerId) {
+							bannerLayout.removeAllViews();
+						} else {
+							ViewGroup parent = (ViewGroup) bannerLayout.getParent();
+							if (parent != null) {
+								parent.removeView(bannerLayout);
+							}
+							bannerLayout = null;
 						}
-						bannerLayout = null;
 					}
 		        }
 	    	});
@@ -273,11 +313,16 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				standardBannerResponseId = null;
 	    			}
 					if (bannerLayout != null) {
-						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
-						if (parent != null) {
-							parent.removeView(bannerLayout);
+						int containerId = mActivity.getResources().getIdentifier("tapsell_banner_container", "id", mActivity.getPackageName());
+						if (containerId != 0 && bannerLayout.getId() == containerId) {
+							bannerLayout.removeAllViews();
+						} else {
+							ViewGroup parent = (ViewGroup) bannerLayout.getParent();
+							if (parent != null) {
+								parent.removeView(bannerLayout);
+							}
+							bannerLayout = null;
 						}
-						bannerLayout = null;
 					}
 		        }
 	    	});
@@ -467,5 +512,120 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				}
 			});
 		}
+	}
+
+	private void initBilling() {
+		mServiceConn = new ServiceConnection() {
+			@Override
+			public void onServiceDisconnected(ComponentName name) {
+				mService = null;
+			}
+
+			@Override
+			public void onServiceConnected(ComponentName name, IBinder service) {
+				mService = IInAppBillingService.Stub.asInterface(service);
+				Log.i("MyketBilling", "Myket billing service connected.");
+			}
+		};
+		
+		try {
+			Intent serviceIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
+			serviceIntent.setPackage("ir.mservices.market");
+			isBillingBound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+			Log.i("MyketBilling", "Binding result: " + isBillingBound);
+		} catch (Exception e) {
+			Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
+		}
+	}
+
+	private void purchaseFullVersion(final CallbackContext callbackContext) {
+		if (mService == null) {
+			callbackContext.error("Myket billing service not connected. Please install Myket or try again.");
+			return;
+		}
+		
+		this.purchaseCallbackContext = callbackContext;
+		cordova.setActivityResultCallback(this);
+		
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Bundle buyIntentBundle = mService.getBuyIntent(3, mActivity.getPackageName(), "Fullversion", "inapp", "");
+					int responseCode = buyIntentBundle.getInt("RESPONSE_CODE");
+					if (responseCode == 0) {
+						PendingIntent pendingIntent = buyIntentBundle.getParcelable("BUY_INTENT");
+						cordova.startActivityForResult(TapsellPlusPlugin.this, pendingIntent.getIntentSender(), PURCHASE_REQUEST_CODE, new Intent(), 0, 0, 0, null);
+					} else if (responseCode == 7) { // Already owned
+						callbackContext.success("already_owned");
+					} else {
+						callbackContext.error("Purchase error code: " + responseCode);
+					}
+				} catch (Exception e) {
+					callbackContext.error("Error starting purchase: " + e.getMessage());
+				}
+			}
+		});
+	}
+
+	private void checkFullVersion(final CallbackContext callbackContext) {
+		if (mService == null) {
+			callbackContext.success("false");
+			return;
+		}
+		
+		cordova.getThreadPool().execute(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Bundle ownedItems = mService.getPurchases(3, mActivity.getPackageName(), "inapp", null);
+					int response = ownedItems.getInt("RESPONSE_CODE");
+					if (response == 0) {
+						ArrayList<String> ownedSkus = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
+						if (ownedSkus != null && ownedSkus.contains("Fullversion")) {
+							callbackContext.success("true");
+							return;
+						}
+					}
+					callbackContext.success("false");
+				} catch (Exception e) {
+					callbackContext.success("false");
+				}
+			}
+		});
+	}
+
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (requestCode == PURCHASE_REQUEST_CODE) {
+			if (purchaseCallbackContext == null) return;
+			
+			if (resultCode == Activity.RESULT_OK && data != null) {
+				int responseCode = data.getIntExtra("RESPONSE_CODE", 0);
+				if (responseCode == 0) {
+					purchaseCallbackContext.success("success");
+				} else {
+					purchaseCallbackContext.error("Purchase failed with response code: " + responseCode);
+				}
+			} else if (resultCode == Activity.RESULT_CANCELED) {
+				purchaseCallbackContext.error("canceled");
+			} else {
+				purchaseCallbackContext.error("Purchase failed or canceled.");
+			}
+			purchaseCallbackContext = null;
+		}
+	}
+
+	@Override
+	public void onDestroy() {
+		if (isBillingBound && mServiceConn != null) {
+			try {
+				mActivity.unbindService(mServiceConn);
+			} catch (Exception e) {
+				Log.e("MyketBilling", "Error unbinding service: " + e.getMessage());
+			}
+		}
+		super.onDestroy();
 	}
 }

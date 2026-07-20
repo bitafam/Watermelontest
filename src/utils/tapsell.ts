@@ -261,6 +261,10 @@ let bannerTimer: any = null;
 
 // Show standard banner at the bottom center of the page
 export const showStandardBannerAd = (): void => {
+  if (localStorage.getItem("is_full_version") === "true") {
+    console.log("Tapsell: Premium active. Standard banner blocked.");
+    return;
+  }
   if (isNativePlatform()) {
     try {
       console.log("Tapsell: Creating real bottom standard banner...");
@@ -302,6 +306,10 @@ export const removeStandardBannerAd = (): void => {
 
 // Start Refresh Banner Ads every 60 seconds
 export const startBannerRefresh = (): void => {
+  if (localStorage.getItem("is_full_version") === "true") {
+    console.log("Tapsell: Premium active. Banner refresh blocked.");
+    return;
+  }
   stopBannerRefresh();
   
   // Show first banner
@@ -321,4 +329,68 @@ export const stopBannerRefresh = (): void => {
     bannerTimer = null;
   }
   removeStandardBannerAd();
+};
+
+// Premium check: returns true if the user has purchased the full version
+export const isFullVersionActive = async (): Promise<boolean> => {
+  if (isNativePlatform()) {
+    return new Promise((resolve) => {
+      try {
+        window.TapsellPlus.checkFullVersion(
+          (result: string) => {
+            console.log("Myket Check result:", result);
+            const active = result === "true";
+            // Persist locally for caching / offline
+            localStorage.setItem("is_full_version", active ? "true" : "false");
+            resolve(active);
+          },
+          (error: any) => {
+            console.error("Myket Check error:", error);
+            // Fallback to local storage if check fails (e.g. offline)
+            resolve(localStorage.getItem("is_full_version") === "true");
+          }
+        );
+      } catch (e) {
+        console.error("Myket check error:", e);
+        resolve(localStorage.getItem("is_full_version") === "true");
+      }
+    });
+  } else {
+    // Simulator flow
+    return localStorage.getItem("is_full_version") === "true";
+  }
+};
+
+// Purchase full version: triggers purchase flow and returns "success", "already_owned", or throws error
+export const purchaseFullVersion = async (): Promise<string> => {
+  if (isNativePlatform()) {
+    return new Promise((resolve, reject) => {
+      try {
+        window.TapsellPlus.purchaseFullVersion(
+          (result: string) => {
+            console.log("Myket purchase result:", result);
+            if (result === "success" || result === "already_owned") {
+              localStorage.setItem("is_full_version", "true");
+            }
+            resolve(result);
+          },
+          (error: any) => {
+            console.error("Myket purchase error:", error);
+            reject(new Error(error || "Payment failed"));
+          }
+        );
+      } catch (e) {
+        console.error("Myket purchase exception:", e);
+        reject(e);
+      }
+    });
+  } else {
+    // Simulator flow: successful simulated purchase after 1 second
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        localStorage.setItem("is_full_version", "true");
+        resolve("success");
+      }, 1000);
+    });
+  }
 };

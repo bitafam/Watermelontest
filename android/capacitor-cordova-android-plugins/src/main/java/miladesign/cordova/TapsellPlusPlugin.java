@@ -167,57 +167,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					gravity = Gravity.BOTTOM | Gravity.RIGHT;
 				}
 				
-				ViewGroup parentGroup = null;
-				ViewGroup webViewView = getParentGroup();
-				if (webViewView != null) {
-					parentGroup = (ViewGroup) webViewView.getParent();
-				}
+				ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
 				
 				if (parentGroup != null) {
-					ViewGroup.LayoutParams params = null;
-					String parentClassName = parentGroup.getClass().getName();
-					
-					if (parentClassName.contains("CoordinatorLayout")) {
-						try {
-							Class<?> lpClass = Class.forName("androidx.coordinatorlayout.widget.CoordinatorLayout$LayoutParams");
-							java.lang.reflect.Constructor<?> constructor = lpClass.getConstructor(int.class, int.class);
-							Object lpInstance = constructor.newInstance(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-							
-							java.lang.reflect.Field gravityField = lpClass.getField("gravity");
-							gravityField.set(lpInstance, gravity);
-							
-							params = (ViewGroup.LayoutParams) lpInstance;
-							Log.i(LOG_TAG, "Tapsell: Generated CoordinatorLayout.LayoutParams successfully");
-						} catch (Exception e) {
-							Log.e(LOG_TAG, "Tapsell: Failed to create CoordinatorLayout.LayoutParams via reflection", e);
-						}
-					}
-					
-					if (params == null) {
-						if (parentGroup instanceof FrameLayout || parentClassName.contains("FrameLayout")) {
-							FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-							flp.gravity = gravity;
-							params = flp;
-						} else if (parentClassName.contains("RelativeLayout") || parentGroup instanceof android.widget.RelativeLayout) {
-							android.widget.RelativeLayout.LayoutParams rlp = new android.widget.RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-							if ((gravity & Gravity.BOTTOM) == Gravity.BOTTOM) {
-								rlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM);
-							} else if ((gravity & Gravity.TOP) == Gravity.TOP) {
-								rlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
-							}
-							rlp.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
-							params = rlp;
-						} else if (parentGroup instanceof android.widget.LinearLayout) {
-							android.widget.LinearLayout.LayoutParams llp = new android.widget.LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-							llp.gravity = gravity;
-							params = llp;
-						} else {
-							FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-							flp.gravity = gravity;
-							params = flp;
-						}
-					}
-					
+					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+					params.gravity = gravity;
 					bannerLayout.setLayoutParams(params);
 					parentGroup.addView(bannerLayout);
 				}
@@ -254,58 +208,12 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				}
 				bannerLayout = new FrameLayout(mActivity);
 				
-				ViewGroup parentGroup = null;
-				ViewGroup webViewView = getParentGroup();
-				if (webViewView != null) {
-					parentGroup = (ViewGroup) webViewView.getParent();
-				}
+				ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
 				
 				if (parentGroup != null) {
-					ViewGroup.LayoutParams params = null;
-					String parentClassName = parentGroup.getClass().getName();
-					
-					if (parentClassName.contains("CoordinatorLayout")) {
-						try {
-							Class<?> lpClass = Class.forName("androidx.coordinatorlayout.widget.CoordinatorLayout$LayoutParams");
-							java.lang.reflect.Constructor<?> constructor = lpClass.getConstructor(int.class, int.class);
-							Object lpInstance = constructor.newInstance(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-							
-							java.lang.reflect.Field leftMarginField = lpClass.getField("leftMargin");
-							leftMarginField.set(lpInstance, x);
-							java.lang.reflect.Field topMarginField = lpClass.getField("topMargin");
-							topMarginField.set(lpInstance, y);
-							
-							params = (ViewGroup.LayoutParams) lpInstance;
-							Log.i(LOG_TAG, "Tapsell: Generated CoordinatorLayout.LayoutParams for XY successfully");
-						} catch (Exception e) {
-							Log.e(LOG_TAG, "Tapsell: Failed to create CoordinatorLayout.LayoutParams for XY via reflection", e);
-						}
-					}
-					
-					if (params == null) {
-						if (parentGroup instanceof FrameLayout || parentClassName.contains("FrameLayout")) {
-							FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-							flp.leftMargin = x;
-							flp.topMargin = y;
-							params = flp;
-						} else if (parentClassName.contains("RelativeLayout") || parentGroup instanceof android.widget.RelativeLayout) {
-							android.widget.RelativeLayout.LayoutParams rlp = new android.widget.RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-							rlp.leftMargin = x;
-							rlp.topMargin = y;
-							params = rlp;
-						} else if (parentGroup instanceof android.widget.LinearLayout) {
-							android.widget.LinearLayout.LayoutParams llp = new android.widget.LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-							llp.leftMargin = x;
-							llp.topMargin = y;
-							params = llp;
-						} else {
-							FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-							flp.leftMargin = x;
-							flp.topMargin = y;
-							params = flp;
-						}
-					}
-					
+					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+					params.leftMargin = x;
+					params.topMargin = y;
 					bannerLayout.setLayoutParams(params);
 					parentGroup.addView(bannerLayout);
 				}

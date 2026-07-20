@@ -1,5 +1,5 @@
 // Tapsell Plus Ad Integration for Capacitor / Web
-// Handles standard banners and rewarded videos with browser mock support
+// Handles standard banners and rewarded videos with real native Cordova support
 
 export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
 export const BANNER_ZONE_ID = "6a5e6056470fa5291867c9ab";
@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-// Check if running on native device via Capacitor
+// Check if running on native device via Capacitor (window.TapsellPlus is injected)
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
   return !!window.TapsellPlus;
@@ -23,28 +23,138 @@ let isPreloading = false;
 let isPreloaded = false;
 let onAdPreloadedCallback: (() => void) | null = null;
 
+// Track active show ad callbacks
+let activeAdCallbacks: {
+  onAdOpened?: () => void;
+  onAdClosed?: () => void;
+  onAdRewarded?: () => void;
+  onAdShowFailed?: (err?: any) => void;
+} | null = null;
+
+let hasRegisteredEvents = false;
+
+// Register global document event listeners for Cordova TapsellPlus
+const registerGlobalEventListeners = () => {
+  if (hasRegisteredEvents || typeof window === "undefined") return;
+  hasRegisteredEvents = true;
+
+  console.log("Tapsell: Registering global Cordova event listeners...");
+
+  document.addEventListener('response', (e: any) => {
+    const data = e.detail || e.data || e;
+    const resId = data.responseId;
+    const adType = data.adType;
+
+    console.log("Tapsell Event: response", { resId, adType });
+
+    if (adType === "rewardvideo") {
+      preloadedAdId = resId;
+      isPreloading = false;
+      isPreloaded = true;
+      if (onAdPreloadedCallback) onAdPreloadedCallback();
+    }
+  });
+
+  document.addEventListener('error', (e: any) => {
+    const data = e.detail || e.data || e;
+    const adType = data.adType;
+    const message = data.message;
+
+    console.error("Tapsell Event: error", { adType, message });
+
+    if (adType === "rewardvideo") {
+      isPreloading = false;
+      isPreloaded = false;
+      // Retry preloading after 15 seconds
+      setTimeout(() => preloadRewardedAd(), 15000);
+    }
+  });
+
+  document.addEventListener('onOpened', (e: any) => {
+    const data = e.detail || e.data || e;
+    const adType = data.adType;
+    console.log("Tapsell Event: onOpened", { adType });
+    
+    if (adType === "rewardvideo" && activeAdCallbacks?.onAdOpened) {
+      activeAdCallbacks.onAdOpened();
+    }
+  });
+
+  document.addEventListener('onClosed', (e: any) => {
+    const data = e.detail || e.data || e;
+    const adType = data.adType;
+    console.log("Tapsell Event: onClosed", { adType });
+    
+    if (adType === "rewardvideo") {
+      const cb = activeAdCallbacks?.onAdClosed;
+      activeAdCallbacks = null;
+      if (cb) cb();
+      // Preload next ad immediately
+      preloadRewardedAd();
+    }
+  });
+
+  document.addEventListener('onRewarded', (e: any) => {
+    const data = e.detail || e.data || e;
+    const adType = data.adType;
+    console.log("Tapsell Event: onRewarded", { adType });
+    
+    if (adType === "rewardvideo" && activeAdCallbacks?.onAdRewarded) {
+      activeAdCallbacks.onAdRewarded();
+    }
+  });
+
+  document.addEventListener('onError', (e: any) => {
+    const data = e.detail || e.data || e;
+    const adType = data.adType;
+    const message = data.message;
+    console.error("Tapsell Event: onError", { adType, message });
+    
+    if (adType === "rewardvideo") {
+      const cb = activeAdCallbacks?.onAdShowFailed;
+      activeAdCallbacks = null;
+      if (cb) cb(message);
+      // Preload next ad immediately
+      preloadRewardedAd();
+    }
+  });
+};
+
 // Initialize Tapsell Plus
 export const initializeTapsell = (): void => {
-  if (isNativePlatform()) {
-    try {
-      window.TapsellPlus.initialize(
-        APP_TOKEN,
-        () => {
-          console.log("Tapsell: SDK Initialized successfully");
-          // Preload the first rewarded ad immediately
-          preloadRewardedAd();
-        },
-        (err: any) => {
-          console.error("Tapsell: SDK Initialization failed", err);
-        }
-      );
-    } catch (e) {
-      console.error("Tapsell: Exception during initialization", e);
+  const init = () => {
+    if (isNativePlatform()) {
+      registerGlobalEventListeners();
+      try {
+        console.log("Tapsell: Initializing real SDK with token", APP_TOKEN);
+        window.TapsellPlus.initialize(APP_TOKEN);
+        // Preload the first rewarded ad immediately
+        preloadRewardedAd();
+      } catch (e) {
+        console.error("Tapsell: Exception during initialization", e);
+      }
+    } else {
+      console.log("Tapsell: Web mode - Simulator Initialized with token", APP_TOKEN);
+      preloadRewardedAd();
     }
-  } else {
-    console.log("Tapsell: Web mode - Simulator Initialized with token", APP_TOKEN);
-    // Simulate preloading rewarded ad in web browser
-    preloadRewardedAd();
+  };
+
+  if (typeof document !== "undefined") {
+    if (isNativePlatform()) {
+      init();
+    } else {
+      // In native environment, wait for deviceready to ensure TapsellPlus is injected
+      document.addEventListener("deviceready", () => {
+        init();
+      }, false);
+      
+      // Fallback check after 1 second for faster startup or standard browser testing
+      setTimeout(() => {
+        if (!hasRegisteredEvents) {
+          init();
+        }
+      }, 1000);
+    }
   }
 };
 
@@ -63,26 +173,11 @@ export const preloadRewardedAd = (): void => {
 
   if (isNativePlatform()) {
     try {
-      window.TapsellPlus.requestRewardedVideo(
-        REWARDED_ZONE_ID,
-        (adId: string) => {
-          preloadedAdId = adId;
-          isPreloading = false;
-          isPreloaded = true;
-          console.log("Tapsell: Rewarded video preloaded", adId);
-          if (onAdPreloadedCallback) onAdPreloadedCallback();
-        },
-        (err: any) => {
-          isPreloading = false;
-          isPreloaded = false;
-          console.error("Tapsell: Rewarded video preload failed", err);
-          // Retry preloading after 15 seconds
-          setTimeout(() => preloadRewardedAd(), 15000);
-        }
-      );
+      console.log("Tapsell: Preloading real rewarded video...");
+      window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
     } catch (e) {
       isPreloading = false;
-      console.error("Tapsell: Error preloading ad", e);
+      console.error("Tapsell: Error requesting rewarded ad", e);
     }
   } else {
     // Web Simulator
@@ -110,47 +205,34 @@ export const showRewardedAd = (
   onAdShowFailed: (err?: any) => void
 ): void => {
   if (!isPreloaded || !preloadedAdId) {
-    onAdShowFailed("Ad not preloaded");
+    onAdShowFailed("Ad not preloaded yet");
     return;
   }
 
   if (isNativePlatform()) {
     try {
       const activeAdId = preloadedAdId;
-      // Reset state so next ad can be preloaded
+      // Reset preload states for the next cycle
       preloadedAdId = null;
       isPreloaded = false;
 
-      window.TapsellPlus.showAd(
-        activeAdId,
-        () => {
-          console.log("Tapsell: Rewarded video opened");
-          onAdOpened();
-        },
-        () => {
-          console.log("Tapsell: Rewarded video closed");
-          onAdClosed();
-          // Preload next ad immediately
-          preloadRewardedAd();
-        },
-        () => {
-          console.log("Tapsell: Rewarded video completed successfully! Reward earned.");
-          onAdRewarded();
-        },
-        (err: any) => {
-          console.error("Tapsell: Rewarded video show failed", err);
-          onAdShowFailed(err);
-          // Preload next ad immediately
-          preloadRewardedAd();
-        }
-      );
+      // Store callbacks to be executed when native events are received
+      activeAdCallbacks = {
+        onAdOpened,
+        onAdClosed,
+        onAdRewarded,
+        onAdShowFailed
+      };
+
+      console.log("Tapsell: Displaying real rewarded video...", activeAdId);
+      window.TapsellPlus.showRewardedVideo(activeAdId);
     } catch (e) {
-      console.error("Tapsell: Error showing ad", e);
+      console.error("Tapsell: Error showing rewarded ad", e);
       onAdShowFailed(e);
       preloadRewardedAd();
     }
   } else {
-    // Simulator flow - handled in UI component
+    // Simulator flow
     onAdOpened();
   }
 };
@@ -169,49 +251,46 @@ export const completeSimulatedAd = (
 };
 
 // Standard Banner Ad state
-let activeBannerId: string | null = null;
 let bannerTimer: any = null;
 
-// Show standard banner at the bottom of the page
+// Show standard banner at the bottom center of the page
 export const showStandardBannerAd = (): void => {
   if (isNativePlatform()) {
     try {
-      // Hide active banner first if exists
-      if (activeBannerId) {
-        window.TapsellPlus.hideStandardBanner(
-          () => {},
-          () => {}
-        );
-      }
-
-      const bannerType = 1; // BANNER_320x50
-      const gravity = 2; // GRAVITY_BOTTOM
-
-      window.TapsellPlus.requestStandardBanner(
+      console.log("Tapsell: Creating real bottom standard banner...");
+      // Position 7 is BOTTOM_CENTER, Size 1 is BANNER_320x50
+      window.TapsellPlus.createBanner(
         BANNER_ZONE_ID,
-        bannerType,
-        (adId: string) => {
-          activeBannerId = adId;
-          window.TapsellPlus.showStandardBanner(
-            adId,
-            gravity,
-            () => {
-              console.log("Tapsell: Standard banner shown at bottom");
-            },
-            (err: any) => {
-              console.error("Tapsell: Show standard banner failed", err);
-            }
-          );
-        },
-        (err: any) => {
-          console.error("Tapsell: Request standard banner failed", err);
-        }
+        7, // BOTTOM_CENTER
+        1  // BANNER_320x50
       );
     } catch (e) {
       console.error("Tapsell: Error requesting standard banner", e);
     }
   } else {
-    console.log("Tapsell Simulator: Requesting standard banner at bottom");
+    console.log("Tapsell Simulator: Requesting standard banner at bottom center");
+  }
+};
+
+// Stop/Hide Standard Banner Ad
+export const hideStandardBannerAd = (): void => {
+  if (isNativePlatform()) {
+    try {
+      window.TapsellPlus.hideBanner();
+    } catch (e) {
+      console.error("Tapsell: Error hiding standard banner", e);
+    }
+  }
+};
+
+// Completely remove the standard banner ad from view and memory
+export const removeStandardBannerAd = (): void => {
+  if (isNativePlatform()) {
+    try {
+      window.TapsellPlus.removeBanner();
+    } catch (e) {
+      console.error("Tapsell: Error removing standard banner", e);
+    }
   }
 };
 
@@ -235,4 +314,5 @@ export const stopBannerRefresh = (): void => {
     clearInterval(bannerTimer);
     bannerTimer = null;
   }
+  removeStandardBannerAd();
 };

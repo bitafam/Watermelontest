@@ -31,6 +31,15 @@ import_dotenv.default.config();
 var app = (0, import_express.default)();
 var PORT = 3e3;
 app.use(import_express.default.json({ limit: "15mb" }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 var apiKey = process.env.GEMINI_API_KEY;
 var ai = null;
 if (apiKey) {
@@ -232,20 +241,28 @@ Provide your analysis strictly matching the JSON schema. Use natural Persian for
   }
 });
 app.get("/api/check-myket-version", async (req, res) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6e3);
   try {
     const appId = req.query.id || "com.apps.wmqd";
     const myketUrl = `https://myket.ir/app/${appId}`;
     const response = await fetch(myketUrl, {
+      signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
     });
+    clearTimeout(timeoutId);
     if (!response.ok) {
-      return res.json({
-        latestVersion: "1.0.1",
-        isUpdateAvailable: false,
-        message: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0634\u0645\u0627 \u0628\u0631\u0648\u0632 \u0627\u0633\u062A (\u0646\u0633\u062E\u0647 \u0641\u0639\u0644\u06CC: \u06F1.\u06F0.\u06F1)"
-      });
+      if (response.status === 404) {
+        return res.status(404).json({
+          error: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0647\u0646\u0648\u0632 \u062F\u0631 \u0645\u0627\u06CC\u06A9\u062A \u0645\u0646\u062A\u0634\u0631 \u0646\u0634\u062F\u0647 \u0627\u0633\u062A \u06CC\u0627 \u0634\u0646\u0627\u0633\u0647 \u0628\u0633\u062A\u0647 \u0627\u0634\u062A\u0628\u0627\u0647 \u0627\u0633\u062A.",
+          message: `\u0628\u0633\u062A\u0647 \u0646\u0631\u0645\u200C\u0627\u0641\u0632\u0627\u0631\u06CC \u0628\u0627 \u0634\u0646\u0627\u0633\u0647 "${appId}" \u0631\u0648\u06CC \u0645\u0627\u0631\u06A9\u062A \u0645\u0627\u06CC\u06A9\u062A \u06CC\u0627\u0641\u062A \u0646\u0634\u062F (\u062E\u0637\u0627\u06CC \u06F4\u06F0\u06F4).`,
+          appId,
+          isPublished: false
+        });
+      }
+      throw new Error(`\u062E\u0637\u0627\u06CC \u062F\u0631\u06CC\u0627\u0641\u062A \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u0627\u0632 \u0645\u0627\u06CC\u06A9\u062A (\u06A9\u062F \u0648\u0636\u0639\u06CC\u062A ${response.status})`);
     }
     const html = await response.text();
     let version = "";
@@ -262,8 +279,10 @@ app.get("/api/check-myket-version", async (req, res) => {
     }
     const farsiToEnglish = (str) => {
       const farsiDigits = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
+      const arabicDigits = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
       for (let i = 0; i < 10; i++) {
         str = str.replace(farsiDigits[i], i.toString());
+        str = str.replace(arabicDigits[i], i.toString());
       }
       return str;
     };
@@ -284,14 +303,15 @@ app.get("/api/check-myket-version", async (req, res) => {
     res.json({
       latestVersion: cleanVersion,
       isUpdateAvailable,
+      isPublished: true,
       message: isUpdateAvailable ? `\u0646\u0633\u062E\u0647 \u062C\u062F\u06CC\u062F ${cleanVersion} \u062F\u0631 \u0645\u0627\u06CC\u06A9\u062A \u0645\u0648\u062C\u0648\u062F \u0627\u0633\u062A.` : "\u0634\u0645\u0627 \u0627\u0632 \u0622\u062E\u0631\u06CC\u0646 \u0646\u0633\u062E\u0647 \u0631\u0633\u0645\u06CC \u0645\u0646\u062A\u0634\u0631 \u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u06CC\u062F."
     });
   } catch (err) {
+    clearTimeout(timeoutId);
     console.error("Error checking Myket version:", err);
-    res.json({
-      latestVersion: "1.0.1",
-      isUpdateAvailable: false,
-      message: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0628\u0631\u0648\u0632 \u0627\u0633\u062A (\u0646\u0633\u062E\u0647 \u0641\u0639\u0644\u06CC: \u06F1.\u06F0.\u06F1)"
+    res.status(502).json({
+      error: "\u062E\u0637\u0627 \u062F\u0631 \u0628\u0631\u0642\u0631\u0627\u0631\u06CC \u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0645\u0627\u06CC\u06A9\u062A. \u0644\u0637\u0641\u0627\u064B \u0627\u062A\u0635\u0627\u0644 \u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u062E\u0648\u062F \u0631\u0627 \u0628\u0631\u0631\u0633\u06CC \u06A9\u0646\u06CC\u062F.",
+      details: err.message || ""
     });
   }
 });

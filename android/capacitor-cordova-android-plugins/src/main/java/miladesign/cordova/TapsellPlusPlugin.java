@@ -146,7 +146,6 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					_removeBanner();
 				}
 				bannerLayout = new FrameLayout(mActivity);
-				FrameLayout.LayoutParams fLayoutParams = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 				int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
 				if (position == TOP_LEFT) {
 					gravity = Gravity.TOP | Gravity.LEFT;
@@ -168,12 +167,39 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					gravity = Gravity.BOTTOM | Gravity.RIGHT;
 				}
 				
-				fLayoutParams.gravity = gravity;
-				bannerLayout.setLayoutParams(fLayoutParams);
+				ViewGroup parentGroup = null;
+				ViewGroup webViewView = getParentGroup();
+				if (webViewView != null) {
+					parentGroup = (ViewGroup) webViewView.getParent();
+				}
 				
-				ViewGroup contentView = (ViewGroup) mActivity.findViewById(android.R.id.content);
-				if (contentView != null) {
-					contentView.addView(bannerLayout);
+				if (parentGroup != null) {
+					ViewGroup.LayoutParams params;
+					if (parentGroup instanceof FrameLayout) {
+						FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						flp.gravity = gravity;
+						params = flp;
+					} else if (parentGroup.getClass().getName().contains("RelativeLayout") || parentGroup instanceof android.widget.RelativeLayout) {
+						android.widget.RelativeLayout.LayoutParams rlp = new android.widget.RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						if ((gravity & Gravity.BOTTOM) == Gravity.BOTTOM) {
+							rlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM);
+						} else if ((gravity & Gravity.TOP) == Gravity.TOP) {
+							rlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+						}
+						rlp.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+						params = rlp;
+					} else if (parentGroup instanceof android.widget.LinearLayout) {
+						android.widget.LinearLayout.LayoutParams llp = new android.widget.LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						llp.gravity = gravity;
+						params = llp;
+					} else {
+						FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						flp.gravity = gravity;
+						params = flp;
+					}
+					
+					bannerLayout.setLayoutParams(params);
+					parentGroup.addView(bannerLayout);
 				}
 				
 				TapsellPlus.requestStandardBannerAd(
@@ -207,14 +233,39 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					_removeBanner();
 				}
 				bannerLayout = new FrameLayout(mActivity);
-			    FrameLayout.LayoutParams fLayoutParams = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-			    fLayoutParams.leftMargin = x;
-		    	fLayoutParams.topMargin = y;
-			    bannerLayout.setLayoutParams(fLayoutParams);
-			    
-				ViewGroup contentView = (ViewGroup) mActivity.findViewById(android.R.id.content);
-				if (contentView != null) {
-					contentView.addView(bannerLayout);
+				
+				ViewGroup parentGroup = null;
+				ViewGroup webViewView = getParentGroup();
+				if (webViewView != null) {
+					parentGroup = (ViewGroup) webViewView.getParent();
+				}
+				
+				if (parentGroup != null) {
+					ViewGroup.LayoutParams params;
+					if (parentGroup instanceof FrameLayout) {
+						FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+						flp.leftMargin = x;
+						flp.topMargin = y;
+						params = flp;
+					} else if (parentGroup.getClass().getName().contains("RelativeLayout") || parentGroup instanceof android.widget.RelativeLayout) {
+						android.widget.RelativeLayout.LayoutParams rlp = new android.widget.RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+						rlp.leftMargin = x;
+						rlp.topMargin = y;
+						params = rlp;
+					} else if (parentGroup instanceof android.widget.LinearLayout) {
+						android.widget.LinearLayout.LayoutParams llp = new android.widget.LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+						llp.leftMargin = x;
+						llp.topMargin = y;
+						params = llp;
+					} else {
+						FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+						flp.leftMargin = x;
+						flp.topMargin = y;
+						params = flp;
+					}
+					
+					bannerLayout.setLayoutParams(params);
+					parentGroup.addView(bannerLayout);
 				}
 
 			    TapsellPlus.requestStandardBannerAd(
@@ -250,9 +301,9 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				standardBannerResponseId = null;
 	    			}
 					if (bannerLayout != null) {
-						ViewGroup contentView = (ViewGroup) mActivity.findViewById(android.R.id.content);
-						if (contentView != null) {
-							contentView.removeView(bannerLayout);
+						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
+						if (parent != null) {
+							parent.removeView(bannerLayout);
 						}
 						bannerLayout = null;
 					}
@@ -272,9 +323,9 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				standardBannerResponseId = null;
 	    			}
 					if (bannerLayout != null) {
-						ViewGroup contentView = (ViewGroup) mActivity.findViewById(android.R.id.content);
-						if (contentView != null) {
-							contentView.removeView(bannerLayout);
+						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
+						if (parent != null) {
+							parent.removeView(bannerLayout);
 						}
 						bannerLayout = null;
 					}

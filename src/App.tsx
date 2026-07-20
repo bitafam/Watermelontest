@@ -1153,13 +1153,7 @@ export default function App() {
           },
           (err) => {
             console.warn("Tapsell rewarded ad failed to show, running inspection directly:", err);
-            showToast(
-              lang === "fa"
-                ? "تبلیغ نمایش داده نشد؛ تحلیل انجام می‌شود اما محدودیت ۱ دقیقه‌ای برای بارگذاری مجدد تبلیغ اعمال شد."
-                : "Ad failed to show; analysis is performed but a 1-minute cooldown has been applied to let the ad load.",
-              "error"
-            );
-            // Apply 1 minute cooldown (60 seconds)
+            // Apply 1 minute cooldown (60 seconds) silently
             const cooldownUntil = Date.now() + 60 * 1000;
             localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
             setCooldownTime(60);
@@ -1168,13 +1162,7 @@ export default function App() {
           }
         );
       } else {
-        showToast(
-          lang === "fa"
-            ? "ویدیو اسپانسر هنوز بارگذاری نشده است؛ تحلیل انجام می‌شود اما محدودیت ۱ دقیقه‌ای برای بارگذاری مجدد تبلیغ اعمال شد."
-            : "Sponsor video not loaded yet; analysis is performed but a 1-minute cooldown has been applied to let the ad load.",
-          "info"
-        );
-        // Apply 1 minute cooldown (60 seconds)
+        // Apply 1 minute cooldown (60 seconds) silently
         const cooldownUntil = Date.now() + 60 * 1000;
         localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
         setCooldownTime(60);
@@ -1351,7 +1339,7 @@ export default function App() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="tracking-wide">ورژن 1.0.1</span>
+              <span className="tracking-wide">ورژن 2.0.1</span>
             </span>
           </div>
         </div>

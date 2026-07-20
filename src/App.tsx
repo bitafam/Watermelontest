@@ -1557,30 +1557,24 @@ export default function App() {
               {image && !loading && (
                 <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex flex-col gap-3" id="action-buttons">
                   {cooldownTime > 0 ? (
-                    <div className="text-center p-4 bg-amber-950/20 border border-amber-900/30 rounded-2xl space-y-3" id="limit-box">
-                      <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-xs md:text-sm">
-                        <AlertTriangle className="w-5 h-5 animate-pulse text-amber-500" />
-                        <span>{lang === "fa" ? "محدودیت استفاده رایگان" : "Free Use Limit Reached"}</span>
-                      </div>
-                      <p className="text-slate-400 text-[11px] md:text-xs leading-relaxed">
-                        {lang === "fa" 
-                          ? "شما حداکثر تعداد ویدیوهای تبلیغاتی (۳ ویدیو در ۵ دقیقه) را مشاهده کرده‌اید. برای استفاده مجدد لطفاً صبور باشید." 
-                          : "You have watched the maximum sponsor ads in 5 minutes. Please wait to use again."}
-                      </p>
-                      <div className="py-2.5 px-4 bg-[#141F1A] rounded-xl border border-amber-950/50 text-amber-300 font-mono text-lg font-bold flex items-center justify-center gap-2">
-                        <RotateCw className="w-4 h-4 animate-spin text-amber-500" style={{ animationDuration: '4s' }} />
-                        <span>
-                          {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, "0")}
-                        </span>
-                      </div>
-                      
+                    <div className="text-center p-1" id="limit-box">
                       <button
                         onClick={() => showToast(lang === "fa" ? "پرداخت تپسل و خرید به‌زودی فعال خواهد شد." : "Purchase system will be active soon.", "info")}
-                        className="w-full py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                        className="w-full py-4 px-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-between gap-3 text-xs md:text-sm cursor-pointer"
                         id="buy-full-app-btn"
                       >
-                        <Sparkles className="w-4 h-4 text-black animate-pulse" />
-                        {lang === "fa" ? "خرید نسخه کامل و بدون تبلیغات" : "Purchase Premium Full Version"}
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-black animate-pulse" />
+                          <span>
+                            {lang === "fa" ? "خرید نسخه کامل و بدون تبلیغات" : "Purchase Premium Full Version"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-black/15 px-2.5 py-1 rounded-lg text-xs font-mono font-bold">
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
+                          <span>
+                            {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, "0")}
+                          </span>
+                        </div>
                       </button>
                     </div>
                   ) : (

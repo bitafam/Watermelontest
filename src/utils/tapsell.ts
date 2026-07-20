@@ -43,11 +43,12 @@ const registerGlobalEventListeners = () => {
   document.addEventListener('response', (e: any) => {
     const data = e.detail || e.data || e;
     const resId = data.responseId;
-    const adType = data.adType;
+    const adType = data.adType || "";
 
     console.log("Tapsell Event: response", { resId, adType });
 
-    if (adType === "rewardvideo") {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded) {
       preloadedAdId = resId;
       isPreloading = false;
       isPreloaded = true;
@@ -57,12 +58,13 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('error', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType;
+    const adType = data.adType || "";
     const message = data.message;
 
     console.error("Tapsell Event: error", { adType, message });
 
-    if (adType === "rewardvideo") {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded) {
       isPreloading = false;
       isPreloaded = false;
       // Retry preloading after 15 seconds
@@ -72,20 +74,22 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('onOpened', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType;
+    const adType = data.adType || "";
     console.log("Tapsell Event: onOpened", { adType });
     
-    if (adType === "rewardvideo" && activeAdCallbacks?.onAdOpened) {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded && activeAdCallbacks?.onAdOpened) {
       activeAdCallbacks.onAdOpened();
     }
   });
 
   document.addEventListener('onClosed', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType;
+    const adType = data.adType || "";
     console.log("Tapsell Event: onClosed", { adType });
     
-    if (adType === "rewardvideo") {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded) {
       const cb = activeAdCallbacks?.onAdClosed;
       activeAdCallbacks = null;
       if (cb) cb();
@@ -96,21 +100,23 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('onRewarded', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType;
+    const adType = data.adType || "";
     console.log("Tapsell Event: onRewarded", { adType });
     
-    if (adType === "rewardvideo" && activeAdCallbacks?.onAdRewarded) {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded && activeAdCallbacks?.onAdRewarded) {
       activeAdCallbacks.onAdRewarded();
     }
   });
 
   document.addEventListener('onError', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType;
+    const adType = data.adType || "";
     const message = data.message;
     console.error("Tapsell Event: onError", { adType, message });
     
-    if (adType === "rewardvideo") {
+    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    if (isRewarded) {
       const cb = activeAdCallbacks?.onAdShowFailed;
       activeAdCallbacks = null;
       if (cb) cb(message);

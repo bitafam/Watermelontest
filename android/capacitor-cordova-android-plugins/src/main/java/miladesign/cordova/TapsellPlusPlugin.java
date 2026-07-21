@@ -543,6 +543,23 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		}
 	}
 
+	private int getResponseCodeFromBundle(Bundle b) {
+		Object o = b.get("RESPONSE_CODE");
+		if (o == null) {
+			return 0; // Assume success if null
+		} else if (o instanceof Integer) {
+			return ((Integer) o).intValue();
+		} else if (o instanceof Long) {
+			return ((Long) o).intValue();
+		} else {
+			try {
+				return Integer.parseInt(o.toString());
+			} catch (NumberFormatException e) {
+				return 0;
+			}
+		}
+	}
+
 	private void purchaseFullVersion(final CallbackContext callbackContext) {
 		if (mService == null) {
 			callbackContext.error("Myket billing service not connected. Please install Myket or try again.");
@@ -557,7 +574,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			public void run() {
 				try {
 					Bundle buyIntentBundle = mService.getBuyIntent(3, mActivity.getPackageName(), "Fullversion", "inapp", "");
-					int responseCode = buyIntentBundle.getInt("RESPONSE_CODE");
+					int responseCode = getResponseCodeFromBundle(buyIntentBundle);
 					if (responseCode == 0) {
 						PendingIntent pendingIntent = buyIntentBundle.getParcelable("BUY_INTENT");
 						cordova.startActivityForResult(TapsellPlusPlugin.this, pendingIntent.getIntentSender(), PURCHASE_REQUEST_CODE, new Intent(), 0, 0, 0, null);
@@ -575,7 +592,8 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 
 	private void checkFullVersion(final CallbackContext callbackContext) {
 		if (mService == null) {
-			callbackContext.success("false");
+			// CRITICAL: Return an error so that the client-side code doesn't overwrite its valid cached localStorage is_full_version to false
+			callbackContext.error("billing_service_not_connected");
 			return;
 		}
 		
@@ -584,7 +602,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			public void run() {
 				try {
 					Bundle ownedItems = mService.getPurchases(3, mActivity.getPackageName(), "inapp", null);
-					int response = ownedItems.getInt("RESPONSE_CODE");
+					int response = getResponseCodeFromBundle(ownedItems);
 					if (response == 0) {
 						ArrayList<String> ownedSkus = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
 						if (ownedSkus != null && ownedSkus.contains("Fullversion")) {
@@ -594,7 +612,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					}
 					callbackContext.success("false");
 				} catch (Exception e) {
-					callbackContext.success("false");
+					callbackContext.error("error_checking_purchases");
 				}
 			}
 		});

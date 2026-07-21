@@ -104,6 +104,24 @@ module.exports = {
             [ responseId ]
         );
     },
+    purchaseFullVersion: function(successCallback, errorCallback) {
+        cordova.exec(
+            successCallback,
+            errorCallback,
+            'TapsellPlus',
+            'purchaseFullVersion',
+            []
+        );
+    },
+    checkFullVersion: function(successCallback, errorCallback) {
+        cordova.exec(
+            successCallback,
+            errorCallback,
+            'TapsellPlus',
+            'checkFullVersion',
+            []
+        );
+    },
     showInterstitial: function (responseId) {
         var self = this;
         cordova.exec(

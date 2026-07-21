@@ -8,12 +8,47 @@ export const REWARDED_ZONE_ID = "6a5df86f64fbcb2234b83d4e";
 declare global {
   interface Window {
     TapsellPlus?: any;
+    cordova?: any;
   }
 }
 
 // Check if running on native device via Capacitor (window.TapsellPlus is injected)
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
+  
+  if (window.TapsellPlus) {
+    if (!window.TapsellPlus.purchaseFullVersion) {
+      window.TapsellPlus.purchaseFullVersion = function(successCallback: any, errorCallback: any) {
+        if (window.cordova && window.cordova.exec) {
+          window.cordova.exec(
+            successCallback,
+            errorCallback,
+            'TapsellPlus',
+            'purchaseFullVersion',
+            []
+          );
+        } else {
+          if (errorCallback) errorCallback("Cordova/Capacitor is not available to trigger purchase");
+        }
+      };
+    }
+    if (!window.TapsellPlus.checkFullVersion) {
+      window.TapsellPlus.checkFullVersion = function(successCallback: any, errorCallback: any) {
+        if (window.cordova && window.cordova.exec) {
+          window.cordova.exec(
+            successCallback,
+            errorCallback,
+            'TapsellPlus',
+            'checkFullVersion',
+            []
+          );
+        } else {
+          if (errorCallback) errorCallback("Cordova/Capacitor is not available to check version");
+        }
+      };
+    }
+  }
+
   return !!window.TapsellPlus;
 };
 

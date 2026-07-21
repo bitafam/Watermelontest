@@ -32,6 +32,11 @@ import ir.tapsell.plus.model.AdNetworkError;
 import ir.tapsell.plus.model.AdNetworks;
 import ir.tapsell.plus.model.TapsellPlusAdModel;
 import ir.tapsell.plus.model.TapsellPlusErrorModel;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.spec.X509EncodedKeySpec;
+import android.util.Base64;
 
 public class TapsellPlusPlugin extends CordovaPlugin {
 	private static final String LOG_TAG = "TapsellPlusPlugin";
@@ -595,6 +600,31 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		});
 	}
 
+	private static final String MYKET_PUBLIC_KEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+21H2+aGGTB7daEX2rm1/dKRKmFEkQ0Ao1tLUx10/1Agl3FvDNhQvQw+q7AIZuKoVDJ8pWGY1Hm+gOmaHpgN94gvS8plu1g87nAC/slx2RXgG+bUjmu+9GlvX5RmsIaD5PjzQkB2KdOQZVWFM1ersnKxQceSAMMnYuQQ2r1eRUQIDAQAB";
+
+	private boolean verifyPurchase(String publicKey, String signedData, String signature) {
+		if (signedData == null || publicKey == null || signature == null || signature.isEmpty()) {
+			Log.e("MyketBilling", "Purchase verification failed due to null/empty inputs.");
+			return false;
+		}
+		try {
+			byte[] decodedKey = Base64.decode(publicKey, Base64.DEFAULT);
+			KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+			X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
+			PublicKey pubKey = keyFactory.generatePublic(keySpec);
+			
+			Signature sig = Signature.getInstance("SHA1withRSA");
+			sig.initVerify(pubKey);
+			sig.update(signedData.getBytes("UTF-8"));
+			boolean verified = sig.verify(Base64.decode(signature, Base64.DEFAULT));
+			Log.i("MyketBilling", "Signature verification result: " + verified);
+			return verified;
+		} catch (Exception e) {
+			Log.e("MyketBilling", "Error during signature verification: " + e.getMessage());
+			return false;
+		}
+	}
+
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
@@ -602,15 +632,46 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			if (purchaseCallbackContext == null) return;
 			
 			if (resultCode == Activity.RESULT_OK && data != null) {
-				int responseCode = data.getIntExtra("RESPONSE_CODE", 0);
-				if (responseCode == 0) {
-					purchaseCallbackContext.success("success");
+				String purchaseData = data.getStringExtra("INAPP_PURCHASE_DATA");
+				String dataSignature = data.getStringExtra("INAPP_DATA_SIGNATURE");
+				
+				int responseCode = 0;
+				if (data.hasExtra("RESPONSE_CODE")) {
+					Object responseObj = data.getExtras().get("RESPONSE_CODE");
+					if (responseObj instanceof Integer) {
+						responseCode = (Integer) responseObj;
+					} else if (responseObj instanceof Long) {
+						responseCode = ((Long) responseObj).intValue();
+					} else if (responseObj != null) {
+						try {
+							responseCode = Integer.parseInt(responseObj.toString());
+						} catch (Exception e) {
+							responseCode = 0;
+						}
+					}
+				}
+				
+				if (responseCode == 0 && purchaseData != null) {
+					boolean isValid = verifyPurchase(MYKET_PUBLIC_KEY, purchaseData, dataSignature);
+					if (isValid) {
+						Log.i("MyketBilling", "Purchase successful and verified!");
+						purchaseCallbackContext.success("success");
+					} else {
+						Log.e("MyketBilling", "Purchase signature verification failed.");
+						purchaseCallbackContext.error("Signature verification failed.");
+					}
+				} else if (responseCode == 7) { // Already owned
+					Log.i("MyketBilling", "Item already owned.");
+					purchaseCallbackContext.success("already_owned");
 				} else {
+					Log.e("MyketBilling", "Purchase failed with response code: " + responseCode);
 					purchaseCallbackContext.error("Purchase failed with response code: " + responseCode);
 				}
 			} else if (resultCode == Activity.RESULT_CANCELED) {
+				Log.i("MyketBilling", "Purchase flow canceled by user.");
 				purchaseCallbackContext.error("canceled");
 			} else {
+				Log.e("MyketBilling", "Purchase failed or canceled.");
 				purchaseCallbackContext.error("Purchase failed or canceled.");
 			}
 			purchaseCallbackContext = null;

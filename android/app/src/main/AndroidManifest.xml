@@ -48,8 +48,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="ir.mservices.market.BILLING" />
 
     <queries>
         <package android:name="ir.mservices.market" />
+        <intent>
+            <action android:name="ir.mservices.market.billing.InAppBillingService.BIND" />
+        </intent>
     </queries>
 </manifest>

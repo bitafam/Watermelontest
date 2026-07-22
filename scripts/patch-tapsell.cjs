@@ -128,6 +128,25 @@ try {
   console.error('>>> [PATCH] Error writing AIDL files:', e.message);
 }
 
+// 2.1 Ensure buildFeatures { aidl true } in build.gradle files
+const appGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
+const pluginGradlePath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'build.gradle');
+
+[appGradlePath, pluginGradlePath].forEach(gradlePath => {
+  try {
+    if (fs.existsSync(gradlePath)) {
+      let content = fs.readFileSync(gradlePath, 'utf8');
+      if (!content.includes('aidl true')) {
+        content = content.replace('android {', 'android {\n    buildFeatures {\n        aidl true\n    }');
+        fs.writeFileSync(gradlePath, content, 'utf8');
+        console.log(`>>> [PATCH] Enabled aidl true in ${path.relative(__dirname, gradlePath)}`);
+      }
+    }
+  } catch (e) {
+    console.error(`>>> [PATCH] Error updating ${gradlePath}:`, e.message);
+  }
+});
+
 // 3. Java Plugin File & Config XML
 const capacitorJavaPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'java', 'miladesign', 'cordova', 'TapsellPlusPlugin.java');
 const nodeModulesJavaPath = path.join(__dirname, '..', 'node_modules', 'tapsell-plus-cordova-plugin', 'src', 'TapsellPlusPlugin.java');

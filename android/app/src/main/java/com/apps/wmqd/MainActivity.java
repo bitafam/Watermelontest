@@ -12,11 +12,29 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Wrap WebView and Tapsell banner in a vertical LinearLayout so banner is pinned to the bottom
+        final ViewGroup contentView = findViewById(android.R.id.content);
+        if (contentView != null) {
+            contentView.post(new Runnable() {
+                @Override
+                public void run() {
+                    setupBottomBannerLayout(contentView);
+                }
+            });
+        }
+    }
+
+    private void setupBottomBannerLayout(ViewGroup contentView) {
         try {
-            ViewGroup contentView = findViewById(android.R.id.content);
+            int containerId = getResources().getIdentifier("tapsell_banner_container", "id", getPackageName());
+            if (containerId != 0 && findViewById(containerId) != null) {
+                return; // Already set up
+            }
+
             if (contentView != null && contentView.getChildCount() > 0) {
                 View webViewView = contentView.getChildAt(0);
+                if (webViewView instanceof LinearLayout) {
+                    return;
+                }
                 contentView.removeView(webViewView);
 
                 LinearLayout mainLayout = new LinearLayout(this);
@@ -32,7 +50,6 @@ public class MainActivity extends BridgeActivity {
                 mainLayout.addView(webViewView);
 
                 FrameLayout bannerContainer = new FrameLayout(this);
-                int containerId = getResources().getIdentifier("tapsell_banner_container", "id", getPackageName());
                 if (containerId != 0) {
                     bannerContainer.setId(containerId);
                 } else {

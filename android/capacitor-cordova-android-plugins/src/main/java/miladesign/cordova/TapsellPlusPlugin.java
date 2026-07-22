@@ -746,7 +746,19 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 							if (responseCode == 0) {
 								PendingIntent pendingIntent = buyIntentBundle.getParcelable("BUY_INTENT");
 								if (pendingIntent != null) {
-									cordova.startActivityForResult(TapsellPlusPlugin.this, pendingIntent.getIntentSender(), PURCHASE_REQUEST_CODE, new Intent(), 0, 0, 0, null);
+									try {
+										cordova.getActivity().startIntentSenderForResult(
+											pendingIntent.getIntentSender(),
+											PURCHASE_REQUEST_CODE,
+											new Intent(),
+											0, 0, 0
+										);
+									} catch (android.content.IntentSender.SendIntentException e) {
+										Log.e("TapsellPlusPlugin", "Error starting purchase flow: " + e.getMessage());
+										if (callbackContext != null) {
+											callbackContext.error("Error starting purchase flow: " + e.getMessage());
+										}
+									}
 								} else {
 									callbackContext.error("در دریافت اطلاعات پرداخت مایکت خطایی رخ داد.");
 								}

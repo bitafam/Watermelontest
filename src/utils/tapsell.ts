@@ -26,7 +26,20 @@ export const isNativePlatform = (): boolean => {
         if (window.cordova && window.cordova.exec) {
           window.cordova.exec(
             successCallback,
-            errorCallback,
+            (err: any) => {
+              // Fallback to TapsellPlusPlugin if TapsellPlus service is not matched
+              if (window.cordova && window.cordova.exec) {
+                window.cordova.exec(
+                  successCallback,
+                  errorCallback,
+                  'TapsellPlusPlugin',
+                  'purchaseFullVersion',
+                  []
+                );
+              } else if (errorCallback) {
+                errorCallback(err);
+              }
+            },
             'TapsellPlus',
             'purchaseFullVersion',
             []
@@ -41,7 +54,19 @@ export const isNativePlatform = (): boolean => {
         if (window.cordova && window.cordova.exec) {
           window.cordova.exec(
             successCallback,
-            errorCallback,
+            (err: any) => {
+              if (window.cordova && window.cordova.exec) {
+                window.cordova.exec(
+                  successCallback,
+                  errorCallback,
+                  'TapsellPlusPlugin',
+                  'checkFullVersion',
+                  []
+                );
+              } else if (errorCallback) {
+                errorCallback(err);
+              }
+            },
             'TapsellPlus',
             'checkFullVersion',
             []

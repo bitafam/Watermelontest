@@ -73,66 +73,102 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	
 	@Override
 	public boolean execute(String action, JSONArray args, final CallbackContext CallbackContext) throws JSONException {
-		if (action.equals("initialize")) {
-			String appKey = args.getString(0);
+		if (action == null) return false;
+		Log.i("TapsellPlusPlugin", "execute action: " + action);
+
+		if (action.equalsIgnoreCase("initialize") || action.equalsIgnoreCase("init")) {
+			String appKey = args.optString(0, "");
 			init(appKey);
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("createBanner") || action.equalsIgnoreCase("showBannerAd") || action.equalsIgnoreCase("requestBannerAd") || action.equalsIgnoreCase("requestStandardBannerAd")) {
-			String zoneId = args.getString(0);
-			int position = args.optInt(1, 7);
+		if (action.equalsIgnoreCase("createBanner") || action.equalsIgnoreCase("showBannerAd") || action.equalsIgnoreCase("requestBannerAd") || action.equalsIgnoreCase("requestStandardBannerAd") || action.equalsIgnoreCase("showStandardBannerAd") || action.equalsIgnoreCase("createStandardBanner")) {
+			String zoneId = args.optString(0, "");
+			int position = args.optInt(1, 2); // 2 = Gravity.BOTTOM
 			int size = args.optInt(2, 1);
 			createBanner(zoneId, position, size);
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("createBannerAtXY")) {
-			String zoneId = args.getString(0);
-			int x = args.getInt(1);
-			int y = args.getInt(2);
-			int size = args.getInt(3);
+		if (action.equalsIgnoreCase("createBannerAtXY")) {
+			String zoneId = args.optString(0, "");
+			int x = args.optInt(1, 0);
+			int y = args.optInt(2, 0);
+			int size = args.optInt(3, 1);
 			createBannerAtXY(zoneId, x, y, size);
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("removeBanner")) {
+		if (action.equalsIgnoreCase("removeBanner") || action.equalsIgnoreCase("destroyBanner") || action.equalsIgnoreCase("destroyStandardBanner")) {
 			removeBanner();
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("showBanner")) {
+		if (action.equalsIgnoreCase("showBanner")) {
 			showBanner();
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("hideBanner")) {
+		if (action.equalsIgnoreCase("hideBanner")) {
 			hideBanner();
+			CallbackContext.success();
 			return true;
 		}
-		if (action.equals("requestRewardedVideo")) {
-			String zoneId = args.getString(0);
+		if (action.equalsIgnoreCase("requestRewardedVideo") || action.equalsIgnoreCase("requestRewardedVideoAd")) {
+			String zoneId = args.optString(0, "");
 			requestRewardedVideo(zoneId);
+			CallbackContext.success();
 		    return true;
 		}
-		if (action.equals("requestInterstitial")) {
-			String zoneId = args.getString(0);
+		if (action.equalsIgnoreCase("requestInterstitial") || action.equalsIgnoreCase("requestInterstitialAd")) {
+			String zoneId = args.optString(0, "");
 			requestInterstitial(zoneId);
+			CallbackContext.success();
 		    return true;
 		}
-		if (action.equals("showInterstitial")) {
-			String responseId = args.getString(0);
+		if (action.equalsIgnoreCase("showInterstitial") || action.equalsIgnoreCase("showInterstitialAd")) {
+			String responseId = args.optString(0, "");
 			showInterstitial(responseId);
+			CallbackContext.success();
 		    return true;
 		}
-		if (action.equals("showRewardedVideo")) {
-			String responseId = args.getString(0);
+		if (action.equalsIgnoreCase("showRewardedVideo") || action.equalsIgnoreCase("showRewardedVideoAd")) {
+			String responseId = args.optString(0, "");
 			showRewardedVideo(responseId);
+			CallbackContext.success();
 		    return true;
 		}
-		if (action.equalsIgnoreCase("purchaseFullVersion") || action.equalsIgnoreCase("purchase") || action.equalsIgnoreCase("buy")) {
+		if (action.equalsIgnoreCase("purchaseFullVersion") 
+			|| action.equalsIgnoreCase("buyProduct") 
+			|| action.equalsIgnoreCase("purchase") 
+			|| action.equalsIgnoreCase("buy") 
+			|| action.equalsIgnoreCase("purchaseProduct") 
+			|| action.equalsIgnoreCase("buyFullVersion") 
+			|| action.equalsIgnoreCase("purchaseSKU") 
+			|| action.equalsIgnoreCase("inAppBilling") 
+			|| action.equalsIgnoreCase("pay")
+			|| action.equalsIgnoreCase("purchaseInApp")
+			|| action.equalsIgnoreCase("launchBillingFlow")) {
 			purchaseFullVersion(CallbackContext);
 			return true;
 		}
-		if (action.equalsIgnoreCase("checkFullVersion") || action.equalsIgnoreCase("check")) {
+		if (action.equalsIgnoreCase("checkFullVersion") 
+			|| action.equalsIgnoreCase("check") 
+			|| action.equalsIgnoreCase("checkPurchase") 
+			|| action.equalsIgnoreCase("checkFullVersionActive") 
+			|| action.equalsIgnoreCase("isFullVersion")
+			|| action.equalsIgnoreCase("checkVersion")
+			|| action.equalsIgnoreCase("getPurchases")) {
 			checkFullVersion(CallbackContext);
 			return true;
 		}
+
+		if (action.toLowerCase().contains("purchase") || action.toLowerCase().contains("buy") || action.toLowerCase().contains("billing") || action.toLowerCase().contains("pay")) {
+			Log.i("TapsellPlusPlugin", "Purchase keyword action matched: " + action);
+			purchaseFullVersion(CallbackContext);
+			return true;
+		}
+
 	    return false;
 	}
 	
@@ -171,6 +207,27 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		mActivity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+				if (position == 0) {
+					gravity = Gravity.TOP | Gravity.LEFT;
+				} else if (position == 1) {
+					gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+				} else if (position == 3) {
+					gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+				} else if (position == 4) {
+					gravity = Gravity.CENTER;
+				} else if (position == 5) {
+					gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
+				} else if (position == 6) {
+					gravity = Gravity.BOTTOM | Gravity.LEFT;
+				} else if (position == 2 || position == 7) { // 2 or 7 = Gravity.BOTTOM
+					gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+				} else if (position == 8) {
+					gravity = Gravity.BOTTOM | Gravity.RIGHT;
+				} else {
+					gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+				}
+
 				int containerId = mActivity.getResources().getIdentifier("tapsell_banner_container", "id", mActivity.getPackageName());
 				ViewGroup xmlContainer = null;
 				if (containerId != 0) {
@@ -180,32 +237,14 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				if (xmlContainer != null) {
 					bannerLayout = (FrameLayout) xmlContainer;
 					bannerLayout.removeAllViews();
+					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+					params.gravity = gravity;
+					bannerLayout.setLayoutParams(params);
 				} else {
 					if (bannerLayout != null) {
 						_removeBanner();
 					}
 					bannerLayout = new FrameLayout(mActivity);
-					int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-					if (position == TOP_LEFT) {
-						gravity = Gravity.TOP | Gravity.LEFT;
-					} else if (position == TOP_CENTER || position == 1) {
-						gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-					} else if (position == TOP_RIGHT) {
-						gravity = Gravity.TOP | Gravity.RIGHT;
-					} else if (position == LEFT) {
-						gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
-					} else if (position == CENTER) {
-						gravity = Gravity.CENTER;
-					} else if (position == RIGHT) {
-						gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
-					} else if (position == BOTTOM_LEFT) {
-						gravity = Gravity.BOTTOM | Gravity.LEFT;
-					} else if (position == BOTTOM_CENTER || position == 7 || position == 2) {
-						gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-					} else if (position == BOTTOM_RIGHT) {
-						gravity = Gravity.BOTTOM | Gravity.RIGHT;
-					}
-					
 					ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
 					
 					if (parentGroup != null) {

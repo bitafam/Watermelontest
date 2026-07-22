@@ -16,6 +16,10 @@ declare global {
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
   
+  if (!window.TapsellPlus && typeof window.cordova !== "undefined") {
+    window.TapsellPlus = {};
+  }
+
   if (window.TapsellPlus) {
     if (!window.TapsellPlus.purchaseFullVersion) {
       window.TapsellPlus.purchaseFullVersion = function(successCallback: any, errorCallback: any) {
@@ -49,7 +53,7 @@ export const isNativePlatform = (): boolean => {
     }
   }
 
-  return !!window.TapsellPlus;
+  return !!window.TapsellPlus || (typeof window.cordova !== "undefined");
 };
 
 // State variables for preloading rewarded ads

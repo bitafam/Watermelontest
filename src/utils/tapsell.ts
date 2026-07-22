@@ -333,9 +333,9 @@ export const showStandardBannerAd = (): void => {
     try {
       console.log("Tapsell: Creating real bottom standard banner (Gravity.BOTTOM)...");
       if (typeof window.TapsellPlus.showBannerAd === "function") {
-        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2); // Gravity.BOTTOM
+        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2, 1); // Gravity.BOTTOM, BANNER_320x50
       } else if (typeof window.TapsellPlus.requestBannerAd === "function") {
-        window.TapsellPlus.requestBannerAd(BANNER_ZONE_ID, 2);
+        window.TapsellPlus.requestBannerAd(BANNER_ZONE_ID, 2, 1);
       } else if (typeof window.TapsellPlus.createBanner === "function") {
         window.TapsellPlus.createBanner(
           BANNER_ZONE_ID,

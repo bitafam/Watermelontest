@@ -1,6 +1,7 @@
 package com.apps.wmqd;
 
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -11,26 +12,20 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        final ViewGroup contentView = findViewById(android.R.id.content);
-        if (contentView != null) {
-            contentView.post(new Runnable() {
-                @Override
-                public void run() {
-                    setupBottomBannerLayout(contentView);
-                }
-            });
-        }
+        setupBottomBannerLayout();
     }
 
-    private void setupBottomBannerLayout(ViewGroup contentView) {
+    private void setupBottomBannerLayout() {
         try {
+            ViewGroup contentView = findViewById(android.R.id.content);
+            if (contentView == null) return;
+
             int containerId = getResources().getIdentifier("tapsell_banner_container", "id", getPackageName());
             if (containerId != 0 && findViewById(containerId) != null) {
                 return; // Already set up
             }
 
-            if (contentView != null && contentView.getChildCount() > 0) {
+            if (contentView.getChildCount() > 0) {
                 View webViewView = contentView.getChildAt(0);
                 if (webViewView instanceof LinearLayout) {
                     return;

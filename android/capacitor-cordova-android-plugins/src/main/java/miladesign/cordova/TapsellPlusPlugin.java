@@ -237,9 +237,20 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				if (xmlContainer != null) {
 					bannerLayout = (FrameLayout) xmlContainer;
 					bannerLayout.removeAllViews();
-					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-					params.gravity = gravity;
-					bannerLayout.setLayoutParams(params);
+					ViewGroup.LayoutParams lp = bannerLayout.getLayoutParams();
+					if (lp instanceof LinearLayout.LayoutParams) {
+						LinearLayout.LayoutParams llp = (LinearLayout.LayoutParams) lp;
+						llp.gravity = gravity;
+						bannerLayout.setLayoutParams(llp);
+					} else if (lp instanceof FrameLayout.LayoutParams) {
+						FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
+						flp.gravity = gravity;
+						bannerLayout.setLayoutParams(flp);
+					} else {
+						FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+						params.gravity = gravity;
+						bannerLayout.setLayoutParams(params);
+					}
 				} else {
 					if (bannerLayout != null) {
 						_removeBanner();

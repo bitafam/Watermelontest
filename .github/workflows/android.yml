@@ -58,6 +58,8 @@ jobs:
             npx cap add android
           fi
           npx cap sync android
+          node scripts/patch-tapsell.cjs
+          npx cap copy android
 
       - name: Install ImageMagick
         run: |

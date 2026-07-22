@@ -5,6 +5,9 @@
   <feature name="TapsellPlus">
     <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>
   </feature>
+  <feature name="TapsellPlusPlugin">
+    <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>
+  </feature>
 
   
 </widget>

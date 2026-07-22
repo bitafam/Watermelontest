@@ -116,9 +116,32 @@ try {
   console.error('>>> [PATCH] Error writing AIDL files:', e.message);
 }
 
-// 3. Java Plugin File
+// 3. Java Plugin File & Config XML
 const capacitorJavaPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'java', 'miladesign', 'cordova', 'TapsellPlusPlugin.java');
 const nodeModulesJavaPath = path.join(__dirname, '..', 'node_modules', 'tapsell-plus-cordova-plugin', 'src', 'TapsellPlusPlugin.java');
+const configXmlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res', 'xml', 'config.xml');
+
+// Ensure config.xml has both feature names
+try {
+  if (fs.existsSync(configXmlPath)) {
+    let configXml = fs.readFileSync(configXmlPath, 'utf8');
+    let modified = false;
+    if (!configXml.includes('name="TapsellPlus"')) {
+      configXml = configXml.replace('</widget>', '  <feature name="TapsellPlus">\n    <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>\n  </feature>\n</widget>');
+      modified = true;
+    }
+    if (!configXml.includes('name="TapsellPlusPlugin"')) {
+      configXml = configXml.replace('</widget>', '  <feature name="TapsellPlusPlugin">\n    <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>\n  </feature>\n</widget>');
+      modified = true;
+    }
+    if (modified) {
+      fs.writeFileSync(configXmlPath, configXml, 'utf8');
+      console.log('>>> [PATCH] Ensured TapsellPlus & TapsellPlusPlugin features in config.xml');
+    }
+  }
+} catch (e) {
+  console.error('>>> [PATCH] Error updating config.xml:', e.message);
+}
 
 if (fs.existsSync(capacitorJavaPath)) {
   const javaContent = fs.readFileSync(capacitorJavaPath, 'utf8');

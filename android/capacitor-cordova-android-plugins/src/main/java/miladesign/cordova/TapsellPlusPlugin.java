@@ -524,42 +524,63 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		try {
 			mActivity.getPackageManager().getPackageInfo("ir.mservices.market", 0);
 			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
+		} catch (Exception e1) {}
 
-	private void initBilling() {
-		if (mService != null) return;
+		try {
+			Intent intent = mActivity.getPackageManager().getLaunchIntentForPackage("ir.mservices.market");
+			if (intent != null) return true;
+		} catch (Exception e2) {}
 
-		mServiceConn = new ServiceConnection() {
-			@Override
-			public void onServiceDisconnected(ComponentName name) {
-				mService = null;
-			}
-
-			@Override
-			public void onServiceConnected(ComponentName name, IBinder service) {
-				mService = IInAppBillingService.Stub.asInterface(service);
-				Log.i("MyketBilling", "Myket billing service connected successfully.");
-			}
-		};
-		
 		try {
 			Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
 			serviceIntent.setPackage("ir.mservices.market");
-			isBillingBound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-			Log.i("MyketBilling", "Primary binding result: " + isBillingBound);
+			List<ResolveInfo> list = mActivity.getPackageManager().queryIntentServices(serviceIntent, 0);
+			if (list != null && list.size() > 0) return true;
+		} catch (Exception e3) {}
 
-			if (!isBillingBound) {
-				Intent fallbackIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
-				fallbackIntent.setPackage("ir.mservices.market");
-				isBillingBound = mActivity.bindService(fallbackIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-				Log.i("MyketBilling", "Fallback binding result: " + isBillingBound);
-			}
-		} catch (Exception e) {
-			Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
+		return false;
+	}
+
+	private synchronized void initBilling() {
+		if (mService != null || mActivity == null) return;
+
+		if (mServiceConn == null) {
+			mServiceConn = new ServiceConnection() {
+				@Override
+				public void onServiceDisconnected(ComponentName name) {
+					mService = null;
+					Log.i("MyketBilling", "Myket billing service disconnected.");
+				}
+
+				@Override
+				public void onServiceConnected(ComponentName name, IBinder service) {
+					mService = IInAppBillingService.Stub.asInterface(service);
+					Log.i("MyketBilling", "Myket billing service connected successfully.");
+				}
+			};
 		}
+		
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Context context = mActivity.getApplicationContext();
+					Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
+					serviceIntent.setPackage("ir.mservices.market");
+					boolean bound = context.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+					Log.i("MyketBilling", "Primary binding result: " + bound);
+
+					if (!bound) {
+						Intent fallbackIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
+						fallbackIntent.setPackage("ir.mservices.market");
+						bound = context.bindService(fallbackIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+						Log.i("MyketBilling", "Fallback binding result: " + bound);
+					}
+				} catch (Exception e) {
+					Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
+				}
+			}
+		});
 	}
 
 	private int getResponseCodeFromBundle(Bundle b) {

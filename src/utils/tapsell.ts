@@ -404,21 +404,40 @@ export const stopBannerRefresh = (): void => {
 export const isFullVersionActive = async (): Promise<boolean> => {
   if (isNativePlatform()) {
     return new Promise((resolve) => {
+      const handleSuccess = (result: string) => {
+        console.log("Myket Check result:", result);
+        const active = result === "true";
+        localStorage.setItem("is_full_version", active ? "true" : "false");
+        resolve(active);
+      };
+
+      const handleFallback = () => {
+        const win = window as any;
+        if (win.cordova && win.cordova.exec) {
+          win.cordova.exec(
+            handleSuccess,
+            () => resolve(localStorage.getItem("is_full_version") === "true"),
+            "TapsellPlus",
+            "checkFullVersion",
+            []
+          );
+        } else {
+          resolve(localStorage.getItem("is_full_version") === "true");
+        }
+      };
+
       try {
-        window.TapsellPlus.checkFullVersion(
-          (result: string) => {
-            console.log("Myket Check result:", result);
-            const active = result === "true";
-            // Persist locally for caching / offline
-            localStorage.setItem("is_full_version", active ? "true" : "false");
-            resolve(active);
-          },
-          (error: any) => {
-            console.error("Myket Check error:", error);
-            // Fallback to local storage if check fails (e.g. offline)
-            resolve(localStorage.getItem("is_full_version") === "true");
-          }
-        );
+        if (window.TapsellPlus && typeof window.TapsellPlus.checkFullVersion === "function") {
+          window.TapsellPlus.checkFullVersion(handleSuccess, (err: any) => {
+            if (err === "Class not found" || (typeof err === "string" && err.includes("not found"))) {
+              handleFallback();
+            } else {
+              resolve(localStorage.getItem("is_full_version") === "true");
+            }
+          });
+        } else {
+          handleFallback();
+        }
       } catch (e) {
         console.error("Myket check error:", e);
         resolve(localStorage.getItem("is_full_version") === "true");
@@ -434,33 +453,62 @@ export const isFullVersionActive = async (): Promise<boolean> => {
 export const purchaseFullVersion = async (): Promise<string> => {
   if (isNativePlatform()) {
     return new Promise((resolve, reject) => {
-      try {
-        window.TapsellPlus.purchaseFullVersion(
-          (result: string) => {
-            console.log("Myket purchase result:", result);
-            if (result === "success" || result === "already_owned") {
-              localStorage.setItem("is_full_version", "true");
-            }
-            resolve(result);
-          },
-          (error: any) => {
-            console.error("Myket purchase error:", error);
-            let errMsg = "خطا در فرآیند پرداخت.";
-            if (typeof error === "string") {
-              if (error === "canceled") {
-                errMsg = "پرداخت توسط شما لغو شد.";
-              } else {
-                errMsg = error;
-              }
-            } else if (error && error.message) {
-              errMsg = error.message;
-            }
-            reject(new Error(errMsg));
+      const handleSuccess = (result: string) => {
+        console.log("Myket purchase result:", result);
+        if (result === "success" || result === "already_owned") {
+          localStorage.setItem("is_full_version", "true");
+        }
+        resolve(result);
+      };
+
+      const handleError = (error: any) => {
+        console.error("Myket purchase error:", error);
+        let errMsg = "خطا در فرآیند پرداخت.";
+        if (typeof error === "string") {
+          if (error === "canceled") {
+            errMsg = "پرداخت توسط شما لغو شد.";
+          } else {
+            errMsg = error;
           }
-        );
+        } else if (error && error.message) {
+          errMsg = error.message;
+        }
+        reject(new Error(errMsg));
+      };
+
+      const tryDirectCordova = (serviceName: string) => {
+        const win = window as any;
+        if (win.cordova && win.cordova.exec) {
+          win.cordova.exec(handleSuccess, (err: any) => {
+            if (serviceName === "TapsellPlusPlugin") {
+              tryDirectCordova("TapsellPlus");
+            } else {
+              handleError(err);
+            }
+          }, serviceName, "purchaseFullVersion", []);
+        } else {
+          handleError("Cordova exec not available");
+        }
+      };
+
+      try {
+        if (window.TapsellPlus && typeof window.TapsellPlus.purchaseFullVersion === "function") {
+          window.TapsellPlus.purchaseFullVersion(
+            handleSuccess,
+            (error: any) => {
+              if (error === "Class not found" || (typeof error === "string" && error.includes("not found"))) {
+                tryDirectCordova("TapsellPlusPlugin");
+              } else {
+                handleError(error);
+              }
+            }
+          );
+        } else {
+          tryDirectCordova("TapsellPlusPlugin");
+        }
       } catch (e) {
         console.error("Myket purchase exception:", e);
-        reject(e);
+        tryDirectCordova("TapsellPlusPlugin");
       }
     });
   } else {

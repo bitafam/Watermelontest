@@ -59,10 +59,22 @@ var TapsellPlus = {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showInterstitialAd', [responseId]);
 	},
 	purchaseFullVersion: function (successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'purchaseFullVersion', []);
+		exec(successCallback, function(err) {
+			if (err === 'Class not found' || (typeof err === 'string' && err.indexOf('not found') !== -1)) {
+				exec(successCallback, errorCallback, 'TapsellPlus', 'purchaseFullVersion', []);
+			} else {
+				if (errorCallback) errorCallback(err);
+			}
+		}, 'TapsellPlusPlugin', 'purchaseFullVersion', []);
 	},
 	checkFullVersion: function (successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'checkFullVersion', []);
+		exec(successCallback, function(err) {
+			if (err === 'Class not found' || (typeof err === 'string' && err.indexOf('not found') !== -1)) {
+				exec(successCallback, errorCallback, 'TapsellPlus', 'checkFullVersion', []);
+			} else {
+				if (errorCallback) errorCallback(err);
+			}
+		}, 'TapsellPlusPlugin', 'checkFullVersion', []);
 	}
 };
 

@@ -564,17 +564,35 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			@Override
 			public void run() {
 				try {
-					Context context = mActivity.getApplicationContext();
-					Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
-					serviceIntent.setPackage("ir.mservices.market");
-					boolean bound = context.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-					Log.i("MyketBilling", "Primary binding result: " + bound);
+					boolean bound = false;
 
+					// Try 1: Standard Myket action with Activity context
+					Intent serviceIntent1 = new Intent("ir.mservices.market.InAppBillingService.BIND");
+					serviceIntent1.setPackage("ir.mservices.market");
+					bound = mActivity.bindService(serviceIntent1, mServiceConn, Context.BIND_AUTO_CREATE);
+					Log.i("MyketBilling", "Binding attempt 1 (Activity, InAppBillingService): " + bound);
+
+					// Try 2: Vending action with Activity context
 					if (!bound) {
-						Intent fallbackIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
-						fallbackIntent.setPackage("ir.mservices.market");
-						bound = context.bindService(fallbackIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-						Log.i("MyketBilling", "Fallback binding result: " + bound);
+						Intent serviceIntent2 = new Intent("com.android.vending.billing.InAppBillingService.BIND");
+						serviceIntent2.setPackage("ir.mservices.market");
+						bound = mActivity.bindService(serviceIntent2, mServiceConn, Context.BIND_AUTO_CREATE);
+						Log.i("MyketBilling", "Binding attempt 2 (Activity, Vending): " + bound);
+					}
+
+					// Try 3: Fallback billing action with Activity context
+					if (!bound) {
+						Intent serviceIntent3 = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
+						serviceIntent3.setPackage("ir.mservices.market");
+						bound = mActivity.bindService(serviceIntent3, mServiceConn, Context.BIND_AUTO_CREATE);
+						Log.i("MyketBilling", "Binding attempt 3 (Activity, billing): " + bound);
+					}
+
+					// Try 4: Application context as last resort
+					if (!bound) {
+						Context appCtx = mActivity.getApplicationContext();
+						bound = appCtx.bindService(serviceIntent1, mServiceConn, Context.BIND_AUTO_CREATE);
+						Log.i("MyketBilling", "Binding attempt 4 (AppCtx): " + bound);
 					}
 				} catch (Exception e) {
 					Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
@@ -608,6 +626,25 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			@Override
 			public void run() {
 				if (mService == null) {
+					initBilling();
+					for (int i = 0; i < 40; i++) {
+						if (mService != null) break;
+						try {
+							Thread.sleep(100);
+						} catch (InterruptedException e) {
+							break;
+						}
+					}
+				}
+
+				if (mService == null) {
+					// Try waking up Myket service intent
+					try {
+						Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
+						serviceIntent.setPackage("ir.mservices.market");
+						mActivity.startService(serviceIntent);
+					} catch (Exception eIgnored) {}
+
 					initBilling();
 					for (int i = 0; i < 30; i++) {
 						if (mService != null) break;

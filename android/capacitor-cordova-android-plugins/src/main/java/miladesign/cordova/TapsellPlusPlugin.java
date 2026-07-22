@@ -78,10 +78,10 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			init(appKey);
 			return true;
 		}
-		if (action.equals("createBanner")) {
+		if (action.equals("createBanner") || action.equalsIgnoreCase("showBannerAd") || action.equalsIgnoreCase("requestBannerAd") || action.equalsIgnoreCase("requestStandardBannerAd")) {
 			String zoneId = args.getString(0);
-			int position = args.getInt(1);
-			int size = args.getInt(2);
+			int position = args.optInt(1, 7);
+			int size = args.optInt(2, 1);
 			createBanner(zoneId, position, size);
 			return true;
 		}
@@ -188,7 +188,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
 					if (position == TOP_LEFT) {
 						gravity = Gravity.TOP | Gravity.LEFT;
-					} else if (position == TOP_CENTER) {
+					} else if (position == TOP_CENTER || position == 1) {
 						gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 					} else if (position == TOP_RIGHT) {
 						gravity = Gravity.TOP | Gravity.RIGHT;
@@ -200,7 +200,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 						gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
 					} else if (position == BOTTOM_LEFT) {
 						gravity = Gravity.BOTTOM | Gravity.LEFT;
-					} else if (position == BOTTOM_CENTER) {
+					} else if (position == BOTTOM_CENTER || position == 7 || position == 2) {
 						gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
 					} else if (position == BOTTOM_RIGHT) {
 						gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -527,11 +527,6 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		} catch (Exception e1) {}
 
 		try {
-			mActivity.getPackageManager().getPackageInfo("com.farsitel.bazaar", 0);
-			return true;
-		} catch (Exception e1b) {}
-
-		try {
 			Intent intent = mActivity.getPackageManager().getLaunchIntentForPackage("ir.mservices.market");
 			if (intent != null) return true;
 		} catch (Exception e2) {}
@@ -555,14 +550,14 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				public void onServiceDisconnected(ComponentName name) {
 					mService = null;
 					isBillingBound = false;
-					Log.i("MyketBilling", "Billing service disconnected.");
+					Log.i("MyketBilling", "Myket billing service disconnected.");
 				}
 
 				@Override
 				public void onServiceConnected(ComponentName name, IBinder service) {
 					mService = IInAppBillingService.Stub.asInterface(service);
 					isBillingBound = true;
-					Log.i("MyketBilling", "Billing service connected successfully!");
+					Log.i("MyketBilling", "Myket billing service connected successfully!");
 				}
 			};
 		}
@@ -574,50 +569,40 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				try {
 					String[] possibleActions = new String[]{
 						"ir.mservices.market.InAppBillingService.BIND",
-						"ir.mservices.market.billing.InAppBillingService.BIND",
-						"com.farsitel.bazaar.service.InAppBillingService.BIND",
-						"com.android.vending.billing.InAppBillingService.BIND"
+						"ir.mservices.market.billing.InAppBillingService.BIND"
 					};
 
-					String[] possiblePackages = new String[]{
-						"ir.mservices.market",
-						"com.farsitel.bazaar",
-						"com.android.vending"
-					};
+					String pkg = "ir.mservices.market";
 
-					for (String pkg : possiblePackages) {
-						for (String act : possibleActions) {
-							Intent serviceIntent = new Intent(act);
-							serviceIntent.setPackage(pkg);
-							
-							List<ResolveInfo> intentServices = mActivity.getPackageManager().queryIntentServices(serviceIntent, 0);
-							if (intentServices != null && !intentServices.isEmpty()) {
-								for (ResolveInfo resolveInfo : intentServices) {
-									if (resolveInfo.serviceInfo != null) {
-										ComponentName component = new ComponentName(
-											resolveInfo.serviceInfo.packageName,
-											resolveInfo.serviceInfo.name
-										);
-										Intent explicitIntent = new Intent(act);
-										explicitIntent.setComponent(component);
-										
-										boolean bound = mActivity.bindService(explicitIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-										Log.i("MyketBilling", "Explicit binding to " + resolveInfo.serviceInfo.packageName + "/" + resolveInfo.serviceInfo.name + " result: " + bound);
-										if (bound) return;
-									}
+					for (String act : possibleActions) {
+						Intent serviceIntent = new Intent(act);
+						serviceIntent.setPackage(pkg);
+						
+						List<ResolveInfo> intentServices = mActivity.getPackageManager().queryIntentServices(serviceIntent, 0);
+						if (intentServices != null && !intentServices.isEmpty()) {
+							for (ResolveInfo resolveInfo : intentServices) {
+								if (resolveInfo.serviceInfo != null) {
+									ComponentName component = new ComponentName(
+										resolveInfo.serviceInfo.packageName,
+										resolveInfo.serviceInfo.name
+									);
+									Intent explicitIntent = new Intent(act);
+									explicitIntent.setComponent(component);
+									
+									boolean bound = mActivity.bindService(explicitIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+									Log.i("MyketBilling", "Explicit binding to Myket service " + resolveInfo.serviceInfo.name + " result: " + bound);
+									if (bound) return;
 								}
 							}
 						}
 					}
 
-					for (String pkg : possiblePackages) {
-						for (String act : possibleActions) {
-							Intent serviceIntent = new Intent(act);
-							serviceIntent.setPackage(pkg);
-							boolean bound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-							Log.i("MyketBilling", "Implicit binding to " + pkg + " act " + act + " result: " + bound);
-							if (bound) return;
-						}
+					for (String act : possibleActions) {
+						Intent serviceIntent = new Intent(act);
+						serviceIntent.setPackage(pkg);
+						boolean bound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+						Log.i("MyketBilling", "Implicit binding to Myket act " + act + " result: " + bound);
+						if (bound) return;
 					}
 				} catch (Exception e) {
 					Log.e("MyketBilling", "Error during initBilling: " + e.getMessage());

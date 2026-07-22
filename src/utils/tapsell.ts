@@ -302,13 +302,18 @@ export const showStandardBannerAd = (): void => {
   }
   if (isNativePlatform()) {
     try {
-      console.log("Tapsell: Creating real bottom standard banner...");
-      // Position 7 is BOTTOM_CENTER, Size 1 is BANNER_320x50
-      window.TapsellPlus.createBanner(
-        BANNER_ZONE_ID,
-        7, // BOTTOM_CENTER
-        1  // BANNER_320x50
-      );
+      console.log("Tapsell: Creating real bottom standard banner (Gravity.BOTTOM)...");
+      if (typeof window.TapsellPlus.showBannerAd === "function") {
+        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2); // Gravity.BOTTOM
+      } else if (typeof window.TapsellPlus.requestBannerAd === "function") {
+        window.TapsellPlus.requestBannerAd(BANNER_ZONE_ID, 2);
+      } else if (typeof window.TapsellPlus.createBanner === "function") {
+        window.TapsellPlus.createBanner(
+          BANNER_ZONE_ID,
+          2, // 2 = Gravity.BOTTOM
+          1  // BANNER_320x50
+        );
+      }
     } catch (e) {
       console.error("Tapsell: Error requesting standard banner", e);
     }

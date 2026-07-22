@@ -6,24 +6,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="ir.mservices.market.BILLING" />
-    <uses-permission android:name="com.farsitel.bazaar.permission.PAY_THROUGH_BAZAAR" />
 
-    <!-- Package Visibility Queries for Myket & Bazaar (Android 11+) -->
+    <!-- Package Visibility Queries for Myket (Android 11+) -->
     <queries>
         <package android:name="ir.mservices.market" />
-        <package android:name="com.farsitel.bazaar" />
-        <package android:name="com.android.vending" />
         <intent>
             <action android:name="ir.mservices.market.InAppBillingService.BIND" />
         </intent>
         <intent>
             <action android:name="ir.mservices.market.billing.InAppBillingService.BIND" />
-        </intent>
-        <intent>
-            <action android:name="com.farsitel.bazaar.service.InAppBillingService.BIND" />
-        </intent>
-        <intent>
-            <action android:name="com.android.vending.billing.InAppBillingService.BIND" />
         </intent>
     </queries>
 

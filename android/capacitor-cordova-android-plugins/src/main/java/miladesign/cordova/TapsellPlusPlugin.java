@@ -562,8 +562,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 
 	private void purchaseFullVersion(final CallbackContext callbackContext) {
 		if (mService == null) {
-			callbackContext.error("Myket billing service not connected. Please install Myket or try again.");
-			return;
+			initBilling();
+			if (mService == null) {
+				callbackContext.error("سرویس پرداخت مایکت متصل نیست. لطفاً مطمئن شوید برنامه مایکت نصب است.");
+				return;
+			}
 		}
 		
 		this.purchaseCallbackContext = callbackContext;
@@ -592,9 +595,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 
 	private void checkFullVersion(final CallbackContext callbackContext) {
 		if (mService == null) {
-			// CRITICAL: Return an error so that the client-side code doesn't overwrite its valid cached localStorage is_full_version to false
-			callbackContext.error("billing_service_not_connected");
-			return;
+			initBilling();
+			if (mService == null) {
+				callbackContext.error("billing_service_not_connected");
+				return;
+			}
 		}
 		
 		cordova.getThreadPool().execute(new Runnable() {
@@ -605,9 +610,13 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					int response = getResponseCodeFromBundle(ownedItems);
 					if (response == 0) {
 						ArrayList<String> ownedSkus = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
-						if (ownedSkus != null && ownedSkus.contains("Fullversion")) {
-							callbackContext.success("true");
-							return;
+						if (ownedSkus != null) {
+							for (String sku : ownedSkus) {
+								if (sku != null && (sku.equalsIgnoreCase("Fullversion") || sku.equalsIgnoreCase("premium") || sku.equalsIgnoreCase("full_version"))) {
+									callbackContext.success("true");
+									return;
+								}
+							}
 						}
 					}
 					callbackContext.success("false");

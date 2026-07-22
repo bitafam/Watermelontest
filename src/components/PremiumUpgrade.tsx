@@ -9,10 +9,9 @@ import {
   CheckCircle2, 
   Lock, 
   Unlock,
-  Key,
   Info
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { isFullVersionActive, purchaseFullVersion } from "../utils/tapsell";
 
 interface PremiumUpgradeProps {
@@ -24,7 +23,6 @@ export default function PremiumUpgrade({ onBack, onUpgradeSuccess }: PremiumUpgr
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" | "info" | null }>({ text: "", type: null });
-  const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
     const checkPremium = async () => {
@@ -59,8 +57,6 @@ export default function PremiumUpgrade({ onBack, onUpgradeSuccess }: PremiumUpgr
     }
   };
 
-  const myketPublicKey = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+21H2+aGGTB7daEX2rm1/dKRKmFEkQ0Ao1tLUx10/1Agl3FvDNhQvQw+q7AIZuKoVDJ8pWGY1Hm+gOmaHpgN94gvS8plu1g87nAC/slx2RXgG+bUjmu+9GlvX5RmsIaD5PjzQkB2KdOQZVWFM1ersnKxQceSAMMnYuQQ2r1eRUQIDAQAB";
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: 15 }}
@@ -84,13 +80,13 @@ export default function PremiumUpgrade({ onBack, onUpgradeSuccess }: PremiumUpgr
               </h2>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xl">
-              با خرید نسخه کامل، از امکانات بی‌نهایت هندوانه‌سنج هوشمند بدون آزار تبلیغات لذت ببرید و از ما در بهبود برنامه حمایت کنید.
+              با خرید نسخه کامل، از امکانات بی‌نهایت هندوانه‌سنج هوشمند بدون آزار تبلیغات لذت ببرید.
             </p>
           </div>
           
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 rounded-xl border border-emerald-800/30 text-sm font-medium transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 rounded-xl border border-emerald-800/30 text-sm font-medium transition-all cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 ml-1" />
             بازگشت
@@ -130,7 +126,7 @@ export default function PremiumUpgrade({ onBack, onUpgradeSuccess }: PremiumUpgr
                 <div className="space-y-1">
                   <h4 className="font-semibold text-gray-100 text-sm md:text-base">رفع کامل تمامی محدودیت‌ها</h4>
                   <p className="text-xs md:text-sm text-gray-400 leading-relaxed">
-                    محدودیت تعداد اسکن‌های روزانه و زمان انتظار ۳ دقیقه‌ای (خنک‌سازی اسکن) پس از هر آزمایش هندوانه به طور کامل برداشته می‌شود.
+                    محدودیت تعداد اسکن‌های روزانه و زمان انتظار ۳ دقیقه‌ای پس از هر آزمایش به طور کامل برداشته می‌شود.
                   </p>
                 </div>
               </div>
@@ -141,54 +137,13 @@ export default function PremiumUpgrade({ onBack, onUpgradeSuccess }: PremiumUpgr
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-semibold text-gray-100 text-sm md:text-base">حمایت از تیم توسعه برنامه</h4>
+                  <h4 className="font-semibold text-gray-100 text-sm md:text-base">حمایت از توسعه‌دهنده</h4>
                   <p className="text-xs md:text-sm text-gray-400 leading-relaxed">
-                    با ارتقا به نسخه کامل، به توسعه‌دهنده انرژی می‌دهید تا قابلیت‌های هوشمند بیشتری مانند اسکن بذرها، بررسی سلامت طالبی و خربزه را اضافه کند.
+                    با ارتقا به نسخه کامل، به توسعه‌دهنده انرژی می‌دهید تا قابلیت‌های هوشمند بیشتری به برنامه اضافه کند.
                   </p>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Secure details / collateral */}
-          <div className="bg-[#0E1612] border border-emerald-900/30 rounded-2xl p-6 shadow-lg space-y-4">
-            <div 
-              onClick={() => setShowKey(!showKey)}
-              className="flex justify-between items-center cursor-pointer select-none text-sm text-emerald-400 hover:text-emerald-300 font-semibold"
-            >
-              <span className="flex items-center gap-1.5">
-                <Key className="w-4 h-4" />
-                مشاهده اطلاعات مجوز رسمی پرداخت درون‌برنامه‌ای مایکت
-              </span>
-              <span className="text-xs text-gray-500">
-                {showKey ? "بستن" : "نمایش"}
-              </span>
-            </div>
-
-            <AnimatePresence>
-              {showKey && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden space-y-3 pt-2 text-xs text-gray-400 border-t border-emerald-950/60"
-                >
-                  <p className="leading-relaxed">
-                    این برنامه از سیستم پرداخت رسمی مایکت بهره می‌برد. در صورت خرید، لایسنس فعال‌سازی برنامه به صورت دائمی در اکانت مایکت شما ثبت خواهد شد و حتی با حذف و نصب مجدد نیز فعال خواهد ماند.
-                  </p>
-                  <div className="bg-black/40 rounded-xl p-3 space-y-2 font-mono text-left break-all border border-emerald-950/80">
-                    <div className="flex justify-between border-b border-emerald-950/40 pb-1 text-[10px] text-gray-500">
-                      <span>In-App Purchase SKU (شناسه پرداخت):</span>
-                      <span className="text-emerald-500">Fullversion</span>
-                    </div>
-                    <div className="pt-1 text-[9px] text-gray-600">
-                      <span className="text-gray-500 font-sans block mb-1">Myket RSA Public Key (کلید عمومی مایکت):</span>
-                      {myketPublicKey}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
 

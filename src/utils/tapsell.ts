@@ -413,9 +413,7 @@ export const purchaseFullVersion = async (): Promise<string> => {
             console.error("Myket purchase error:", error);
             let errMsg = "خطا در فرآیند پرداخت.";
             if (typeof error === "string") {
-              if (error.includes("Invalid action")) {
-                errMsg = "اتصال به سرویس پرداخت مایکت برقرار نشد. لطفاً مطمئن شوید مایکت روی گوشی شما نصب است.";
-              } else if (error === "canceled") {
+              if (error === "canceled") {
                 errMsg = "پرداخت توسط شما لغو شد.";
               } else {
                 errMsg = error;

@@ -527,6 +527,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		} catch (Exception e1) {}
 
 		try {
+			mActivity.getPackageManager().getPackageInfo("com.farsitel.bazaar", 0);
+			return true;
+		} catch (Exception e1b) {}
+
+		try {
 			Intent intent = mActivity.getPackageManager().getLaunchIntentForPackage("ir.mservices.market");
 			if (intent != null) return true;
 		} catch (Exception e2) {}
@@ -549,13 +554,15 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				@Override
 				public void onServiceDisconnected(ComponentName name) {
 					mService = null;
-					Log.i("MyketBilling", "Myket billing service disconnected.");
+					isBillingBound = false;
+					Log.i("MyketBilling", "Billing service disconnected.");
 				}
 
 				@Override
 				public void onServiceConnected(ComponentName name, IBinder service) {
 					mService = IInAppBillingService.Stub.asInterface(service);
-					Log.i("MyketBilling", "Myket billing service connected successfully.");
+					isBillingBound = true;
+					Log.i("MyketBilling", "Billing service connected successfully!");
 				}
 			};
 		}
@@ -563,45 +570,64 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		mActivity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				if (mService != null) return;
 				try {
-					boolean bound = false;
+					String[] possibleActions = new String[]{
+						"ir.mservices.market.InAppBillingService.BIND",
+						"ir.mservices.market.billing.InAppBillingService.BIND",
+						"com.farsitel.bazaar.service.InAppBillingService.BIND",
+						"com.android.vending.billing.InAppBillingService.BIND"
+					};
 
-					// Try 1: Standard Myket action with Activity context
-					Intent serviceIntent1 = new Intent("ir.mservices.market.InAppBillingService.BIND");
-					serviceIntent1.setPackage("ir.mservices.market");
-					bound = mActivity.bindService(serviceIntent1, mServiceConn, Context.BIND_AUTO_CREATE);
-					Log.i("MyketBilling", "Binding attempt 1 (Activity, InAppBillingService): " + bound);
+					String[] possiblePackages = new String[]{
+						"ir.mservices.market",
+						"com.farsitel.bazaar",
+						"com.android.vending"
+					};
 
-					// Try 2: Vending action with Activity context
-					if (!bound) {
-						Intent serviceIntent2 = new Intent("com.android.vending.billing.InAppBillingService.BIND");
-						serviceIntent2.setPackage("ir.mservices.market");
-						bound = mActivity.bindService(serviceIntent2, mServiceConn, Context.BIND_AUTO_CREATE);
-						Log.i("MyketBilling", "Binding attempt 2 (Activity, Vending): " + bound);
+					for (String pkg : possiblePackages) {
+						for (String act : possibleActions) {
+							Intent serviceIntent = new Intent(act);
+							serviceIntent.setPackage(pkg);
+							
+							List<ResolveInfo> intentServices = mActivity.getPackageManager().queryIntentServices(serviceIntent, 0);
+							if (intentServices != null && !intentServices.isEmpty()) {
+								for (ResolveInfo resolveInfo : intentServices) {
+									if (resolveInfo.serviceInfo != null) {
+										ComponentName component = new ComponentName(
+											resolveInfo.serviceInfo.packageName,
+											resolveInfo.serviceInfo.name
+										);
+										Intent explicitIntent = new Intent(act);
+										explicitIntent.setComponent(component);
+										
+										boolean bound = mActivity.bindService(explicitIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+										Log.i("MyketBilling", "Explicit binding to " + resolveInfo.serviceInfo.packageName + "/" + resolveInfo.serviceInfo.name + " result: " + bound);
+										if (bound) return;
+									}
+								}
+							}
+						}
 					}
 
-					// Try 3: Fallback billing action with Activity context
-					if (!bound) {
-						Intent serviceIntent3 = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
-						serviceIntent3.setPackage("ir.mservices.market");
-						bound = mActivity.bindService(serviceIntent3, mServiceConn, Context.BIND_AUTO_CREATE);
-						Log.i("MyketBilling", "Binding attempt 3 (Activity, billing): " + bound);
-					}
-
-					// Try 4: Application context as last resort
-					if (!bound) {
-						Context appCtx = mActivity.getApplicationContext();
-						bound = appCtx.bindService(serviceIntent1, mServiceConn, Context.BIND_AUTO_CREATE);
-						Log.i("MyketBilling", "Binding attempt 4 (AppCtx): " + bound);
+					for (String pkg : possiblePackages) {
+						for (String act : possibleActions) {
+							Intent serviceIntent = new Intent(act);
+							serviceIntent.setPackage(pkg);
+							boolean bound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+							Log.i("MyketBilling", "Implicit binding to " + pkg + " act " + act + " result: " + bound);
+							if (bound) return;
+						}
 					}
 				} catch (Exception e) {
-					Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
+					Log.e("MyketBilling", "Error during initBilling: " + e.getMessage());
 				}
 			}
 		});
 	}
 
 	private int getResponseCodeFromBundle(Bundle b) {
+		if (b == null) return 6; // Error
 		Object o = b.get("RESPONSE_CODE");
 		if (o == null) {
 			return 0; // Assume success if null
@@ -638,7 +664,6 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				}
 
 				if (mService == null) {
-					// Try waking up Myket service intent
 					try {
 						Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
 						serviceIntent.setPackage("ir.mservices.market");
@@ -658,9 +683,17 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 
 				if (mService == null) {
 					if (!isMyketInstalled()) {
-						callbackContext.error("برنامه مایکت روی دستگاه شما نصب نیست. برای خرید نسخه کامل، لطفاً مایکت را نصب کنید.");
+						callbackContext.error("برنامه مایکت روی دستگاه شما نصب نیست. برای خرید نسخه کامل، لطفاً ابتدا مایکت را نصب کنید.");
 					} else {
-						callbackContext.error("ارتباط با سرویس پرداخت مایکت برقرار نشد. لطفاً مطمئن شوید برنامه مایکت به روز است و یک بار آن را باز کنید.");
+						try {
+							Intent myketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("myket://details?id=" + mActivity.getPackageName()));
+							myketIntent.setPackage("ir.mservices.market");
+							myketIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+							mActivity.startActivity(myketIntent);
+							callbackContext.error("درگاه مایکت باز شد. لطفاً خرید یا ارتقای برنامه را تایید کنید.");
+						} catch (Exception ex) {
+							callbackContext.error("ارتباط با سرویس پرداخت مایکت برقرار نشد. لطفاً مطمئن شوید برنامه مایکت بروز است.");
+						}
 					}
 					return;
 				}

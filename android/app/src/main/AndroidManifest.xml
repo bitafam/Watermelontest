@@ -53,6 +53,9 @@
     <queries>
         <package android:name="ir.mservices.market" />
         <intent>
+            <action android:name="ir.mservices.market.InAppBillingService.BIND" />
+        </intent>
+        <intent>
             <action android:name="ir.mservices.market.billing.InAppBillingService.BIND" />
         </intent>
     </queries>

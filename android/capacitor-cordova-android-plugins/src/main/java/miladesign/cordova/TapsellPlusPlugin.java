@@ -519,7 +519,19 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		}
 	}
 
+	private boolean isMyketInstalled() {
+		if (mActivity == null) return false;
+		try {
+			mActivity.getPackageManager().getPackageInfo("ir.mservices.market", 0);
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
 	private void initBilling() {
+		if (mService != null) return;
+
 		mServiceConn = new ServiceConnection() {
 			@Override
 			public void onServiceDisconnected(ComponentName name) {
@@ -529,15 +541,22 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			@Override
 			public void onServiceConnected(ComponentName name, IBinder service) {
 				mService = IInAppBillingService.Stub.asInterface(service);
-				Log.i("MyketBilling", "Myket billing service connected.");
+				Log.i("MyketBilling", "Myket billing service connected successfully.");
 			}
 		};
 		
 		try {
-			Intent serviceIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
+			Intent serviceIntent = new Intent("ir.mservices.market.InAppBillingService.BIND");
 			serviceIntent.setPackage("ir.mservices.market");
 			isBillingBound = mActivity.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
-			Log.i("MyketBilling", "Binding result: " + isBillingBound);
+			Log.i("MyketBilling", "Primary binding result: " + isBillingBound);
+
+			if (!isBillingBound) {
+				Intent fallbackIntent = new Intent("ir.mservices.market.billing.InAppBillingService.BIND");
+				fallbackIntent.setPackage("ir.mservices.market");
+				isBillingBound = mActivity.bindService(fallbackIntent, mServiceConn, Context.BIND_AUTO_CREATE);
+				Log.i("MyketBilling", "Fallback binding result: " + isBillingBound);
+			}
 		} catch (Exception e) {
 			Log.e("MyketBilling", "Error binding to Myket billing service: " + e.getMessage());
 		}
@@ -569,7 +588,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			public void run() {
 				if (mService == null) {
 					initBilling();
-					for (int i = 0; i < 20; i++) {
+					for (int i = 0; i < 30; i++) {
 						if (mService != null) break;
 						try {
 							Thread.sleep(100);
@@ -580,7 +599,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				}
 
 				if (mService == null) {
-					callbackContext.error("برنامه مایکت روی دستگاه شما نصب نیست. برای خرید نسخه کامل، لطفاً مایکت را نصب کنید.");
+					if (!isMyketInstalled()) {
+						callbackContext.error("برنامه مایکت روی دستگاه شما نصب نیست. برای خرید نسخه کامل، لطفاً مایکت را نصب کنید.");
+					} else {
+						callbackContext.error("ارتباط با سرویس پرداخت مایکت برقرار نشد. لطفاً مطمئن شوید برنامه مایکت به روز است و یک بار آن را باز کنید.");
+					}
 					return;
 				}
 
@@ -617,7 +640,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			public void run() {
 				if (mService == null) {
 					initBilling();
-					for (int i = 0; i < 15; i++) {
+					for (int i = 0; i < 20; i++) {
 						if (mService != null) break;
 						try {
 							Thread.sleep(100);
@@ -639,7 +662,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 						ArrayList<String> ownedSkus = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
 						if (ownedSkus != null) {
 							for (String sku : ownedSkus) {
-								if (sku != null && (sku.equalsIgnoreCase("Fullversion") || sku.equalsIgnoreCase("premium") || sku.equalsIgnoreCase("full_version"))) {
+								if (sku != null && (sku.equals("Fullversion") || sku.equalsIgnoreCase("Fullversion") || sku.equalsIgnoreCase("premium") || sku.equalsIgnoreCase("full_version"))) {
 									callbackContext.success("true");
 									return;
 								}

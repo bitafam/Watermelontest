@@ -152,37 +152,58 @@ const capacitorJavaPath = path.join(__dirname, '..', 'android', 'capacitor-cordo
 const nodeModulesJavaPath = path.join(__dirname, '..', 'node_modules', 'tapsell-plus-cordova-plugin', 'src', 'TapsellPlusPlugin.java');
 const configXmlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res', 'xml', 'config.xml');
 
-// Ensure config.xml has both feature names
-try {
-  if (fs.existsSync(configXmlPath)) {
-    let configXml = fs.readFileSync(configXmlPath, 'utf8');
-    let modified = false;
-    if (!configXml.includes('name="TapsellPlus"')) {
-      configXml = configXml.replace('</widget>', '  <feature name="TapsellPlus">\n    <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>\n  </feature>\n</widget>');
-      modified = true;
+function patchJavaFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      let content = fs.readFileSync(filePath, 'utf8');
+      let modified = false;
+
+      // 1. Ensure required imports exist
+      const requiredImports = [
+        'import android.widget.LinearLayout;',
+        'import java.util.List;',
+        'import android.content.pm.ResolveInfo;',
+        'import android.net.Uri;',
+        'import ir.mservices.market.billing.IInAppBillingService;'
+      ];
+
+      requiredImports.forEach(imp => {
+        if (!content.includes(imp)) {
+          content = content.replace('package miladesign.cordova;', `package miladesign.cordova;\n\n${imp}`);
+          modified = true;
+        }
+      });
+
+      // 2. Fix old startActivityForResult call
+      if (content.includes('cordova.startActivityForResult')) {
+        const oldCall = /cordova\.startActivityForResult\([^)]+\);/g;
+        const newCall = `try {
+										cordova.getActivity().startIntentSenderForResult(
+											pendingIntent.getIntentSender(),
+											PURCHASE_REQUEST_CODE,
+											new Intent(),
+											0, 0, 0
+										);
+									} catch (android.content.IntentSender.SendIntentException e) {
+										Log.e("TapsellPlusPlugin", "Error starting purchase flow: " + e.getMessage());
+										if (callbackContext != null) {
+											callbackContext.error("Error starting purchase flow: " + e.getMessage());
+										}
+									}`;
+        content = content.replace(oldCall, newCall);
+        modified = true;
+      }
+
+      if (modified) {
+        fs.writeFileSync(filePath, content, 'utf8');
+        console.log(`>>> [PATCH] Patched ${path.relative(__dirname, filePath)} successfully`);
+      }
     }
-    if (!configXml.includes('name="TapsellPlusPlugin"')) {
-      configXml = configXml.replace('</widget>', '  <feature name="TapsellPlusPlugin">\n    <param name="android-package" value="miladesign.cordova.TapsellPlusPlugin"/>\n  </feature>\n</widget>');
-      modified = true;
-    }
-    if (modified) {
-      fs.writeFileSync(configXmlPath, configXml, 'utf8');
-      console.log('>>> [PATCH] Ensured TapsellPlus & TapsellPlusPlugin features in config.xml');
-    }
+  } catch (e) {
+    console.error(`>>> [PATCH] Error patching Java file ${filePath}:`, e.message);
   }
-} catch (e) {
-  console.error('>>> [PATCH] Error updating config.xml:', e.message);
 }
 
-if (fs.existsSync(capacitorJavaPath)) {
-  const javaContent = fs.readFileSync(capacitorJavaPath, 'utf8');
-  try {
-    ensureDirectoryExistence(nodeModulesJavaPath);
-    fs.writeFileSync(nodeModulesJavaPath, javaContent, 'utf8');
-    console.log('>>> [PATCH] Patched TapsellPlusPlugin.java in node_modules');
-  } catch (e) {
-    console.error('>>> [PATCH] Error syncing Java plugin:', e.message);
-  }
-}
+[nodeModulesJavaPath, capacitorJavaPath].forEach(patchJavaFile);
 
 console.log('>>> [PATCH] TapsellPlus & In-App Billing patch completed successfully!');

@@ -221,4 +221,36 @@ function patchJavaFile(filePath) {
 
 [nodeModulesJavaPath, capacitorJavaPath].forEach(patchJavaFile);
 
+// 4. Ensure ProGuard rules in android/app/proguard-rules.pro
+const proguardPath = path.join(__dirname, '..', 'android', 'app', 'proguard-rules.pro');
+try {
+  if (fs.existsSync(proguardPath)) {
+    let proguardContent = fs.readFileSync(proguardPath, 'utf8');
+    const requiredRules = [
+      '-keep class ir.mservices.market.billing.** { *; }',
+      '-keep interface ir.mservices.market.billing.** { *; }',
+      '-keep class ir.tapsell.plus.** { *; }',
+      '-keep interface ir.tapsell.plus.** { *; }',
+      '-keep class miladesign.cordova.** { *; }',
+      '-keep class com.google.android.gms.ads.** { *; }',
+      '-dontwarn ir.tapsell.plus.**',
+      '-dontwarn miladesign.cordova.**'
+    ];
+    let rulesAdded = false;
+    requiredRules.forEach(rule => {
+      if (!proguardContent.includes(rule)) {
+        proguardContent += `\n${rule}`;
+        rulesAdded = true;
+      }
+    });
+    if (rulesAdded) {
+      fs.writeFileSync(proguardPath, proguardContent, 'utf8');
+      console.log('>>> [PATCH] Ensured ProGuard keep rules in proguard-rules.pro');
+    }
+  }
+} catch (e) {
+  console.error('>>> [PATCH] Error updating ProGuard rules:', e.message);
+}
+
 console.log('>>> [PATCH] TapsellPlus & In-App Billing patch completed successfully!');
+

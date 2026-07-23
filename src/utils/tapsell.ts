@@ -16,66 +16,69 @@ declare global {
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
   
-  if (!window.TapsellPlus && typeof window.cordova !== "undefined") {
-    window.TapsellPlus = {};
+  if (!window.TapsellPlus) {
+    const win = window as any;
+    if (win.cordova && win.cordova.plugins && win.cordova.plugins.TapsellPlus) {
+      window.TapsellPlus = win.cordova.plugins.TapsellPlus;
+    } else {
+      window.TapsellPlus = {};
+    }
   }
 
-  if (window.TapsellPlus) {
-    if (!window.TapsellPlus.purchaseFullVersion) {
-      window.TapsellPlus.purchaseFullVersion = function(successCallback: any, errorCallback: any) {
-        if (window.cordova && window.cordova.exec) {
-          window.cordova.exec(
-            successCallback,
-            (err: any) => {
-              // Fallback to TapsellPlusPlugin if TapsellPlus service is not matched
-              if (window.cordova && window.cordova.exec) {
-                window.cordova.exec(
-                  successCallback,
-                  errorCallback,
-                  'TapsellPlusPlugin',
-                  'purchaseFullVersion',
-                  []
-                );
-              } else if (errorCallback) {
-                errorCallback(err);
-              }
-            },
-            'TapsellPlus',
-            'purchaseFullVersion',
-            []
-          );
-        } else {
-          if (errorCallback) errorCallback("Cordova/Capacitor is not available to trigger purchase");
-        }
-      };
+  const win = window as any;
+  const execCall = (action: string, args: any[], successCallback?: any, errorCallback?: any) => {
+    if (win.cordova && win.cordova.exec) {
+      win.cordova.exec(
+        successCallback,
+        (err: any) => {
+          if (win.cordova && win.cordova.exec) {
+            win.cordova.exec(successCallback, errorCallback, 'TapsellPlus', action, args);
+          } else if (errorCallback) {
+            errorCallback(err);
+          }
+        },
+        'TapsellPlusPlugin',
+        action,
+        args
+      );
+    } else if (errorCallback) {
+      errorCallback("Cordova/Capacitor is not available");
     }
-    if (!window.TapsellPlus.checkFullVersion) {
-      window.TapsellPlus.checkFullVersion = function(successCallback: any, errorCallback: any) {
-        if (window.cordova && window.cordova.exec) {
-          window.cordova.exec(
-            successCallback,
-            (err: any) => {
-              if (window.cordova && window.cordova.exec) {
-                window.cordova.exec(
-                  successCallback,
-                  errorCallback,
-                  'TapsellPlusPlugin',
-                  'checkFullVersion',
-                  []
-                );
-              } else if (errorCallback) {
-                errorCallback(err);
-              }
-            },
-            'TapsellPlus',
-            'checkFullVersion',
-            []
-          );
-        } else {
-          if (errorCallback) errorCallback("Cordova/Capacitor is not available to check version");
-        }
-      };
-    }
+  };
+
+  // Attach safe wrappers for ALL Tapsell and Billing actions
+  if (!window.TapsellPlus.initialize) {
+    window.TapsellPlus.initialize = (appKey: string, s?: any, e?: any) => execCall('initialize', [appKey], s, e);
+  }
+  if (!window.TapsellPlus.requestRewardedVideo) {
+    window.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+  }
+  if (!window.TapsellPlus.requestRewardedVideoAd) {
+    window.TapsellPlus.requestRewardedVideoAd = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+  }
+  if (!window.TapsellPlus.showRewardedVideo) {
+    window.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  }
+  if (!window.TapsellPlus.showRewardedVideoAd) {
+    window.TapsellPlus.showRewardedVideoAd = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  }
+  if (!window.TapsellPlus.showBannerAd) {
+    window.TapsellPlus.showBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+  }
+  if (!window.TapsellPlus.requestBannerAd) {
+    window.TapsellPlus.requestBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+  }
+  if (!window.TapsellPlus.hideBanner) {
+    window.TapsellPlus.hideBanner = (s?: any, e?: any) => execCall('hideBanner', [], s, e);
+  }
+  if (!window.TapsellPlus.removeBanner) {
+    window.TapsellPlus.removeBanner = (s?: any, e?: any) => execCall('removeBanner', [], s, e);
+  }
+  if (!window.TapsellPlus.purchaseFullVersion) {
+    window.TapsellPlus.purchaseFullVersion = (s?: any, e?: any) => execCall('purchaseFullVersion', [], s, e);
+  }
+  if (!window.TapsellPlus.checkFullVersion) {
+    window.TapsellPlus.checkFullVersion = (s?: any, e?: any) => execCall('checkFullVersion', [], s, e);
   }
 
   return !!window.TapsellPlus || (typeof window.cordova !== "undefined");

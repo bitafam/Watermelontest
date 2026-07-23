@@ -167,13 +167,20 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			return true;
 		}
 
+		if (action.equalsIgnoreCase("setGDPRConsent") || action.equalsIgnoreCase("setDebugMode") || action.equalsIgnoreCase("setCustomerUserId")) {
+			CallbackContext.success();
+			return true;
+		}
+
 		if (action.toLowerCase().contains("purchase") || action.toLowerCase().contains("buy") || action.toLowerCase().contains("billing") || action.toLowerCase().contains("pay")) {
 			Log.i("TapsellPlusPlugin", "Purchase keyword action matched: " + action);
 			purchaseFullVersion(CallbackContext);
 			return true;
 		}
 
-	    return false;
+		Log.w("TapsellPlusPlugin", "Unhandled action safely handled: " + action);
+		CallbackContext.success();
+		return true;
 	}
 	
 	private void init(String appKey) {

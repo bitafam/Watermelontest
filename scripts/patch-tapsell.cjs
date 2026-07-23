@@ -119,16 +119,19 @@ const appAidlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 
 const pluginAidlPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'aidl', 'ir', 'mservices', 'market', 'billing', 'IInAppBillingService.aidl');
 
 try {
-  ensureDirectoryExistence(appAidlPath);
-  fs.writeFileSync(appAidlPath, aidlContent, 'utf8');
+  // Write AIDL to plugin module where TapsellPlusPlugin resides
   ensureDirectoryExistence(pluginAidlPath);
   fs.writeFileSync(pluginAidlPath, aidlContent, 'utf8');
-  console.log('>>> [PATCH] Synced IInAppBillingService.aidl to both app and plugin modules');
+  // Remove app module AIDL if present to avoid duplicate class in DEX build
+  if (fs.existsSync(appAidlPath)) {
+    fs.unlinkSync(appAidlPath);
+  }
+  console.log('>>> [PATCH] Synced IInAppBillingService.aidl to plugin module');
 } catch (e) {
   console.error('>>> [PATCH] Error writing AIDL files:', e.message);
 }
 
-// 2.1 Ensure buildFeatures { aidl true } in build.gradle files
+// 2.1 Ensure buildFeatures { aidl true } and packagingOptions in build.gradle files
 const appGradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
 const pluginGradlePath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'build.gradle');
 
@@ -136,10 +139,22 @@ const pluginGradlePath = path.join(__dirname, '..', 'android', 'capacitor-cordov
   try {
     if (fs.existsSync(gradlePath)) {
       let content = fs.readFileSync(gradlePath, 'utf8');
+      let updated = false;
+
       if (!content.includes('aidl true')) {
         content = content.replace('android {', 'android {\n    buildFeatures {\n        aidl true\n    }');
+        updated = true;
+      }
+
+      if (gradlePath === appGradlePath && !content.includes('packagingOptions')) {
+        const pkgOpts = `    packagingOptions {\n        pickFirst '**/IInAppBillingService.class'\n        pickFirst '**/IInAppBillingService$*.class'\n        exclude 'META-INF/NOTICE'\n        exclude 'META-INF/LICENSE'\n    }\n`;
+        content = content.replace('buildFeatures {', `${pkgOpts}    buildFeatures {`);
+        updated = true;
+      }
+
+      if (updated) {
         fs.writeFileSync(gradlePath, content, 'utf8');
-        console.log(`>>> [PATCH] Enabled aidl true in ${path.relative(__dirname, gradlePath)}`);
+        console.log(`>>> [PATCH] Updated ${path.relative(__dirname, gradlePath)} with aidl/packagingOptions`);
       }
     }
   } catch (e) {

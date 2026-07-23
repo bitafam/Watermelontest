@@ -19,6 +19,12 @@ android {
     buildFeatures {
         aidl true
     }
+    packagingOptions {
+        pickFirst '**/IInAppBillingService.class'
+        pickFirst '**/IInAppBillingService$*.class'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+    }
     buildTypes {
         release {
             minifyEnabled false

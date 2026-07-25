@@ -49,8 +49,23 @@ var TapsellPlus = {
 	requestRewardedVideoAd: function (zoneId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestRewardedVideoAd', [zoneId]);
 	},
+	requestRewardedVideo: function (zoneId, successCallback, errorCallback) {
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestRewardedVideoAd', [zoneId]);
+	},
 	showRewardedVideoAd: function (responseId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showRewardedVideoAd', [responseId]);
+	},
+	showRewardedVideo: function (responseId, successCallback, errorCallback) {
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showRewardedVideoAd', [responseId]);
+	},
+	createBanner: function (zoneId, position, size, successCallback, errorCallback) {
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showBannerAd', [zoneId, position, size]);
+	},
+	hideBanner: function (successCallback, errorCallback) {
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'hideBanner', []);
+	},
+	removeBanner: function (successCallback, errorCallback) {
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'removeBanner', []);
 	},
 	requestInterstitialAd: function (zoneId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestInterstitialAd', [zoneId]);

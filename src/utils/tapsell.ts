@@ -12,20 +12,26 @@ declare global {
   }
 }
 
-// Check if running on native device via Capacitor (window.TapsellPlus is injected)
+// Check if running on native device via Cordova / Capacitor
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
-  
-  if (!window.TapsellPlus) {
-    const win = window as any;
-    if (win.cordova && win.cordova.plugins && win.cordova.plugins.TapsellPlus) {
-      window.TapsellPlus = win.cordova.plugins.TapsellPlus;
+  const win = window as any;
+  return typeof win.cordova !== "undefined" || !!win.Capacitor?.isNativePlatform?.();
+};
+
+// Ensure window.TapsellPlus exists and has all bridge methods attached on native
+const ensureTapsellNativeBridge = () => {
+  if (typeof window === "undefined") return;
+  const win = window as any;
+
+  if (!win.TapsellPlus) {
+    if (win.cordova?.plugins?.TapsellPlus) {
+      win.TapsellPlus = win.cordova.plugins.TapsellPlus;
     } else {
-      window.TapsellPlus = {};
+      win.TapsellPlus = {};
     }
   }
 
-  const win = window as any;
   const execCall = (action: string, args: any[], successCallback?: any, errorCallback?: any) => {
     if (win.cordova && win.cordova.exec) {
       win.cordova.exec(
@@ -42,46 +48,47 @@ export const isNativePlatform = (): boolean => {
         args
       );
     } else if (errorCallback) {
-      errorCallback("Cordova/Capacitor is not available");
+      errorCallback("Cordova/Capacitor bridge is not ready");
     }
   };
 
-  // Attach safe wrappers for ALL Tapsell and Billing actions
-  if (!window.TapsellPlus.initialize) {
-    window.TapsellPlus.initialize = (appKey: string, s?: any, e?: any) => execCall('initialize', [appKey], s, e);
+  // Attach safe wrappers for all Tapsell and Billing actions if not already provided
+  if (!win.TapsellPlus.initialize) {
+    win.TapsellPlus.initialize = (appKey: string, s?: any, e?: any) => execCall('initialize', [appKey], s, e);
   }
-  if (!window.TapsellPlus.requestRewardedVideo) {
-    window.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+  if (!win.TapsellPlus.requestRewardedVideo) {
+    win.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
   }
-  if (!window.TapsellPlus.requestRewardedVideoAd) {
-    window.TapsellPlus.requestRewardedVideoAd = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+  if (!win.TapsellPlus.requestRewardedVideoAd) {
+    win.TapsellPlus.requestRewardedVideoAd = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
   }
-  if (!window.TapsellPlus.showRewardedVideo) {
-    window.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  if (!win.TapsellPlus.showRewardedVideo) {
+    win.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
   }
-  if (!window.TapsellPlus.showRewardedVideoAd) {
-    window.TapsellPlus.showRewardedVideoAd = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  if (!win.TapsellPlus.showRewardedVideoAd) {
+    win.TapsellPlus.showRewardedVideoAd = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
   }
-  if (!window.TapsellPlus.showBannerAd) {
-    window.TapsellPlus.showBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+  if (!win.TapsellPlus.showBannerAd) {
+    win.TapsellPlus.showBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
   }
-  if (!window.TapsellPlus.requestBannerAd) {
-    window.TapsellPlus.requestBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+  if (!win.TapsellPlus.requestBannerAd) {
+    win.TapsellPlus.requestBannerAd = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
   }
-  if (!window.TapsellPlus.hideBanner) {
-    window.TapsellPlus.hideBanner = (s?: any, e?: any) => execCall('hideBanner', [], s, e);
+  if (!win.TapsellPlus.createBanner) {
+    win.TapsellPlus.createBanner = (zoneId: string, pos = 7, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
   }
-  if (!window.TapsellPlus.removeBanner) {
-    window.TapsellPlus.removeBanner = (s?: any, e?: any) => execCall('removeBanner', [], s, e);
+  if (!win.TapsellPlus.hideBanner) {
+    win.TapsellPlus.hideBanner = (s?: any, e?: any) => execCall('hideBanner', [], s, e);
   }
-  if (!window.TapsellPlus.purchaseFullVersion) {
-    window.TapsellPlus.purchaseFullVersion = (s?: any, e?: any) => execCall('purchaseFullVersion', [], s, e);
+  if (!win.TapsellPlus.removeBanner) {
+    win.TapsellPlus.removeBanner = (s?: any, e?: any) => execCall('removeBanner', [], s, e);
   }
-  if (!window.TapsellPlus.checkFullVersion) {
-    window.TapsellPlus.checkFullVersion = (s?: any, e?: any) => execCall('checkFullVersion', [], s, e);
+  if (!win.TapsellPlus.purchaseFullVersion) {
+    win.TapsellPlus.purchaseFullVersion = (s?: any, e?: any) => execCall('purchaseFullVersion', [], s, e);
   }
-
-  return !!window.TapsellPlus || (typeof window.cordova !== "undefined");
+  if (!win.TapsellPlus.checkFullVersion) {
+    win.TapsellPlus.checkFullVersion = (s?: any, e?: any) => execCall('checkFullVersion', [], s, e);
+  }
 };
 
 // State variables for preloading rewarded ads
@@ -195,12 +202,15 @@ const registerGlobalEventListeners = () => {
 
 // Initialize Tapsell Plus
 export const initializeTapsell = (): void => {
-  const init = () => {
+  const runInit = () => {
     if (isNativePlatform()) {
+      ensureTapsellNativeBridge();
       registerGlobalEventListeners();
       try {
         console.log("Tapsell: Initializing real SDK with token", APP_TOKEN);
-        window.TapsellPlus.initialize(APP_TOKEN);
+        if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
+          window.TapsellPlus.initialize(APP_TOKEN);
+        }
         // Preload the first rewarded ad immediately
         preloadRewardedAd();
       } catch (e) {
@@ -212,22 +222,24 @@ export const initializeTapsell = (): void => {
     }
   };
 
-  if (typeof document !== "undefined") {
-    if (isNativePlatform()) {
-      init();
-    } else {
-      // In native environment, wait for deviceready to ensure TapsellPlus is injected
-      document.addEventListener("deviceready", () => {
-        init();
-      }, false);
-      
-      // Fallback check after 1 second for faster startup or standard browser testing
+  if (typeof document === "undefined") return;
+
+  if (isNativePlatform()) {
+    // Inside native app: Always wait for deviceready event so Cordova bridge & window.TapsellPlus are injected
+    document.addEventListener("deviceready", runInit, { once: true });
+
+    // Fallback: Check if deviceready fired earlier
+    const win = window as any;
+    if (win.cordova?.isReady || document.readyState === "complete") {
       setTimeout(() => {
         if (!hasRegisteredEvents) {
-          init();
+          runInit();
         }
-      }, 1000);
+      }, 200);
     }
+  } else {
+    // Web Preview / Simulator
+    runInit();
   }
 };
 
@@ -245,9 +257,14 @@ export const preloadRewardedAd = (): void => {
   isPreloading = true;
 
   if (isNativePlatform()) {
+    ensureTapsellNativeBridge();
     try {
       console.log("Tapsell: Preloading real rewarded video...");
-      window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
+      if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideo === "function") {
+        window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
+      } else if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideoAd === "function") {
+        window.TapsellPlus.requestRewardedVideoAd(REWARDED_ZONE_ID);
+      }
     } catch (e) {
       isPreloading = false;
       console.error("Tapsell: Error requesting rewarded ad", e);

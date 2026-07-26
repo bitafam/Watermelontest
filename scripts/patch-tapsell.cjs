@@ -890,7 +890,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				public void run() {
 					try {
 						String dataStr = (jsonData != null && !jsonData.trim().isEmpty()) ? jsonData : "{}";
-						dataStr = dataStr.replace("\r", "").replace("\n", " ");
+						dataStr = dataStr.replace("\\r", "").replace("\\n", " ");
 						String jsCode = "(function() {" +
 							"var evtName = '" + eventName + "';" +
 							"var data = " + dataStr + ";" +
@@ -898,7 +898,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 							"try { var evt = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt[k] = data[k]; } catch(err){} } document.dispatchEvent(evt); } catch(e) {};" +
 							"try { var evt2 = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt2[k] = data[k]; } catch(err){} } window.dispatchEvent(evt2); } catch(e) {};" +
 							"})();";
-						jsCode = jsCode.replace("\r", "").replace("\n", " ");
+						jsCode = jsCode.replace("\\r", "").replace("\\n", " ");
 						try {
 							java.lang.reflect.Method evalMethod = webView.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
 							evalMethod.invoke(webView, jsCode, null);

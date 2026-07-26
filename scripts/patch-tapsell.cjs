@@ -202,6 +202,7 @@ import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -389,7 +390,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					@Override
 					public void onInitializeSuccess(AdNetworks adNetworks) {
 						Log.i(LOG_TAG, "TapsellPlus initialize SUCCESS");
-						fireEvent("tapsellplus", "onInitializeSuccess", null);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("status", "success");
+							fireEvent("tapsellplus", "onInitializeSuccess", json.toString());
+						} catch (Exception e) {}
 						try {
 							TapsellPlus.setGDPRConsent(mActivity, true);
 						} catch (Exception e) {}
@@ -399,7 +404,12 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					public void onInitializeFailed(AdNetworks adNetworks, AdNetworkError adNetworkError) {
 						String errMsg = adNetworkError != null ? adNetworkError.getErrorMessage() : "unknown_error";
 						Log.e(LOG_TAG, "TapsellPlus initialize FAILED: " + errMsg);
-						fireEvent("tapsellplus", "onInitializeFailed", null);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("status", "failed");
+							json.put("message", errMsg);
+							fireEvent("tapsellplus", "onInitializeFailed", json.toString());
+						} catch (Exception e) {}
 					}
 				});
 			}
@@ -513,13 +523,23 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		                                }
 		                            }
 		                        });
+		                        try {
+		                            JSONObject json = new JSONObject();
+		                            json.put("adType", "banner");
+		                            json.put("responseId", standardBannerResponseId);
+		                            fireEvent("tapsellplus", "response", json.toString());
+		                        } catch (Exception e) {}
 		                    }
 
 		                    @Override
 		                    public void error(String message) {
 		                    	Log.e(LOG_TAG, "Banner request error: " + message);
-		                    	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "banner", message });
-		                    	fireEvent("tapsellplus", "error", json);
+		                    	try {
+		                    		JSONObject json = new JSONObject();
+		                    		json.put("adType", "banner");
+		                    		json.put("message", message);
+		                    		fireEvent("tapsellplus", "error", json.toString());
+		                    	} catch (Exception e) {}
 		                    }
 		                });
 			}
@@ -678,15 +698,23 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					public void response(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.response(tapsellPlusAdModel);
 						Log.i(LOG_TAG, "RewardedVideo response received: " + tapsellPlusAdModel.getResponseId());
-						String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "rewardedVideo", tapsellPlusAdModel.getResponseId() });
-						fireEvent("tapsellplus", "response", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							json.put("responseId", tapsellPlusAdModel.getResponseId());
+							fireEvent("tapsellplus", "response", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void error(String message) {
 						Log.e(LOG_TAG, "RewardedVideo request error: " + message);
-						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", message });
-						fireEvent("tapsellplus", "error", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							json.put("message", message);
+							fireEvent("tapsellplus", "error", json.toString());
+						} catch (Exception e) {}
 					}
 				});
 			}
@@ -705,14 +733,22 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				TapsellPlus.requestInterstitialAd(mActivity, reqZoneId, new AdRequestCallback() {
 					@Override
 					public void response(TapsellPlusAdModel tapsellPlusAdModel) {
-						String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "interstitial", tapsellPlusAdModel.getResponseId() });
-						fireEvent("tapsellplus", "response", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							json.put("responseId", tapsellPlusAdModel.getResponseId());
+							fireEvent("tapsellplus", "response", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void error(String message) {
-						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", message });
-						fireEvent("tapsellplus", "error", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							json.put("message", message);
+							fireEvent("tapsellplus", "error", json.toString());
+						} catch (Exception e) {}
 					}
 				});
 			}
@@ -728,30 +764,43 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					@Override
 					public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onOpened(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-						fireEvent("tapsellplus", "onOpened", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							fireEvent("tapsellplus", "onOpened", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onClosed(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-						fireEvent("tapsellplus", "onClosed", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							fireEvent("tapsellplus", "onClosed", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onRewarded(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-						fireEvent("tapsellplus", "onRewarded", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							fireEvent("tapsellplus", "onRewarded", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
 						super.onError(tapsellPlusErrorModel);
 						String msg = tapsellPlusErrorModel != null ? tapsellPlusErrorModel.getErrorMessage() : "error";
-						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", msg });
-						fireEvent("tapsellplus", "onError", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "interstitial");
+							json.put("message", msg);
+							fireEvent("tapsellplus", "onError", json.toString());
+						} catch (Exception e) {}
 					}
 				});
 			}
@@ -768,30 +817,43 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					@Override
 					public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onOpened(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-						fireEvent("tapsellplus", "onOpened", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							fireEvent("tapsellplus", "onOpened", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onClosed(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-						fireEvent("tapsellplus", "onClosed", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							fireEvent("tapsellplus", "onClosed", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
 						super.onRewarded(tapsellPlusAdModel);
-						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-						fireEvent("tapsellplus", "onRewarded", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							fireEvent("tapsellplus", "onRewarded", json.toString());
+						} catch (Exception e) {}
 					}
 
 					@Override
 					public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
 						super.onError(tapsellPlusErrorModel);
 						String msg = tapsellPlusErrorModel != null ? tapsellPlusErrorModel.getErrorMessage() : "error";
-						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", msg });
-						fireEvent("tapsellplus", "onError", json);
+						try {
+							JSONObject json = new JSONObject();
+							json.put("adType", "rewardedVideo");
+							json.put("message", msg);
+							fireEvent("tapsellplus", "onError", json.toString());
+						} catch (Exception e) {}
 					}
 				});
 			}
@@ -802,15 +864,22 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		@Override
         public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
             super.onOpened(tapsellPlusAdModel);
-            String json = String.format("{'adType':'%s'}", new Object[] { "banner" });
-		    fireEvent("tapsellplus", "onOpened", json);
+            try {
+            	JSONObject json = new JSONObject();
+            	json.put("adType", "banner");
+            	fireEvent("tapsellplus", "onOpened", json.toString());
+            } catch (Exception e) {}
         }
 
         @Override
         public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
             super.onError(tapsellPlusErrorModel);
-            String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "banner", tapsellPlusErrorModel.getErrorMessage() });
-		    fireEvent("tapsellplus", "onError", json);
+            try {
+            	JSONObject json = new JSONObject();
+            	json.put("adType", "banner");
+            	json.put("message", tapsellPlusErrorModel != null ? tapsellPlusErrorModel.getErrorMessage() : "error");
+            	fireEvent("tapsellplus", "onError", json.toString());
+            } catch (Exception e) {}
         }
 	};
 	
@@ -819,17 +888,31 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			mActivity.runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					String js;
-					if("window".equals(obj)) {
-						js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
-					} else {
-						js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
-						if(jsonData != null) {
-							js += "," + jsonData;
-						}
-						js += ");";
+					try {
+						String dataStr = (jsonData != null && !jsonData.trim().isEmpty()) ? jsonData : "{}";
+						String script = "javascript:(function() {" +
+							"  var evtName = '" + eventName + "';" +
+							"  var data = " + dataStr + ";" +
+							"  try {" +
+							"    if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') {" +
+							"      window.cordova.fireDocumentEvent(evtName, data);" +
+							"    }" +
+							"  } catch(e) {}\n" +
+							"  try {" +
+							"    var evt = new CustomEvent(evtName, { detail: data });" +
+							"    for (var k in data) { try { evt[k] = data[k]; } catch(err){} }" +
+							"    document.dispatchEvent(evt);" +
+							"  } catch(e) {}\n" +
+							"  try {" +
+							"    var evt2 = new CustomEvent(evtName, { detail: data });" +
+							"    for (var k in data) { try { evt2[k] = data[k]; } catch(err){} }" +
+							"    window.dispatchEvent(evt2);" +
+							"  } catch(e) {}\n" +
+							"})();";
+						webView.loadUrl(script);
+					} catch (Exception e) {
+						Log.e(LOG_TAG, "Error firing event " + eventName, e);
 					}
-					webView.loadUrl(js);
 				}
 			});
 		}

@@ -798,15 +798,6 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		});
 	}
 
-	        @Override
-	        public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
-	        	super.onError(tapsellPlusErrorModel);
-	        	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", tapsellPlusErrorModel.getErrorMessage() });
-			    fireEvent("tapsellplus", "onError", json);
-	        }
-	    });
-	}
-	
 	private AdShowListener BannerListener = new AdShowListener(){
 		@Override
         public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {

@@ -1324,12 +1324,18 @@ try {
       manifestContent = manifestContent.replace('</application>', metadataTag);
       modified = true;
     }
-    if (!manifestContent.includes('ir.tapsell.plus.APP_KEY')) {
+    if (manifestContent.includes('ir.tapsell.plus.APP_KEY')) {
+      manifestContent = manifestContent.replace(
+        /android:name="ir\.tapsell\.plus\.APP_KEY"\s+android:value="[^"]*"/,
+        'android:name="ir.tapsell.plus.APP_KEY" android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk"'
+      );
+      modified = true;
+    } else {
       const tapsellKeyTag = `
         <!-- Tapsell App Key / Configuration -->
         <meta-data
             android:name="ir.tapsell.plus.APP_KEY"
-            android:value="qgsppfsspbmsoedghffsbdhhqrmogsnldikbdglgphbrlrhffipbhhshscbgljrmeeghro" />
+            android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk" />
     </application>`;
       manifestContent = manifestContent.replace('</application>', tapsellKeyTag);
       modified = true;

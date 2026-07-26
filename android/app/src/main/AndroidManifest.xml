@@ -66,8 +66,7 @@
 
         <!-- Tapsell App Key / Configuration -->
         <meta-data
-            android:name="ir.tapsell.plus.APP_KEY"
-            android:value="qgsppfsspbmsoedghffsbdhhqrmogsnldikbdglgphbrlrhffipbhhshscbgljrmeeghro" />
+            android:name="ir.tapsell.plus.APP_KEY" android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk" />
     </application>
 
 </manifest>

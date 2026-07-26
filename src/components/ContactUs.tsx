@@ -19,10 +19,9 @@ import { motion, AnimatePresence } from "motion/react";
 
 interface ContactUsProps {
   onBack?: () => void;
-  onShowDebugLogs?: () => void;
 }
 
-export default function ContactUs({ onBack, onShowDebugLogs }: ContactUsProps) {
+export default function ContactUs({ onBack }: ContactUsProps) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [subject, setSubject] = useState("پیشنهاد و انتقاد");
@@ -160,32 +159,20 @@ export default function ContactUs({ onBack, onShowDebugLogs }: ContactUsProps) {
             </div>
           </div>
 
-          {/* Other Apps on Myket Button & System Logs Action */}
+          {/* Other Apps on Myket Button */}
           <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-[#14231B]/30 p-4 rounded-xl border border-emerald-500/10">
             <div className="space-y-1 text-center sm:text-right">
               <h4 className="text-xs font-bold text-emerald-300">دیگر برنامه‌های امیرحسین سالاری را دیده‌اید؟</h4>
               <p className="text-[10px] text-slate-400">می‌توانید تمام آثار، ابزارها و بازی‌های دیگر من را در مارکت مایکت بررسی کنید.</p>
             </div>
-            <div className="flex items-center gap-2">
-              {onShowDebugLogs && (
-                <button
-                  onClick={onShowDebugLogs}
-                  className="px-3 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-zinc-800 active:scale-95"
-                  title="مشاهده لاگ‌های سیستم"
-                >
-                  <Code className="w-4 h-4 text-emerald-400" />
-                  <span>لاگ‌های سیستم</span>
-                </button>
-              )}
-              <button
-                onClick={handleMyketClick}
-                className="px-5 py-2.5 bg-[#10b981] hover:bg-[#059669] text-[#050807] font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/10 active:scale-95"
-              >
-                <Layers className="w-4 h-4" />
-                <span>دیگر برنامه‌ها (مایکت)</span>
-                <ExternalLink className="w-3 h-3" />
-              </button>
-            </div>
+            <button
+              onClick={handleMyketClick}
+              className="px-5 py-2.5 bg-[#10b981] hover:bg-[#059669] text-[#050807] font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/10 active:scale-95"
+            >
+              <Layers className="w-4 h-4" />
+              <span>دیگر برنامه‌ها (مایکت)</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
           </div>
         </div>
       </div>

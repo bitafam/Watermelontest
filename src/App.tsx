@@ -1441,7 +1441,7 @@ export default function App() {
         {activeTab === "guide" ? (
           <AccuracyGuide />
         ) : activeTab === "contact" ? (
-          <ContactUs onBack={() => setActiveTab("scanner")} onShowDebugLogs={() => setShowDebugModal(true)} />
+          <ContactUs onBack={() => setActiveTab("scanner")} />
         ) : activeTab === "upgrade" ? (
           <PremiumUpgrade 
             onBack={() => setActiveTab("scanner")} 
@@ -2859,12 +2859,6 @@ export default function App() {
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowDebugModal(true)}
-                  className="text-[10px] bg-zinc-900 hover:bg-zinc-800 text-slate-300 px-2 py-1 rounded-lg border border-zinc-800 transition-colors cursor-pointer"
-                >
-                  لاگ‌ها
-                </button>
-                <button
                   onClick={() => setActiveTab("upgrade")}
                   className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg hover:bg-amber-500/30 transition-colors font-bold cursor-pointer"
                 >
@@ -2883,12 +2877,6 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowDebugModal(true)}
-                  className="text-[10px] bg-zinc-900 hover:bg-zinc-800 text-slate-300 px-2 py-1 rounded-lg border border-zinc-800 transition-colors cursor-pointer"
-                >
-                  لاگ‌ها
-                </button>
                 <button
                   onClick={() => setActiveTab("upgrade")}
                   className="text-[11px] bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black px-3 py-1.5 rounded-xl font-extrabold shadow-lg transition-transform transform active:scale-95 cursor-pointer whitespace-nowrap"

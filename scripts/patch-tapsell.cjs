@@ -1308,11 +1308,12 @@ try {
   console.error('>>> [PATCH] Error updating ProGuard rules:', e.message);
 }
 
-// 5. Ensure AdMob APPLICATION_ID meta-data in AndroidManifest.xml
+// 5. Ensure AdMob APPLICATION_ID & Tapsell APP_KEY meta-data in AndroidManifest.xml
 const manifestPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 try {
   if (fs.existsSync(manifestPath)) {
     let manifestContent = fs.readFileSync(manifestPath, 'utf8');
+    let modified = false;
     if (!manifestContent.includes('com.google.android.gms.ads.APPLICATION_ID')) {
       const metadataTag = `
         <!-- Google Mobile Ads SDK App ID required by TapsellPlus AdMob mediation -->
@@ -1321,12 +1322,40 @@ try {
             android:value="ca-app-pub-3940256099942544~3347511713" />
     </application>`;
       manifestContent = manifestContent.replace('</application>', metadataTag);
+      modified = true;
+    }
+    if (!manifestContent.includes('ir.tapsell.plus.APP_KEY')) {
+      const tapsellKeyTag = `
+        <!-- Tapsell App Key / Configuration -->
+        <meta-data
+            android:name="ir.tapsell.plus.APP_KEY"
+            android:value="qgsppfsspbmsoedghffsbdhhqrmogsnldikbdglgphbrlrhffipbhhshscbgljrmeeghro" />
+    </application>`;
+      manifestContent = manifestContent.replace('</application>', tapsellKeyTag);
+      modified = true;
+    }
+    if (modified) {
       fs.writeFileSync(manifestPath, manifestContent, 'utf8');
-      console.log('>>> [PATCH] Added com.google.android.gms.ads.APPLICATION_ID meta-data to AndroidManifest.xml');
+      console.log('>>> [PATCH] Updated AndroidManifest.xml with meta-data tags');
     }
   }
 } catch (e) {
   console.error('>>> [PATCH] Error updating AndroidManifest.xml:', e.message);
+}
+
+// 6. Ensure modern play-services-ads version in capacitor.build.gradle
+const capBuildGradlePath = path.join(__dirname, '..', 'android', 'app', 'capacitor.build.gradle');
+try {
+  if (fs.existsSync(capBuildGradlePath)) {
+    let capGradle = fs.readFileSync(capBuildGradlePath, 'utf8');
+    if (capGradle.includes('play-services-ads:19.6.0')) {
+      capGradle = capGradle.replace('play-services-ads:19.6.0', 'play-services-ads:22.6.0');
+      fs.writeFileSync(capBuildGradlePath, capGradle, 'utf8');
+      console.log('>>> [PATCH] Upgraded play-services-ads to 22.6.0 in capacitor.build.gradle');
+    }
+  }
+} catch (e) {
+  console.error('>>> [PATCH] Error updating capacitor.build.gradle:', e.message);
 }
 
 console.log('>>> [PATCH] TapsellPlus & In-App Billing patch completed successfully!');

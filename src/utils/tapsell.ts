@@ -68,6 +68,23 @@ const ensureTapsellNativeBridge = () => {
     }
   }
 
+  if (!win.TapsellPlus._listeners) win.TapsellPlus._listeners = {};
+  if (!win.TapsellPlus.on) {
+    win.TapsellPlus.on = (evtName: string, cb: any) => {
+      if (!win.TapsellPlus._listeners[evtName]) win.TapsellPlus._listeners[evtName] = [];
+      win.TapsellPlus._listeners[evtName].push(cb);
+    };
+  }
+  if (!win.TapsellPlus.emit) {
+    win.TapsellPlus.emit = (evtName: string, data: any) => {
+      if (win.TapsellPlus._listeners?.[evtName]) {
+        win.TapsellPlus._listeners[evtName].forEach((cb: any) => {
+          try { cb(data); } catch (e) { console.error(e); }
+        });
+      }
+    };
+  }
+
   const execCall = (action: string, args: any[], successCallback?: any, errorCallback?: any) => {
     if (win.cordova && win.cordova.exec) {
       win.cordova.exec(
@@ -167,6 +184,10 @@ const registerGlobalEventListeners = () => {
     };
     document.addEventListener(eventName, listener);
     window.addEventListener(eventName, listener);
+    const win = window as any;
+    if (win.TapsellPlus && typeof win.TapsellPlus.on === "function") {
+      win.TapsellPlus.on(eventName, (data: any) => listener({ detail: data, data }));
+    }
   };
 
   addUniversalListener('onInitializeSuccess', () => {

@@ -1365,16 +1365,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* System Debug Logs Button */}
-            <button
-              onClick={() => setShowDebugModal(true)}
-              className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300 bg-zinc-900/90 hover:bg-zinc-800 px-2.5 py-1 rounded-full border border-zinc-800 hover:text-white transition-all cursor-pointer shadow-sm"
-              title="مشاهده لاگ‌های عیب‌یابی تپسل و پرداخت"
-            >
-              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline font-semibold">لاگ‌ها</span>
-            </button>
-
             {/* Version Badge - Dynamic & Glowing */}
             <span 
               onClick={() => {
@@ -1451,7 +1441,7 @@ export default function App() {
         {activeTab === "guide" ? (
           <AccuracyGuide />
         ) : activeTab === "contact" ? (
-          <ContactUs onBack={() => setActiveTab("scanner")} />
+          <ContactUs onBack={() => setActiveTab("scanner")} onShowDebugLogs={() => setShowDebugModal(true)} />
         ) : activeTab === "upgrade" ? (
           <PremiumUpgrade 
             onBack={() => setActiveTab("scanner")} 
@@ -2854,16 +2844,18 @@ export default function App() {
       {/* 2. Sticky Bottom Banner Ad Container (Active when !isPremium) */}
       {!isPremium && (
         <div 
-          className="fixed bottom-0 left-0 right-0 h-16 bg-zinc-950/95 border-t border-emerald-950/60 flex items-center justify-center z-[80] px-4 shadow-2xl backdrop-blur-md" 
+          className={`fixed bottom-0 left-0 right-0 h-16 flex items-center justify-center z-[80] px-4 ${
+            isNativePlatform() ? "bg-transparent pointer-events-none" : "bg-zinc-950/95 border-t border-emerald-950/60 shadow-2xl backdrop-blur-md"
+          }`} 
           id="banner-ad-sticky-container"
           dir="rtl"
         >
           {isNativePlatform() ? (
             /* Reserved Slot for Native Tapsell Banner (Tapsell Banner overlay sits inside this 60px slot) */
-            <div className="flex items-center justify-between w-full max-w-xl text-[11px] text-slate-300">
+            <div className="flex items-center justify-between w-full max-w-xl text-[11px] text-slate-300 pointer-events-auto bg-zinc-950/80 backdrop-blur-md border border-zinc-800/80 rounded-2xl px-3 py-1.5 shadow-xl">
               <span className="flex items-center gap-2 font-semibold text-emerald-400">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                تبلیغات بنری تپسل (در حال بارگذاری/نمایش)
+                تبلیغات اسپانسر تپسل
               </span>
               <div className="flex items-center gap-2">
                 <button

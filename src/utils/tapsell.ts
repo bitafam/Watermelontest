@@ -114,44 +114,57 @@ const registerGlobalEventListeners = () => {
 
   console.log("Tapsell: Registering global Cordova event listeners...");
 
+  document.addEventListener('onInitializeSuccess', () => {
+    console.log("Tapsell Event: onInitializeSuccess - Native SDK Ready");
+    preloadRewardedAd();
+    if (localStorage.getItem("is_full_version") !== "true") {
+      showStandardBannerAd();
+    }
+  });
+
+  document.addEventListener('onInitializeFailed', (e: any) => {
+    console.error("Tapsell Event: onInitializeFailed", e);
+  });
+
   document.addEventListener('response', (e: any) => {
     const data = e.detail || e.data || e;
-    const resId = data.responseId;
-    const adType = data.adType || "";
+    const resId = data.responseId || e.responseId;
+    const adType = (data.adType || e.adType || "").toString();
 
-    console.log("Tapsell Event: response", { resId, adType });
+    console.log("Tapsell Event: response", { resId, adType, data });
 
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
-    if (isRewarded) {
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
+    if (isRewarded && resId) {
       preloadedAdId = resId;
       isPreloading = false;
       isPreloaded = true;
+      console.log("Tapsell: Rewarded video preloaded successfully, resId:", resId);
       if (onAdPreloadedCallback) onAdPreloadedCallback();
     }
   });
 
   document.addEventListener('error', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType || "";
-    const message = data.message;
+    const adType = (data.adType || e.adType || "").toString();
+    const message = data.message || e.message;
 
-    console.error("Tapsell Event: error", { adType, message });
+    console.error("Tapsell Event: error", { adType, message, data });
 
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       isPreloading = false;
       isPreloaded = false;
-      // Retry preloading after 15 seconds
-      setTimeout(() => preloadRewardedAd(), 15000);
+      // Retry preloading after 10 seconds
+      setTimeout(() => preloadRewardedAd(), 10000);
     }
   });
 
   document.addEventListener('onOpened', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType || "";
+    const adType = (data.adType || e.adType || "").toString();
     console.log("Tapsell Event: onOpened", { adType });
     
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && activeAdCallbacks?.onAdOpened) {
       activeAdCallbacks.onAdOpened();
     }
@@ -159,10 +172,10 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('onClosed', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType || "";
+    const adType = (data.adType || e.adType || "").toString();
     console.log("Tapsell Event: onClosed", { adType });
     
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       const cb = activeAdCallbacks?.onAdClosed;
       activeAdCallbacks = null;
@@ -174,10 +187,10 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('onRewarded', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType || "";
+    const adType = (data.adType || e.adType || "").toString();
     console.log("Tapsell Event: onRewarded", { adType });
     
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && activeAdCallbacks?.onAdRewarded) {
       activeAdCallbacks.onAdRewarded();
     }
@@ -185,11 +198,11 @@ const registerGlobalEventListeners = () => {
 
   document.addEventListener('onError', (e: any) => {
     const data = e.detail || e.data || e;
-    const adType = data.adType || "";
-    const message = data.message;
+    const adType = (data.adType || e.adType || "").toString();
+    const message = data.message || e.message;
     console.error("Tapsell Event: onError", { adType, message });
     
-    const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
+    const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       const cb = activeAdCallbacks?.onAdShowFailed;
       activeAdCallbacks = null;

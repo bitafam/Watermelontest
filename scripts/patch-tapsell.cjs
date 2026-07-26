@@ -379,18 +379,29 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		return true;
 	}
 	
-	private void init(String appKey) {
-		TapsellPlus.initialize(mActivity, appKey, new TapsellPlusInitListener(){
-
+	private void init(final String appKey) {
+		if (mActivity == null) return;
+		mActivity.runOnUiThread(new Runnable() {
 			@Override
-			public void onInitializeSuccess(AdNetworks adNetworks) {
-			    fireEvent("tapsellplus", "onInitializeSuccess", null);
-			    TapsellPlus.setGDPRConsent(mActivity, true);
-			}
+			public void run() {
+				Log.i(LOG_TAG, "Initializing TapsellPlus with appKey: " + appKey);
+				TapsellPlus.initialize(mActivity, appKey, new TapsellPlusInitListener(){
+					@Override
+					public void onInitializeSuccess(AdNetworks adNetworks) {
+						Log.i(LOG_TAG, "TapsellPlus initialize SUCCESS");
+						fireEvent("tapsellplus", "onInitializeSuccess", null);
+						try {
+							TapsellPlus.setGDPRConsent(mActivity, true);
+						} catch (Exception e) {}
+					}
 
-			@Override
-			public void onInitializeFailed(AdNetworks adNetworks, AdNetworkError adNetworkError) {
-				fireEvent("tapsellplus", "onInitializeFailed", null);
+					@Override
+					public void onInitializeFailed(AdNetworks adNetworks, AdNetworkError adNetworkError) {
+						String errMsg = adNetworkError != null ? adNetworkError.getErrorMessage() : "unknown_error";
+						Log.e(LOG_TAG, "TapsellPlus initialize FAILED: " + errMsg);
+						fireEvent("tapsellplus", "onInitializeFailed", null);
+					}
+				});
 			}
 		});
 	}
@@ -411,6 +422,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	
 	private void createBanner(final String zoneId, final int position, final int size) {
 		final TapsellPlusBannerType adSize = getBannerSize(size);
+		if (mActivity == null) return;
 		mActivity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -473,22 +485,41 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					}
 				}
 				
+				if (bannerLayout != null) {
+					bannerLayout.bringToFront();
+					bannerLayout.setVisibility(View.VISIBLE);
+				}
+
+				Log.i(LOG_TAG, "Requesting standard banner ad for zone: " + zoneId);
+				
 				TapsellPlus.requestStandardBannerAd(
 						mActivity, zoneId,
 						adSize,
 		                new AdRequestCallback() {
 		                    @Override
-		                    public void response(TapsellPlusAdModel tapsellPlusAdModel) {
+		                    public void response(final TapsellPlusAdModel tapsellPlusAdModel) {
 		                        super.response(tapsellPlusAdModel);
 		                        standardBannerResponseId = tapsellPlusAdModel.getResponseId();
-		                        TapsellPlus.showStandardBannerAd(mActivity, standardBannerResponseId,
-		                        		bannerLayout,
-		                        		BannerListener);
+		                        Log.i(LOG_TAG, "Banner response received: " + standardBannerResponseId);
+		                        mActivity.runOnUiThread(new Runnable() {
+		                            @Override
+		                            public void run() {
+		                                if (bannerLayout != null) {
+		                                    bannerLayout.bringToFront();
+		                                    bannerLayout.setVisibility(View.VISIBLE);
+		                                    TapsellPlus.showStandardBannerAd(mActivity, standardBannerResponseId,
+		                                    		bannerLayout,
+		                                    		BannerListener);
+		                                }
+		                            }
+		                        });
 		                    }
 
 		                    @Override
 		                    public void error(String message) {
-		                    	
+		                    	Log.e(LOG_TAG, "Banner request error: " + message);
+		                    	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "banner", message });
+		                    	fireEvent("tapsellplus", "error", json);
 		                    }
 		                });
 			}
@@ -632,103 +663,140 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    return null;
 	}
 	
-	private void requestRewardedVideo(String zoneId) throws JSONException {
-		if(zoneId!=null && (zoneId.equalsIgnoreCase("null") || zoneId.equalsIgnoreCase(""))) {
-			zoneId = null;
-		}
-		
-		TapsellPlus.requestRewardedVideoAd(mActivity, zoneId, new AdRequestCallback() {
-	        @Override
-	        public void response(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.response(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "rewardedVideo", tapsellPlusAdModel.getResponseId() });
-			    fireEvent("tapsellplus", "response", json);
-	        }
+	private void requestRewardedVideo(final String zoneId) throws JSONException {
+		if (mActivity == null) return;
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				String reqZoneId = zoneId;
+				if (reqZoneId != null && (reqZoneId.equalsIgnoreCase("null") || reqZoneId.equalsIgnoreCase(""))) {
+					reqZoneId = null;
+				}
+				Log.i(LOG_TAG, "Requesting rewarded video ad for zone: " + reqZoneId);
+				TapsellPlus.requestRewardedVideoAd(mActivity, reqZoneId, new AdRequestCallback() {
+					@Override
+					public void response(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.response(tapsellPlusAdModel);
+						Log.i(LOG_TAG, "RewardedVideo response received: " + tapsellPlusAdModel.getResponseId());
+						String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "rewardedVideo", tapsellPlusAdModel.getResponseId() });
+						fireEvent("tapsellplus", "response", json);
+					}
 
-	        @Override
-	        public void error(String message) {
-	        	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", message });
-			    fireEvent("tapsellplus", "error", json);
-	        }
-
-	    });
+					@Override
+					public void error(String message) {
+						Log.e(LOG_TAG, "RewardedVideo request error: " + message);
+						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", message });
+						fireEvent("tapsellplus", "error", json);
+					}
+				});
+			}
+		});
 	}
 	
-	private void requestInterstitial(String zoneId) throws JSONException {
-		if(zoneId!=null && (zoneId.equalsIgnoreCase("null") || zoneId.equalsIgnoreCase(""))) {
-			zoneId = null;
-		}
-		
-		TapsellPlus.requestInterstitialAd(mActivity, zoneId, new AdRequestCallback() {
-	        @Override
-	        public void response(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "interstitial", tapsellPlusAdModel.getResponseId() });
-			    fireEvent("tapsellplus", "response", json);
-	        }
+	private void requestInterstitial(final String zoneId) throws JSONException {
+		if (mActivity == null) return;
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				String reqZoneId = zoneId;
+				if (reqZoneId != null && (reqZoneId.equalsIgnoreCase("null") || reqZoneId.equalsIgnoreCase(""))) {
+					reqZoneId = null;
+				}
+				TapsellPlus.requestInterstitialAd(mActivity, reqZoneId, new AdRequestCallback() {
+					@Override
+					public void response(TapsellPlusAdModel tapsellPlusAdModel) {
+						String json = String.format("{'adType':'%s', 'responseId':'%s'}", new Object[] { "interstitial", tapsellPlusAdModel.getResponseId() });
+						fireEvent("tapsellplus", "response", json);
+					}
 
-	        @Override
-	        public void error(String message) {
-	        	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", message });
-			    fireEvent("tapsellplus", "error", json);
-	        }
-
-	    });
+					@Override
+					public void error(String message) {
+						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", message });
+						fireEvent("tapsellplus", "error", json);
+					}
+				});
+			}
+		});
 	}
 	
-	private void showInterstitial(String responseId) {
-		TapsellPlus.showInterstitialAd(mActivity, responseId, new AdShowListener() {
-	        @Override
-	        public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onOpened(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-			    fireEvent("tapsellplus", "onOpened", json);
-	        }
+	private void showInterstitial(final String responseId) {
+		if (mActivity == null) return;
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				TapsellPlus.showInterstitialAd(mActivity, responseId, new AdShowListener() {
+					@Override
+					public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onOpened(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
+						fireEvent("tapsellplus", "onOpened", json);
+					}
 
-	        @Override
-	        public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onClosed(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-			    fireEvent("tapsellplus", "onClosed", json);
-	        }
+					@Override
+					public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onClosed(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
+						fireEvent("tapsellplus", "onClosed", json);
+					}
 
-	        @Override
-	        public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onRewarded(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
-			    fireEvent("tapsellplus", "onRewarded", json);
-	        }
+					@Override
+					public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onRewarded(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "interstitial" });
+						fireEvent("tapsellplus", "onRewarded", json);
+					}
 
-	        @Override
-	        public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
-	        	super.onError(tapsellPlusErrorModel);
-	        	String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", tapsellPlusErrorModel.getErrorMessage() });
-			    fireEvent("tapsellplus", "onError", json);
-	        }
-	    });
+					@Override
+					public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
+						super.onError(tapsellPlusErrorModel);
+						String msg = tapsellPlusErrorModel != null ? tapsellPlusErrorModel.getErrorMessage() : "error";
+						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "interstitial", msg });
+						fireEvent("tapsellplus", "onError", json);
+					}
+				});
+			}
+		});
 	}
 	
-	private void showRewardedVideo(String responseId) {
-		TapsellPlus.showRewardedVideoAd(mActivity, responseId, new AdShowListener() {
-	        @Override
-	        public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onOpened(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-			    fireEvent("tapsellplus", "onOpened", json);
-	        }
+	private void showRewardedVideo(final String responseId) {
+		if (mActivity == null) return;
+		mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Log.i(LOG_TAG, "Showing rewarded video with responseId: " + responseId);
+				TapsellPlus.showRewardedVideoAd(mActivity, responseId, new AdShowListener() {
+					@Override
+					public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onOpened(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
+						fireEvent("tapsellplus", "onOpened", json);
+					}
 
-	        @Override
-	        public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onClosed(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-			    fireEvent("tapsellplus", "onClosed", json);
-	        }
+					@Override
+					public void onClosed(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onClosed(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
+						fireEvent("tapsellplus", "onClosed", json);
+					}
 
-	        @Override
-	        public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
-	        	super.onRewarded(tapsellPlusAdModel);
-	        	String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
-			    fireEvent("tapsellplus", "onRewarded", json);
-	        }
+					@Override
+					public void onRewarded(TapsellPlusAdModel tapsellPlusAdModel) {
+						super.onRewarded(tapsellPlusAdModel);
+						String json = String.format("{'adType':'%s'}", new Object[] { "rewardedVideo" });
+						fireEvent("tapsellplus", "onRewarded", json);
+					}
+
+					@Override
+					public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
+						super.onError(tapsellPlusErrorModel);
+						String msg = tapsellPlusErrorModel != null ? tapsellPlusErrorModel.getErrorMessage() : "error";
+						String json = String.format("{'adType':'%s', 'message':'%s'}", new Object[] { "rewardedVideo", msg });
+						fireEvent("tapsellplus", "onError", json);
+					}
+				});
+			}
+		});
+	}
 
 	        @Override
 	        public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {

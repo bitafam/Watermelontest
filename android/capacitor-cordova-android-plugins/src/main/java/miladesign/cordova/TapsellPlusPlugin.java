@@ -698,6 +698,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 						String jsCode = "(function() {" +
 							"var evtName = '" + eventName + "';" +
 							"var data = " + dataStr + ";" +
+							"try { if (window.TapsellPlus && typeof window.TapsellPlus.emit === 'function') { window.TapsellPlus.emit(evtName, data); } } catch(e) {};" +
 							"try { if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') { window.cordova.fireDocumentEvent(evtName, data); } } catch(e) {};" +
 							"try { var evt = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt[k] = data[k]; } catch(err){} } document.dispatchEvent(evt); } catch(e) {};" +
 							"try { var evt2 = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt2[k] = data[k]; } catch(err){} } window.dispatchEvent(evt2); } catch(e) {};" +

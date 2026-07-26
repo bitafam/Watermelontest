@@ -15,8 +15,30 @@ function ensureDirectoryExistence(filePath) {
 // 1. TapsellPlus.js content
 const tapsellJsContent = `var exec = require('cordova/exec');
 
+var listeners = {};
+
 var TapsellPlus = {
+	on: function (eventName, callback) {
+		if (!listeners[eventName]) {
+			listeners[eventName] = [];
+		}
+		listeners[eventName].push(callback);
+	},
+	off: function (eventName, callback) {
+		if (listeners[eventName]) {
+			listeners[eventName] = listeners[eventName].filter(function(cb) { return cb !== callback; });
+		}
+	},
+	emit: function (eventName, data) {
+		if (listeners[eventName]) {
+			listeners[eventName].forEach(function(cb) {
+				try { cb(data); } catch(e) { console.error('TapsellPlus listener error', e); }
+			});
+		}
+	},
 	initialize: function (appKey, successCallback, errorCallback) {
+		if (typeof successCallback === 'function') this.on('onInitializeSuccess', successCallback);
+		if (typeof errorCallback === 'function') this.on('onInitializeFailed', errorCallback);
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'initialize', [appKey]);
 	},
 	setGDPRConsent: function (consent, successCallback, errorCallback) {
@@ -894,6 +916,7 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 						String jsCode = "(function() {" +
 							"var evtName = '" + eventName + "';" +
 							"var data = " + dataStr + ";" +
+							"try { if (window.TapsellPlus && typeof window.TapsellPlus.emit === 'function') { window.TapsellPlus.emit(evtName, data); } } catch(e) {};" +
 							"try { if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') { window.cordova.fireDocumentEvent(evtName, data); } } catch(e) {};" +
 							"try { var evt = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt[k] = data[k]; } catch(err){} } document.dispatchEvent(evt); } catch(e) {};" +
 							"try { var evt2 = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt2[k] = data[k]; } catch(err){} } window.dispatchEvent(evt2); } catch(e) {};" +

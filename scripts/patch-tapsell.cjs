@@ -1339,6 +1339,13 @@ try {
   if (fs.existsSync(manifestPath)) {
     let manifestContent = fs.readFileSync(manifestPath, 'utf8');
     let modified = false;
+    if (!manifestContent.includes('com.google.android.gms.permission.AD_ID')) {
+      manifestContent = manifestContent.replace(
+        '<uses-permission android:name="android.permission.INTERNET" />',
+        '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />'
+      );
+      modified = true;
+    }
     if (!manifestContent.includes('com.google.android.gms.ads.APPLICATION_ID')) {
       const metadataTag = `
         <!-- Google Mobile Ads SDK App ID required by TapsellPlus AdMob mediation -->

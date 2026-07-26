@@ -890,26 +890,28 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 				public void run() {
 					try {
 						String dataStr = (jsonData != null && !jsonData.trim().isEmpty()) ? jsonData : "{}";
-						String script = "javascript:(function() {" +
-							"  var evtName = '" + eventName + "';" +
-							"  var data = " + dataStr + ";" +
-							"  try {" +
-							"    if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') {" +
-							"      window.cordova.fireDocumentEvent(evtName, data);" +
-							"    }" +
-							"  } catch(e) {};" +
-							"  try {" +
-							"    var evt = new CustomEvent(evtName, { detail: data });" +
-							"    for (var k in data) { try { evt[k] = data[k]; } catch(err){} }" +
-							"    document.dispatchEvent(evt);" +
-							"  } catch(e) {};" +
-							"  try {" +
-							"    var evt2 = new CustomEvent(evtName, { detail: data });" +
-							"    for (var k in data) { try { evt2[k] = data[k]; } catch(err){} }" +
-							"    window.dispatchEvent(evt2);" +
-							"  } catch(e) {};" +
+						dataStr = dataStr.replace("\r", "").replace("\n", " ");
+						String jsCode = "(function() {" +
+							"var evtName = '" + eventName + "';" +
+							"var data = " + dataStr + ";" +
+							"try { if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') { window.cordova.fireDocumentEvent(evtName, data); } } catch(e) {};" +
+							"try { var evt = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt[k] = data[k]; } catch(err){} } document.dispatchEvent(evt); } catch(e) {};" +
+							"try { var evt2 = new CustomEvent(evtName, { detail: data }); for (var k in data) { try { evt2[k] = data[k]; } catch(err){} } window.dispatchEvent(evt2); } catch(e) {};" +
 							"})();";
-						webView.loadUrl(script);
+						jsCode = jsCode.replace("\r", "").replace("\n", " ");
+						try {
+							java.lang.reflect.Method evalMethod = webView.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
+							evalMethod.invoke(webView, jsCode, null);
+						} catch (Exception ex) {
+							try {
+								java.lang.reflect.Method engineMethod = webView.getClass().getMethod("getEngine");
+								Object engine = engineMethod.invoke(webView);
+								java.lang.reflect.Method evalMethod2 = engine.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
+								evalMethod2.invoke(engine, jsCode, null);
+							} catch (Exception ex2) {
+								webView.loadUrl("javascript:" + jsCode);
+							}
+						}
 					} catch (Exception e) {
 						Log.e(LOG_TAG, "Error firing event " + eventName, e);
 					}

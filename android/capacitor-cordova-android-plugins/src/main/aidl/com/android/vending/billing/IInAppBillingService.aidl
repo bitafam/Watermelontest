@@ -1,4 +1,4 @@
-package ir.mservices.market.billing;
+package com.android.vending.billing;
 
 import android.os.Bundle;
 

@@ -116,8 +116,8 @@ try {
   console.error('>>> [PATCH] Error writing assets JS:', e.message);
 }
 
-// 2. AIDL content
-const aidlContent = `package ir.mservices.market.billing;
+// 2. AIDL content (Must be com.android.vending.billing for Myket / Bazaar in-app billing interface compatibility)
+const aidlContent = `package com.android.vending.billing;
 
 import android.os.Bundle;
 
@@ -130,8 +130,21 @@ interface IInAppBillingService {
 }
 `;
 
-const appAidlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'aidl', 'ir', 'mservices', 'market', 'billing', 'IInAppBillingService.aidl');
-const pluginAidlPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'aidl', 'ir', 'mservices', 'market', 'billing', 'IInAppBillingService.aidl');
+const appAidlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'aidl', 'com', 'android', 'vending', 'billing', 'IInAppBillingService.aidl');
+const pluginAidlPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'aidl', 'com', 'android', 'vending', 'billing', 'IInAppBillingService.aidl');
+
+// Clean up old AIDL paths if they exist
+const oldAppAidlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'aidl', 'ir', 'mservices', 'market', 'billing', 'IInAppBillingService.aidl');
+const oldPluginAidlPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'aidl', 'ir', 'mservices', 'market', 'billing', 'IInAppBillingService.aidl');
+
+[oldAppAidlPath, oldPluginAidlPath].forEach(oldPath => {
+  try {
+    if (fs.existsSync(oldPath)) {
+      fs.unlinkSync(oldPath);
+      console.log(`>>> [PATCH] Removed old AIDL file at ${oldPath}`);
+    }
+  } catch (e) {}
+});
 
 try {
   // Write AIDL to plugin module where TapsellPlusPlugin resides
@@ -141,7 +154,7 @@ try {
   if (fs.existsSync(appAidlPath)) {
     fs.unlinkSync(appAidlPath);
   }
-  console.log('>>> [PATCH] Synced IInAppBillingService.aidl to plugin module');
+  console.log('>>> [PATCH] Synced IInAppBillingService.aidl (com.android.vending.billing) to plugin module');
 } catch (e) {
   console.error('>>> [PATCH] Error writing AIDL files:', e.message);
 }
@@ -202,7 +215,7 @@ import android.os.IBinder;
 import android.os.Bundle;
 import java.util.ArrayList;
 import java.util.List;
-import ir.mservices.market.billing.IInAppBillingService;
+import com.android.vending.billing.IInAppBillingService;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;

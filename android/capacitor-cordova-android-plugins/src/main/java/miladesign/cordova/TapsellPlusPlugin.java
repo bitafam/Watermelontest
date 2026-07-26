@@ -19,7 +19,7 @@ import android.os.IBinder;
 import android.os.Bundle;
 import java.util.ArrayList;
 import java.util.List;
-import ir.mservices.market.billing.IInAppBillingService;
+import com.android.vending.billing.IInAppBillingService;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;

@@ -897,17 +897,17 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 							"    if (window.cordova && typeof window.cordova.fireDocumentEvent === 'function') {" +
 							"      window.cordova.fireDocumentEvent(evtName, data);" +
 							"    }" +
-							"  } catch(e) {}\n" +
+							"  } catch(e) {};" +
 							"  try {" +
 							"    var evt = new CustomEvent(evtName, { detail: data });" +
 							"    for (var k in data) { try { evt[k] = data[k]; } catch(err){} }" +
 							"    document.dispatchEvent(evt);" +
-							"  } catch(e) {}\n" +
+							"  } catch(e) {};" +
 							"  try {" +
 							"    var evt2 = new CustomEvent(evtName, { detail: data });" +
 							"    for (var k in data) { try { evt2[k] = data[k]; } catch(err){} }" +
 							"    window.dispatchEvent(evt2);" +
-							"  } catch(e) {}\n" +
+							"  } catch(e) {};" +
 							"})();";
 						webView.loadUrl(script);
 					} catch (Exception e) {

@@ -1198,6 +1198,8 @@ try {
   if (fs.existsSync(proguardPath)) {
     let proguardContent = fs.readFileSync(proguardPath, 'utf8');
     const requiredRules = [
+      '-keep class com.android.vending.billing.** { *; }',
+      '-keep interface com.android.vending.billing.** { *; }',
       '-keep class ir.mservices.market.billing.** { *; }',
       '-keep interface ir.mservices.market.billing.** { *; }',
       '-keep class ir.tapsell.plus.** { *; }',
@@ -1221,6 +1223,27 @@ try {
   }
 } catch (e) {
   console.error('>>> [PATCH] Error updating ProGuard rules:', e.message);
+}
+
+// 5. Ensure AdMob APPLICATION_ID meta-data in AndroidManifest.xml
+const manifestPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+try {
+  if (fs.existsSync(manifestPath)) {
+    let manifestContent = fs.readFileSync(manifestPath, 'utf8');
+    if (!manifestContent.includes('com.google.android.gms.ads.APPLICATION_ID')) {
+      const metadataTag = `
+        <!-- Google Mobile Ads SDK App ID required by TapsellPlus AdMob mediation -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+    </application>`;
+      manifestContent = manifestContent.replace('</application>', metadataTag);
+      fs.writeFileSync(manifestPath, manifestContent, 'utf8');
+      console.log('>>> [PATCH] Added com.google.android.gms.ads.APPLICATION_ID meta-data to AndroidManifest.xml');
+    }
+  }
+} catch (e) {
+  console.error('>>> [PATCH] Error updating AndroidManifest.xml:', e.message);
 }
 
 console.log('>>> [PATCH] TapsellPlus & In-App Billing patch completed successfully!');

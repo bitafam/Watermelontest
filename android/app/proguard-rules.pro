@@ -14,3 +14,6 @@
 -dontwarn ir.tapsell.plus.**
 -dontwarn miladesign.cordova.**
 
+
+-keep class com.android.vending.billing.** { *; }
+-keep interface com.android.vending.billing.** { *; }

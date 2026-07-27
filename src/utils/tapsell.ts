@@ -204,6 +204,7 @@ const registerGlobalEventListeners = () => {
   });
 
   addUniversalListener('response', (e: any) => {
+    if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
     const data = e.detail || e.data || e;
     const resId = data.responseId || e.responseId;
     const adType = (data.adType || e.adType || "").toString();
@@ -221,6 +222,7 @@ const registerGlobalEventListeners = () => {
   });
 
   addUniversalListener('error', (e: any) => {
+    if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
     const message = data.message || e.message || "خطای ناشناخته شبکه/سرور تپسل";
@@ -307,7 +309,6 @@ export const initializeTapsell = (): void => {
         if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
           window.TapsellPlus.initialize(APP_TOKEN);
         }
-        preloadRewardedAd();
       } catch (e) {
         addLog('error', "تپسل: استثنا در زمان مقداردهی اولیه", e);
       }
@@ -343,6 +344,8 @@ export const registerPreloadedCallback = (callback: () => void) => {
   }
 };
 
+let preloadTimeout: any = null;
+
 // Preload Rewarded Video Ad
 export const preloadRewardedAd = (): void => {
   if (localStorage.getItem("is_full_version") === "true") {
@@ -351,6 +354,18 @@ export const preloadRewardedAd = (): void => {
   }
   if (isPreloading || isPreloaded) return;
   isPreloading = true;
+
+  if (preloadTimeout) {
+    clearTimeout(preloadTimeout);
+    preloadTimeout = null;
+  }
+
+  preloadTimeout = setTimeout(() => {
+    if (isPreloading && !isPreloaded) {
+      addLog('warn', "تپسل: مهلت ۱۵ ثانیه‌ای پیش‌بارگذاری تمام شد؛ امکان درخواست مجدد فعال شد.");
+      isPreloading = false;
+    }
+  }, 15000);
 
   if (isNativePlatform()) {
     ensureTapsellNativeBridge();
@@ -363,6 +378,7 @@ export const preloadRewardedAd = (): void => {
       }
     } catch (e) {
       isPreloading = false;
+      if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
       addLog('error', "تپسل: استثنا در درخواست پیش‌بارگذاری ویدیو", e);
     }
   } else {
@@ -371,6 +387,7 @@ export const preloadRewardedAd = (): void => {
       preloadedAdId = "mock-rewarded-ad-id";
       isPreloading = false;
       isPreloaded = true;
+      if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
       addLog('success', "شبیه‌ساز تپسل: ویدیو تبلیغاتی صوری آماده نمایش است.");
       if (onAdPreloadedCallback) onAdPreloadedCallback();
     }, 1500);

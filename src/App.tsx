@@ -219,15 +219,8 @@ export default function App() {
   const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
   const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
 
-  // System Debug Log Modal & Web Banner States
-  const [showDebugModal, setShowDebugModal] = useState<boolean>(false);
-  const [systemLogsList, setSystemLogsList] = useState<LogEntry[]>([]);
-  const [logFilter, setLogFilter] = useState<"all" | "error" | "success" | "info">("all");
+  // Web Banner Active State
   const [webBannerActive, setWebBannerActive] = useState<boolean>(false);
-
-  useEffect(() => {
-    return subscribeSystemLogs((logs) => setSystemLogsList(logs));
-  }, []);
 
   useEffect(() => {
     return subscribeWebBanner((visible) => setWebBannerActive(visible));
@@ -2848,186 +2841,32 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 3. System Debug Logs Modal */}
-      <AnimatePresence>
-        {showDebugModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 font-sans select-none"
-            dir="rtl"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-zinc-950 border border-emerald-900/50 w-full max-w-2xl rounded-3xl p-5 md:p-6 shadow-2xl text-right max-h-[85vh] flex flex-col"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                    <Terminal className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm md:text-base font-extrabold text-white">لاگ‌های عیب‌یابی تبلیغات و پرداخت درون‌برنامه‌ای</h3>
-                    <p className="text-[10px] text-slate-400">مشاهده تمامی رویدادهای تپسل، مایکت و خطاهای سیستمی</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowDebugModal(false)}
-                  className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Log Filters & Copy */}
-              <div className="flex items-center justify-between py-3 text-xs border-b border-zinc-900 gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setLogFilter("all")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                      logFilter === "all" ? "bg-emerald-500 text-black font-bold" : "bg-zinc-900 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    همه ({systemLogsList.length})
-                  </button>
-                  <button
-                    onClick={() => setLogFilter("error")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                      logFilter === "error" ? "bg-rose-500 text-white font-bold" : "bg-zinc-900 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    خطا ({systemLogsList.filter(l => l.type === 'error').length})
-                  </button>
-                  <button
-                    onClick={() => setLogFilter("success")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                      logFilter === "success" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-zinc-900 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    موفق ({systemLogsList.filter(l => l.type === 'success').length})
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => {
-                    const text = systemLogsList.map(l => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.message} ${l.details ? JSON.stringify(l.details) : ''}`).join('\n');
-                    navigator.clipboard.writeText(text);
-                    showToast("تمام لاگ‌ها کپی شدند", "success");
-                  }}
-                  className="flex items-center gap-1 text-slate-300 hover:text-emerald-400 text-[11px] bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>کپی گزارش لاگ</span>
-                </button>
-              </div>
-
-              {/* Log List */}
-              <div className="flex-1 overflow-y-auto py-3 space-y-2 font-mono text-xs max-h-[50vh] pr-1">
-                {systemLogsList.length === 0 ? (
-                  <p className="text-center py-8 text-slate-500 text-xs">هیچ لاگی ثبت نشده است.</p>
-                ) : (
-                  systemLogsList
-                    .filter(l => logFilter === "all" || l.type === logFilter)
-                    .map((log) => (
-                      <div
-                        key={log.id}
-                        className={`p-3 rounded-xl border text-[11px] leading-relaxed flex flex-col gap-1.5 ${
-                          log.type === "error"
-                            ? "bg-rose-950/30 border-rose-900/50 text-rose-200"
-                            : log.type === "success"
-                            ? "bg-emerald-950/30 border-emerald-900/50 text-emerald-200"
-                            : log.type === "warn"
-                            ? "bg-amber-950/30 border-amber-900/50 text-amber-200"
-                            : "bg-zinc-900/50 border-zinc-800 text-slate-300"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-[10px] text-slate-400">
-                          <span className="font-bold uppercase tracking-wider">{log.type}</span>
-                          <span className="dir-ltr">{log.timestamp}</span>
-                        </div>
-                        <p className="font-semibold text-white">{log.message}</p>
-                        {log.details && (
-                          <pre className="text-[10px] opacity-80 overflow-x-auto bg-black/50 p-2 rounded dir-ltr text-left border border-white/5">
-                            {typeof log.details === "object" ? JSON.stringify(log.details, null, 2) : String(log.details)}
-                          </pre>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="pt-3 border-t border-zinc-800 flex justify-between items-center text-[11px] text-slate-400">
-                <span>محیط اجرای برنامه: <strong className="text-slate-200">{isNativePlatform() ? "Android Native (Cordova/Capacitor)" : "Web / Simulator"}</strong></span>
-                <span>وضعیت پرداخت: <strong className={isPremium ? "text-emerald-400" : "text-amber-400"}>{isPremium ? "نسخه کامل (رایگان از تبلیغ)" : "نسخه رایگان (همراه تبلیغ)"}</strong></span>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 4. Tapsell Web Ad Banner (Visible in Web browser preview mode when active and not premium) */}
+      {/* 3. Tapsell Standard Banner Ad (Visible at bottom of all screens when not premium) */}
       {webBannerActive && !isPremium && (
         <div 
-          className="fixed bottom-0 left-0 right-0 z-[90] bg-[#0A120E]/95 border-t border-emerald-500/30 backdrop-blur-md p-3 px-4 shadow-2xl transition-all"
+          className="fixed bottom-0 left-0 right-0 z-[90] bg-[#0A120E]/95 border-t border-emerald-500/30 backdrop-blur-md p-2.5 px-4 shadow-2xl transition-all"
           dir="rtl"
         >
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 text-white flex-wrap sm:flex-nowrap">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 text-white">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-black font-extrabold text-sm shadow-md shadow-emerald-500/20">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-black font-extrabold text-sm shadow-md shadow-emerald-500/20">
                 🍉
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-2">
                   <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded">
-                    تبلیغات تپسل (Tapsell Plus)
+                    تبلیغات تپسل
                   </span>
-                  <span className="text-[11px] font-bold text-slate-200">حامی مالی ویدیو و بنر برنامه</span>
+                  <span className="text-[11px] font-bold text-slate-200">هندوانه‌سنج هوشمند | حامی رسمی برنامه</span>
                 </div>
-                <p className="text-[11px] text-slate-400">شناسه زون بنر: {BANNER_ZONE_ID.substring(0, 8)}... | فعال در سیستم</p>
+                <p className="text-[10px] text-slate-400">نمایش بنر استاندارد تپسل (Tapsell Banner Ad)</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  requestAndShowRewardedAd(
-                    () => {
-                      setAdOverlaySeconds(15);
-                      setAdOverlayProgress(0);
-                      setAdOverlayActive(true);
-                      addLog('info', "شروع نمایش ویدیو جایزه‌ای تپسل...");
-                    },
-                    () => {
-                      addLog('info', "بسته شدن تبلیغ ویدیویی تپسل");
-                    },
-                    () => {
-                      recordAdWatched();
-                      showToast("پاداش تپسل دریافت شد!", "success");
-                    },
-                    (err) => {
-                      showToast(`خطا در تبلیغ تپسل: ${err || "عدم دریافت تبلیغ"}`, "error");
-                    }
-                  );
-                }}
-                className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>تست ویدیو جایزه‌ای Tapsell</span>
-              </button>
-
-              <button
-                onClick={() => setShowDebugModal(true)}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-slate-300 text-xs font-semibold rounded-xl border border-zinc-700 transition-all flex items-center gap-1 cursor-pointer"
-                title="مشاهده لاگ‌های عیب‌یابی Tapsell"
-              >
-                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">دیباگ Tapsell</span>
-              </button>
+              <span className="text-[10px] text-slate-400 bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-zinc-700/50 hidden sm:inline">
+                Tapsell Plus Banner
+              </span>
             </div>
           </div>
         </div>

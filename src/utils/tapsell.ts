@@ -539,13 +539,30 @@ export const completeSimulatedAd = (
 
 // Standard Banner Ad state
 let bannerTimer: any = null;
+let webBannerVisible = false;
+let webBannerListeners: ((visible: boolean) => void)[] = [];
+
+export const subscribeWebBanner = (fn: (visible: boolean) => void): (() => void) => {
+  webBannerListeners.push(fn);
+  fn(webBannerVisible);
+  return () => {
+    webBannerListeners = webBannerListeners.filter(l => l !== fn);
+  };
+};
+
+const setWebBannerVisible = (visible: boolean) => {
+  webBannerVisible = visible;
+  webBannerListeners.forEach(fn => fn(visible));
+};
 
 // Show standard banner at the bottom center of the page
 export const showStandardBannerAd = (): void => {
   if (localStorage.getItem("is_full_version") === "true") {
     addLog('info', "نسخه کامل فعال است؛ نمایش تبلیغ بنری لغو شد.");
+    setWebBannerVisible(false);
     return;
   }
+  setWebBannerVisible(true);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل: درخواست ساخت تبلیغ بنری استاندارد در پایین صفحه (Gravity.BOTTOM)...");
@@ -567,6 +584,7 @@ export const showStandardBannerAd = (): void => {
 
 // Stop/Hide Standard Banner Ad
 export const hideStandardBannerAd = (): void => {
+  setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل: مخفی‌سازی بنر استاندارد");
@@ -579,6 +597,7 @@ export const hideStandardBannerAd = (): void => {
 
 // Completely remove the standard banner ad from view and memory
 export const removeStandardBannerAd = (): void => {
+  setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل: حذف کامل بنر استاندارد از حافظه");

@@ -43,9 +43,11 @@ import {
   completeSimulatedAd,
   isNativePlatform,
   REWARDED_ZONE_ID,
+  BANNER_ZONE_ID,
   isFullVersionActive,
   getSystemLogs,
   subscribeSystemLogs,
+  subscribeWebBanner,
   addLog,
   LogEntry
 } from "./utils/tapsell";
@@ -217,13 +219,18 @@ export default function App() {
   const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
   const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
 
-  // System Debug Log Modal States
+  // System Debug Log Modal & Web Banner States
   const [showDebugModal, setShowDebugModal] = useState<boolean>(false);
   const [systemLogsList, setSystemLogsList] = useState<LogEntry[]>([]);
   const [logFilter, setLogFilter] = useState<"all" | "error" | "success" | "info">("all");
+  const [webBannerActive, setWebBannerActive] = useState<boolean>(false);
 
   useEffect(() => {
     return subscribeSystemLogs((logs) => setSystemLogsList(logs));
+  }, []);
+
+  useEffect(() => {
+    return subscribeWebBanner((visible) => setWebBannerActive(visible));
   }, []);
 
   // Toast Notification State
@@ -2962,6 +2969,69 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 4. Tapsell Web Ad Banner (Visible in Web browser preview mode when active and not premium) */}
+      {webBannerActive && !isPremium && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 z-[90] bg-[#0A120E]/95 border-t border-emerald-500/30 backdrop-blur-md p-3 px-4 shadow-2xl transition-all"
+          dir="rtl"
+        >
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 text-white flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-black font-extrabold text-sm shadow-md shadow-emerald-500/20">
+                🍉
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded">
+                    تبلیغات تپسل (Tapsell Plus)
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-200">حامی مالی ویدیو و بنر برنامه</span>
+                </div>
+                <p className="text-[11px] text-slate-400">شناسه زون بنر: {BANNER_ZONE_ID.substring(0, 8)}... | فعال در سیستم</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  requestAndShowRewardedAd(
+                    () => {
+                      setAdOverlaySeconds(15);
+                      setAdOverlayProgress(0);
+                      setAdOverlayActive(true);
+                      addLog('info', "شروع نمایش ویدیو جایزه‌ای تپسل...");
+                    },
+                    () => {
+                      addLog('info', "بسته شدن تبلیغ ویدیویی تپسل");
+                    },
+                    () => {
+                      recordAdWatched();
+                      showToast("پاداش تپسل دریافت شد!", "success");
+                    },
+                    (err) => {
+                      showToast(`خطا در تبلیغ تپسل: ${err || "عدم دریافت تبلیغ"}`, "error");
+                    }
+                  );
+                }}
+                className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>تست ویدیو جایزه‌ای Tapsell</span>
+              </button>
+
+              <button
+                onClick={() => setShowDebugModal(true)}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-slate-300 text-xs font-semibold rounded-xl border border-zinc-700 transition-all flex items-center gap-1 cursor-pointer"
+                title="مشاهده لاگ‌های عیب‌یابی Tapsell"
+              >
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">دیباگ Tapsell</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -172,7 +172,7 @@ const registerGlobalEventListeners = () => {
     const key = `${eventName}:${JSON.stringify(data || {})}`;
     if (processedEvents.has(key)) return true;
     processedEvents.add(key);
-    setTimeout(() => processedEvents.delete(key), 2000);
+    setTimeout(() => processedEvents.delete(key), 150);
     return false;
   };
 
@@ -298,21 +298,28 @@ const registerGlobalEventListeners = () => {
   });
 };
 
+let hasInitializedTapsell = false;
+
 // Initialize Tapsell Plus
 export const initializeTapsell = (): void => {
   const runInit = () => {
+    if (hasInitializedTapsell) return;
+
     if (isNativePlatform()) {
       ensureTapsellNativeBridge();
       registerGlobalEventListeners();
+      hasInitializedTapsell = true;
       try {
         addLog('info', `تپسل: شروع راه اندازی SDK نیتیو با کلید اپ...`, APP_TOKEN.substring(0, 10) + '...');
         if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
           window.TapsellPlus.initialize(APP_TOKEN);
         }
       } catch (e) {
+        hasInitializedTapsell = false;
         addLog('error', "تپسل: استثنا در زمان مقداردهی اولیه", e);
       }
     } else {
+      hasInitializedTapsell = true;
       addLog('info', "تپسل: حالت شبیه‌ساز مرورگر وب فعال شد.");
       preloadRewardedAd();
     }
@@ -321,16 +328,22 @@ export const initializeTapsell = (): void => {
   if (typeof document === "undefined") return;
 
   if (isNativePlatform()) {
+    // 1. Listen for deviceready event
     document.addEventListener("deviceready", runInit, { once: true });
 
-    const win = window as any;
-    if (win.cordova?.isReady || document.readyState === "complete") {
-      setTimeout(() => {
-        if (!hasRegisteredEvents) {
-          runInit();
-        }
-      }, 200);
-    }
+    // 2. Try running immediately if deviceready already fired or cordova is accessible
+    runInit();
+
+    // 3. Robust polling fallback for 3 seconds in case deviceready already fired before React mounted
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (hasInitializedTapsell || attempts > 15) {
+        clearInterval(interval);
+      } else {
+        runInit();
+      }
+    }, 200);
   } else {
     runInit();
   }

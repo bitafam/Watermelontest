@@ -50,6 +50,8 @@ public class MainActivity extends BridgeActivity {
                 } else {
                     bannerContainer.setId(View.generateViewId());
                 }
+                int minHeightPx = (int) (50 * getResources().getDisplayMetrics().density);
+                bannerContainer.setMinimumHeight(minHeightPx);
                 LinearLayout.LayoutParams bannerParams = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT);

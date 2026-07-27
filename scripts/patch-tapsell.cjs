@@ -923,17 +923,33 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 							"})();";
 						jsCode = jsCode.replace("\\r", "").replace("\\n", " ");
 						try {
-							java.lang.reflect.Method evalMethod = webView.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
-							evalMethod.invoke(webView, jsCode, null);
-						} catch (Exception ex) {
+							View wvView = null;
 							try {
-								java.lang.reflect.Method engineMethod = webView.getClass().getMethod("getEngine");
-								Object engine = engineMethod.invoke(webView);
-								java.lang.reflect.Method evalMethod2 = engine.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
-								evalMethod2.invoke(engine, jsCode, null);
-							} catch (Exception ex2) {
-								webView.loadUrl("javascript:" + jsCode);
+								if (webView != null) {
+									java.lang.reflect.Method getViewMethod = webView.getClass().getMethod("getView");
+									wvView = (View) getViewMethod.invoke(webView);
+								}
+							} catch(Exception ex) {}
+
+							if (wvView instanceof android.webkit.WebView) {
+								((android.webkit.WebView) wvView).evaluateJavascript(jsCode, null);
+							} else {
+								try {
+									java.lang.reflect.Method evalMethod = webView.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
+									evalMethod.invoke(webView, jsCode, null);
+								} catch (Exception ex) {
+									try {
+										java.lang.reflect.Method engineMethod = webView.getClass().getMethod("getEngine");
+										Object engine = engineMethod.invoke(webView);
+										java.lang.reflect.Method evalMethod2 = engine.getClass().getMethod("evaluateJavascript", String.class, android.webkit.ValueCallback.class);
+										evalMethod2.invoke(engine, jsCode, null);
+									} catch (Exception ex2) {
+										webView.loadUrl("javascript:" + jsCode);
+									}
+								}
 							}
+						} catch (Exception evalEx) {
+							webView.loadUrl("javascript:" + jsCode);
 						}
 					} catch (Exception e) {
 						Log.e(LOG_TAG, "Error firing event " + eventName, e);

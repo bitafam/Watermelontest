@@ -1381,19 +1381,25 @@ try {
   console.error('>>> [PATCH] Error updating AndroidManifest.xml:', e.message);
 }
 
-// 6. Ensure modern play-services-ads version in capacitor.build.gradle
-const capBuildGradlePath = path.join(__dirname, '..', 'android', 'app', 'capacitor.build.gradle');
-try {
-  if (fs.existsSync(capBuildGradlePath)) {
-    let capGradle = fs.readFileSync(capBuildGradlePath, 'utf8');
-    if (capGradle.includes('play-services-ads:19.6.0')) {
-      capGradle = capGradle.replace('play-services-ads:19.6.0', 'play-services-ads:22.6.0');
-      fs.writeFileSync(capBuildGradlePath, capGradle, 'utf8');
-      console.log('>>> [PATCH] Upgraded play-services-ads to 22.6.0 in capacitor.build.gradle');
+// 6. Ensure modern play-services-ads version in all gradle files
+const gradleFilesToPatch = [
+  path.join(__dirname, '..', 'android', 'app', 'capacitor.build.gradle'),
+  path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'build.gradle')
+];
+
+for (const gradlePath of gradleFilesToPatch) {
+  try {
+    if (fs.existsSync(gradlePath)) {
+      let gradleContent = fs.readFileSync(gradlePath, 'utf8');
+      if (gradleContent.includes('play-services-ads:19.6.0')) {
+        gradleContent = gradleContent.replace(/play-services-ads:19\.6\.0/g, 'play-services-ads:22.6.0');
+        fs.writeFileSync(gradlePath, gradleContent, 'utf8');
+        console.log(`>>> [PATCH] Upgraded play-services-ads to 22.6.0 in ${path.relative(path.join(__dirname, '..'), gradlePath)}`);
+      }
     }
+  } catch (e) {
+    console.error(`>>> [PATCH] Error updating ${gradlePath}:`, e.message);
   }
-} catch (e) {
-  console.error('>>> [PATCH] Error updating capacitor.build.gradle:', e.message);
 }
 
 console.log('>>> [PATCH] TapsellPlus & In-App Billing patch completed successfully!');

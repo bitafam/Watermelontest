@@ -2841,54 +2841,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 2. Sticky Bottom Banner Ad Container (Active when !isPremium) */}
-      {!isPremium && (
-        <div 
-          className={`fixed bottom-0 left-0 right-0 h-16 flex items-center justify-center z-[80] px-4 ${
-            isNativePlatform() ? "bg-transparent pointer-events-none" : "bg-zinc-950/95 border-t border-emerald-950/60 shadow-2xl backdrop-blur-md"
-          }`} 
-          id="banner-ad-sticky-container"
-          dir="rtl"
-        >
-          {isNativePlatform() ? (
-            /* Reserved Slot for Native Tapsell Banner (Tapsell Banner overlay sits inside this 60px slot) */
-            <div className="flex items-center justify-between w-full max-w-xl text-[11px] text-slate-300 pointer-events-auto bg-zinc-950/80 backdrop-blur-md border border-zinc-800/80 rounded-2xl px-3 py-1.5 shadow-xl">
-              <span className="flex items-center gap-2 font-semibold text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                تبلیغات اسپانسر تپسل
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveTab("upgrade")}
-                  className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg hover:bg-amber-500/30 transition-colors font-bold cursor-pointer"
-                >
-                  حذف تبلیغات (نسخه کامل)
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Web Simulator Banner */
-            <div className="max-w-xl w-full flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded font-bold font-mono">AD / اسپانسر</span>
-                <div className="text-right">
-                  <p className="text-slate-100 text-[11px] md:text-xs font-bold leading-tight">هندوانه‌سنج صوتی هوشمند را ارتقا دهید!</p>
-                  <p className="text-slate-400 text-[9px] md:text-[10px] leading-tight mt-1">بدون محدودیت استفاده، بدون تبلیغات و با امکانات صوتی اختصاصی پوست هندوانه</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveTab("upgrade")}
-                  className="text-[11px] bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black px-3 py-1.5 rounded-xl font-extrabold shadow-lg transition-transform transform active:scale-95 cursor-pointer whitespace-nowrap"
-                >
-                  {lang === "fa" ? "نسخه کامل" : "Remove Ads"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 3. System Debug Logs Modal */}
       <AnimatePresence>
         {showDebugModal && (

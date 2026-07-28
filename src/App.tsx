@@ -1338,7 +1338,7 @@ export default function App() {
 
   return (
     <div 
-      className="min-h-screen bg-[#0A0F0D] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white font-sans"
+      className={`min-h-screen bg-[#0A0F0D] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white font-sans ${webBannerActive && !isPremium ? "pb-20" : ""}`}
       dir={lang === "fa" ? "rtl" : "ltr"}
       id="main-container"
     >

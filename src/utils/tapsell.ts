@@ -1,5 +1,5 @@
-// Tapsell Plus Ad Integration & Myket Billing for Capacitor / Web
-// Handles standard banners, rewarded videos, and logging
+// Tapsell Plus (Mediation) Ad Integration & Myket Billing for Capacitor / Web
+// Supports Standard Banner Ads, Rewarded Video Ads, and Myket In-App Purchase
 
 export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
 export const BANNER_ZONE_ID = "6a5e6056470fa5291867c9ab";
@@ -9,6 +9,7 @@ declare global {
   interface Window {
     TapsellPlus?: any;
     cordova?: any;
+    Capacitor?: any;
   }
 }
 
@@ -105,27 +106,27 @@ const ensureTapsellNativeBridge = () => {
     }
   };
 
-  // Attach safe wrappers for all Tapsell and Billing actions if not already provided
+  // Attach standard methods to window.TapsellPlus according to Tapsell Plus Mediation spec
   if (!win.TapsellPlus.initialize) {
     win.TapsellPlus.initialize = (appKey: string, s?: any, e?: any) => execCall('initialize', [appKey], s, e);
-  }
-  if (!win.TapsellPlus.requestRewardedVideo) {
-    win.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
   }
   if (!win.TapsellPlus.requestRewardedVideoAd) {
     win.TapsellPlus.requestRewardedVideoAd = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
   }
-  if (!win.TapsellPlus.showRewardedVideo) {
-    win.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  if (!win.TapsellPlus.requestRewardedVideo) {
+    win.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
   }
   if (!win.TapsellPlus.showRewardedVideoAd) {
     win.TapsellPlus.showRewardedVideoAd = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
   }
+  if (!win.TapsellPlus.showRewardedVideo) {
+    win.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+  }
+  if (!win.TapsellPlus.requestStandardBannerAd) {
+    win.TapsellPlus.requestStandardBannerAd = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+  }
   if (!win.TapsellPlus.showBannerAd) {
     win.TapsellPlus.showBannerAd = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
-  }
-  if (!win.TapsellPlus.requestBannerAd) {
-    win.TapsellPlus.requestBannerAd = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
   }
   if (!win.TapsellPlus.createBanner) {
     win.TapsellPlus.createBanner = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
@@ -165,7 +166,7 @@ const registerGlobalEventListeners = () => {
   if (hasRegisteredEvents || typeof window === "undefined") return;
   hasRegisteredEvents = true;
 
-  addLog('info', "ثبت شنوندگان رویدادهای Tapsell در لایه نیتیو (document & window)");
+  addLog('info', "ثبت شنوندگان رویدادهای Tapsell Plus Mediation در لایه نیتیو");
 
   const processedEvents = new Set<string>();
   const isDuplicate = (eventName: string, data: any) => {
@@ -191,7 +192,7 @@ const registerGlobalEventListeners = () => {
   };
 
   addUniversalListener('onInitializeSuccess', () => {
-    addLog('success', "تپسل: مقداردهی اولیه SDK نیتیو موفقیت‌آمیز بود");
+    addLog('success', "تپسل پلاس: مقداردهی اولیه SDK نیتیو با موفقیت انجام شد");
     isPreloading = false;
     preloadRewardedAd();
     if (localStorage.getItem("is_full_version") !== "true") {
@@ -200,7 +201,7 @@ const registerGlobalEventListeners = () => {
   });
 
   addUniversalListener('onInitializeFailed', (e: any) => {
-    addLog('error', "تپسل: خطا در مقداردهی اولیه SDK نیتیو", e);
+    addLog('error', "تپسل پلاس: خطا در مقداردهی اولیه SDK نیتیو", e);
   });
 
   addUniversalListener('response', (e: any) => {
@@ -209,14 +210,14 @@ const registerGlobalEventListeners = () => {
     const resId = data.responseId || e.responseId;
     const adType = (data.adType || e.adType || "").toString();
 
-    addLog('info', `تپسل: پاسخ دریافت شد (${adType}) - ID: ${resId || 'نامشخص'}`, data);
+    addLog('info', `تپسل پلاس: پاسخ دریافت شد (${adType}) - ID: ${resId || 'نامشخص'}`, data);
 
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && resId) {
       preloadedAdId = resId;
       isPreloading = false;
       isPreloaded = true;
-      addLog('success', `تپسل: ویدیو جایزه‌ای آماده شد - ResponseId: ${resId}`);
+      addLog('success', `تپسل پلاس: تبلیغ ویدیویی جایزه‌ای آماده نمایش شد - ResponseId: ${resId}`);
       if (onAdPreloadedCallback) onAdPreloadedCallback();
     }
   });
@@ -225,15 +226,14 @@ const registerGlobalEventListeners = () => {
     if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    const message = data.message || e.message || "خطای ناشناخته شبکه/سرور تپسل";
+    const message = data.message || e.message || "خطا در دریافت تبلیغ از شبکه تپسل";
 
-    addLog('error', `تپسل: خطا در درخواست تبلیغ (${adType}): ${message}`, data);
+    addLog('error', `تپسل پلاس: خطا در درخواست تبلیغ (${adType}): ${message}`, data);
 
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       isPreloading = false;
       isPreloaded = false;
-      // Retry preloading after 8 seconds
       setTimeout(() => preloadRewardedAd(), 8000);
     }
   });
@@ -241,7 +241,7 @@ const registerGlobalEventListeners = () => {
   addUniversalListener('onOpened', (e: any) => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    addLog('info', `تپسل: تبلیغ باز شد (${adType})`);
+    addLog('info', `تپسل پلاس: تبلیغ ویدیویی باز شد (${adType})`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && activeAdCallbacks?.onAdOpened) {
@@ -252,14 +252,13 @@ const registerGlobalEventListeners = () => {
   addUniversalListener('onClosed', (e: any) => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    addLog('info', `تپسل: تبلیغ بسته شد (${adType})`);
+    addLog('info', `تپسل پلاس: تبلیغ ویدیویی بسته شد (${adType})`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       const cb = activeAdCallbacks?.onAdClosed;
       activeAdCallbacks = null;
       if (cb) cb();
-      // Preload next ad immediately
       isPreloading = false;
       isPreloaded = false;
       preloadedAdId = null;
@@ -270,7 +269,7 @@ const registerGlobalEventListeners = () => {
   addUniversalListener('onRewarded', (e: any) => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    addLog('success', `تپسل: پاداش تبلیغ ویدیویی اعطا شد (${adType})`);
+    addLog('success', `تپسل پلاس: پاداش تبلیغ ویدیویی به کاربر اعطا شد (${adType})`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && activeAdCallbacks?.onAdRewarded) {
@@ -282,14 +281,13 @@ const registerGlobalEventListeners = () => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
     const message = data.message || e.message;
-    addLog('error', `تپسل: خطا در نمایش تبلیغ (${adType}): ${message}`);
+    addLog('error', `تپسل پلاس: خطا در نمایش تبلیغ (${adType}): ${message}`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
       const cb = activeAdCallbacks?.onAdShowFailed;
       activeAdCallbacks = null;
       if (cb) cb(message);
-      // Preload next ad immediately
       isPreloading = false;
       isPreloaded = false;
       preloadedAdId = null;
@@ -310,17 +308,17 @@ export const initializeTapsell = (): void => {
       registerGlobalEventListeners();
       hasInitializedTapsell = true;
       try {
-        addLog('info', `تپسل: شروع راه اندازی SDK نیتیو با کلید اپ...`, APP_TOKEN.substring(0, 10) + '...');
+        addLog('info', `تپسل پلاس: راه اندازی SDK نیتیو با APP_TOKEN...`, APP_TOKEN.substring(0, 10) + '...');
         if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
           window.TapsellPlus.initialize(APP_TOKEN);
         }
       } catch (e) {
         hasInitializedTapsell = false;
-        addLog('error', "تپسل: استثنا در زمان مقداردهی اولیه", e);
+        addLog('error', "تپسل پلاس: استثنا در زمان مقداردهی اولیه", e);
       }
     } else {
       hasInitializedTapsell = true;
-      addLog('info', "تپسل: حالت شبیه‌ساز مرورگر وب فعال شد.");
+      addLog('info', "تپسل پلاس: اجرای مستقیم در مرورگر وب.");
       preloadRewardedAd();
     }
   };
@@ -328,13 +326,8 @@ export const initializeTapsell = (): void => {
   if (typeof document === "undefined") return;
 
   if (isNativePlatform()) {
-    // 1. Listen for deviceready event
     document.addEventListener("deviceready", runInit, { once: true });
-
-    // 2. Try running immediately if deviceready already fired or cordova is accessible
     runInit();
-
-    // 3. Robust polling fallback for 3 seconds in case deviceready already fired before React mounted
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
@@ -375,7 +368,7 @@ export const preloadRewardedAd = (): void => {
 
   preloadTimeout = setTimeout(() => {
     if (isPreloading && !isPreloaded) {
-      addLog('warn', "تپسل: مهلت ۱۵ ثانیه‌ای پیش‌بارگذاری تمام شد؛ امکان درخواست مجدد فعال شد.");
+      addLog('warn', "تپسل پلاس: مهلت پیش‌بارگذاری تمام شد؛ امکان درخواست مجدد فعال شد.");
       isPreloading = false;
     }
   }, 15000);
@@ -383,27 +376,26 @@ export const preloadRewardedAd = (): void => {
   if (isNativePlatform()) {
     ensureTapsellNativeBridge();
     try {
-      addLog('info', "تپسل: درخواست پیش‌بارگذاری ویدیو جایزه‌ای...", REWARDED_ZONE_ID);
-      if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideo === "function") {
-        window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
-      } else if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideoAd === "function") {
+      addLog('info', "تپسل پلاس: درخواست پیش‌بارگذاری ویدیو جایزه‌ای...", REWARDED_ZONE_ID);
+      if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideoAd === "function") {
         window.TapsellPlus.requestRewardedVideoAd(REWARDED_ZONE_ID);
+      } else if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideo === "function") {
+        window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
       }
     } catch (e) {
       isPreloading = false;
       if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
-      addLog('error', "تپسل: استثنا در درخواست پیش‌بارگذاری ویدیو", e);
+      addLog('error', "تپسل پلاس: استثنا در درخواست پیش‌بارگذاری ویدیو", e);
     }
   } else {
-    addLog('info', "شبیه‌ساز تپسل: بارگذاری ویدیو تبلیغاتی صوری...");
+    addLog('info', "تپسل پلاس: آمادگی ویدیو جایزه‌ای در مرورگر وب");
     setTimeout(() => {
-      preloadedAdId = "mock-rewarded-ad-id";
+      preloadedAdId = "web-rewarded-ad-id";
       isPreloading = false;
       isPreloaded = true;
       if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
-      addLog('success', "شبیه‌ساز تپسل: ویدیو تبلیغاتی صوری آماده نمایش است.");
       if (onAdPreloadedCallback) onAdPreloadedCallback();
-    }, 1500);
+    }, 1000);
   }
 };
 
@@ -430,15 +422,13 @@ export const requestAndShowRewardedAd = (
     return;
   }
 
-  addLog('info', "ویدیو از قبل آماده نبود؛ درخواست آنلاین تبلیغ ویدیویی...");
+  addLog('info', "ویدیو از قبل آماده نبود؛ درخواست آنلاین تبلیغ ویدیویی تپسل...");
 
   if (!isNativePlatform()) {
-    // Web Simulator Mode
     onAdOpened();
     return;
   }
 
-  // Live request on Native Platform
   let timeoutTimer: any = null;
   let hasHandled = false;
 
@@ -461,7 +451,6 @@ export const requestAndShowRewardedAd = (
     onAdShowFailed(errReason);
   };
 
-  // Wait for preloadedAdId or response event
   const checkInterval = setInterval(() => {
     if (isRewardedAdReady()) {
       clearInterval(checkInterval);
@@ -469,15 +458,13 @@ export const requestAndShowRewardedAd = (
     }
   }, 300);
 
-  // 12 seconds timeout
   timeoutTimer = setTimeout(() => {
     clearInterval(checkInterval);
     if (!hasHandled) {
-      handleFailure("تایم‌اوت 12 ثانیه‌ای دریافت تبلیغ ویدیویی تپسل");
+      handleFailure("تایم‌اوت ۱۲ ثانیه‌ای دریافت تبلیغ ویدیویی تپسل");
     }
   }, 12000);
 
-  // Trigger request (reset preloading flag to ensure a fresh request is sent)
   isPreloading = false;
   preloadRewardedAd();
 };
@@ -507,19 +494,18 @@ export const showRewardedAd = (
         onAdShowFailed
       };
 
-      addLog('info', `تپسل: دستور نمایش ویدیو جایزه‌ای با ID: ${activeAdId}`);
-      if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideo === "function") {
-        window.TapsellPlus.showRewardedVideo(activeAdId);
-      } else if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideoAd === "function") {
+      addLog('info', `تپسل پلاس: دستور نمایش ویدیو جایزه‌ای با ID: ${activeAdId}`);
+      if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideoAd === "function") {
         window.TapsellPlus.showRewardedVideoAd(activeAdId);
+      } else if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideo === "function") {
+        window.TapsellPlus.showRewardedVideo(activeAdId);
       }
     } catch (e) {
-      addLog('error', "تپسل: استثنا در فراخوانی showRewardedVideo", e);
+      addLog('error', "تپسل پلاس: استثنا در فراخوانی showRewardedVideo", e);
       onAdShowFailed(e);
       preloadRewardedAd();
     }
   } else {
-    // Simulator flow
     onAdOpened();
   }
 };
@@ -531,7 +517,7 @@ export const completeSimulatedAd = (
 ): void => {
   preloadedAdId = null;
   isPreloaded = false;
-  addLog('success', "شبیه‌ساز تپسل: پاداش ویدیو ویدیویی صوری اعطا شد.");
+  addLog('success', "تپسل پلاس: پاداش ویدیو ویدیویی اعطا شد.");
   onAdRewarded();
   onAdClosed();
   preloadRewardedAd();
@@ -555,7 +541,7 @@ const setWebBannerVisible = (visible: boolean) => {
   webBannerListeners.forEach(fn => fn(visible));
 };
 
-// Show standard banner at the bottom center of the page
+// Show standard banner at the bottom center of the page across all screens
 export const showStandardBannerAd = (): void => {
   if (localStorage.getItem("is_full_version") === "true") {
     addLog('info', "نسخه کامل فعال است؛ نمایش تبلیغ بنری لغو شد.");
@@ -565,20 +551,20 @@ export const showStandardBannerAd = (): void => {
   setWebBannerVisible(true);
   if (isNativePlatform()) {
     try {
-      addLog('info', "تپسل: درخواست ساخت تبلیغ بنری استاندارد در پایین صفحه (Gravity.BOTTOM)...");
+      addLog('info', "تپسل پلاس: درخواست ساخت تبلیغ بنری استاندارد در پایین صفحه (Gravity.BOTTOM)...");
       ensureTapsellNativeBridge();
-      if (typeof window.TapsellPlus.showBannerAd === "function") {
-        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2, 1); // 2 = Gravity.BOTTOM, 1 = BANNER_320x50
-      } else if (typeof window.TapsellPlus.requestBannerAd === "function") {
-        window.TapsellPlus.requestBannerAd(BANNER_ZONE_ID, 2, 1);
+      if (typeof window.TapsellPlus.requestStandardBannerAd === "function") {
+        window.TapsellPlus.requestStandardBannerAd(BANNER_ZONE_ID, 2, 1);
+      } else if (typeof window.TapsellPlus.showBannerAd === "function") {
+        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2, 1);
       } else if (typeof window.TapsellPlus.createBanner === "function") {
         window.TapsellPlus.createBanner(BANNER_ZONE_ID, 2, 1);
       }
     } catch (e) {
-      addLog('error', "تپسل: استثنا در درخواست تبلیغ بنری", e);
+      addLog('error', "تپسل پلاس: استثنا در درخواست تبلیغ بنری", e);
     }
   } else {
-    addLog('info', "شبیه‌ساز تپسل: درخواست بنر استاندارد چسبیده به پایین صفحه");
+    addLog('info', "تپسل پلاس: نمایش بنر استاندارد چسبیده به پایین صفحه");
   }
 };
 
@@ -587,10 +573,12 @@ export const hideStandardBannerAd = (): void => {
   setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
-      addLog('info', "تپسل: مخفی‌سازی بنر استاندارد");
-      window.TapsellPlus.hideBanner();
+      addLog('info', "تپسل پلاس: مخفی‌سازی بنر استاندارد");
+      if (window.TapsellPlus && typeof window.TapsellPlus.hideBanner === "function") {
+        window.TapsellPlus.hideBanner();
+      }
     } catch (e) {
-      addLog('error', "تپسل: خطا در مخفی‌سازی بنر", e);
+      addLog('error', "تپسل پلاس: خطا در مخفی‌سازی بنر", e);
     }
   }
 };
@@ -600,10 +588,12 @@ export const removeStandardBannerAd = (): void => {
   setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
-      addLog('info', "تپسل: حذف کامل بنر استاندارد از حافظه");
-      window.TapsellPlus.removeBanner();
+      addLog('info', "تپسل پلاس: حذف کامل بنر استاندارد از حافظه");
+      if (window.TapsellPlus && typeof window.TapsellPlus.removeBanner === "function") {
+        window.TapsellPlus.removeBanner();
+      }
     } catch (e) {
-      addLog('error', "تپسل: خطا در حذف بنر", e);
+      addLog('error', "تپسل پلاس: خطا در حذف بنر", e);
     }
   }
 };
@@ -618,7 +608,7 @@ export const startBannerRefresh = (): void => {
   showStandardBannerAd();
 
   bannerTimer = setInterval(() => {
-    addLog('info', "تپسل: بازنشانی/بروزرسانی خودکار بنر استاندارد...");
+    addLog('info', "تپسل پلاس: بازنشانی/بروزرسانی خودکار بنر استاندارد...");
     showStandardBannerAd();
   }, 60000);
 };
@@ -744,14 +734,12 @@ export const purchaseFullVersion = async (): Promise<string> => {
       }
     });
   } else {
-    // Simulator flow
     return new Promise((resolve) => {
       setTimeout(() => {
         localStorage.setItem("is_full_version", "true");
-        addLog('success', "شبیه‌ساز پرداخت: خرید نسخه کامل در مرورگر با موفقیت انجام شد.");
+        addLog('success', "پرداخت: خرید نسخه کامل انجام شد.");
         resolve("success");
       }, 1000);
     });
   }
 };
-

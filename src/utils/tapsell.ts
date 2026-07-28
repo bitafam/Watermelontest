@@ -1,5 +1,5 @@
-// Tapsell Plus (Mediation) Ad Integration & Myket Billing for Capacitor / Web
-// Supports Standard Banner Ads, Rewarded Video Ads, and Myket In-App Purchase
+// Tapsell Plus (Mediation) Real Ad Integration & Myket Billing for Capacitor / Android Native
+// Uses Native Tapsell Plus Mediation SDK (Standard Banner & Rewarded Video) and Myket In-App Purchase
 
 export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
 export const BANNER_ZONE_ID = "6a5e6056470fa5291867c9ab";
@@ -56,7 +56,7 @@ export const isNativePlatform = (): boolean => {
   return typeof win.cordova !== "undefined" || !!win.Capacitor?.isNativePlatform?.();
 };
 
-// Ensure window.TapsellPlus exists and has all bridge methods attached on native
+// Ensure window.TapsellPlus exists and has all bridge methods attached on native Android
 const ensureTapsellNativeBridge = () => {
   if (typeof window === "undefined") return;
   const win = window as any;
@@ -166,7 +166,7 @@ const registerGlobalEventListeners = () => {
   if (hasRegisteredEvents || typeof window === "undefined") return;
   hasRegisteredEvents = true;
 
-  addLog('info', "ثبت شنوندگان رویدادهای Tapsell Plus Mediation در لایه نیتیو");
+  addLog('info', "ثبت شنوندگان رویدادهای Tapsell Plus Mediation در لایه نیتیو اندروید");
 
   const processedEvents = new Set<string>();
   const isDuplicate = (eventName: string, data: any) => {
@@ -192,7 +192,7 @@ const registerGlobalEventListeners = () => {
   };
 
   addUniversalListener('onInitializeSuccess', () => {
-    addLog('success', "تپسل پلاس: مقداردهی اولیه SDK نیتیو با موفقیت انجام شد");
+    addLog('success', "تپسل پلاس: مقداردهی اولیه SDK نیتیو اندروید با موفقیت انجام شد");
     isPreloading = false;
     preloadRewardedAd();
     if (localStorage.getItem("is_full_version") !== "true") {
@@ -201,7 +201,7 @@ const registerGlobalEventListeners = () => {
   });
 
   addUniversalListener('onInitializeFailed', (e: any) => {
-    addLog('error', "تپسل پلاس: خطا در مقداردهی اولیه SDK نیتیو", e);
+    addLog('error', "تپسل پلاس: خطا در مقداردهی اولیه SDK نیتیو اندروید", e);
   });
 
   addUniversalListener('response', (e: any) => {
@@ -241,7 +241,7 @@ const registerGlobalEventListeners = () => {
   addUniversalListener('onOpened', (e: any) => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    addLog('info', `تپسل پلاس: تبلیغ ویدیویی باز شد (${adType})`);
+    addLog('info', `تپسل پلاس: تبلیغ ویدیویی نیتیو باز شد (${adType})`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded && activeAdCallbacks?.onAdOpened) {
@@ -252,7 +252,7 @@ const registerGlobalEventListeners = () => {
   addUniversalListener('onClosed', (e: any) => {
     const data = e.detail || e.data || e;
     const adType = (data.adType || e.adType || "").toString();
-    addLog('info', `تپسل پلاس: تبلیغ ویدیویی بسته شد (${adType})`);
+    addLog('info', `تپسل پلاس: تبلیغ ویدیویی نیتیو بسته شد (${adType})`);
     
     const isRewarded = !adType || adType.toLowerCase().includes("reward");
     if (isRewarded) {
@@ -298,7 +298,7 @@ const registerGlobalEventListeners = () => {
 
 let hasInitializedTapsell = false;
 
-// Initialize Tapsell Plus
+// Initialize Tapsell Plus SDK
 export const initializeTapsell = (): void => {
   const runInit = () => {
     if (hasInitializedTapsell) return;
@@ -318,8 +318,7 @@ export const initializeTapsell = (): void => {
       }
     } else {
       hasInitializedTapsell = true;
-      addLog('info', "تپسل پلاس: اجرای مستقیم در مرورگر وب.");
-      preloadRewardedAd();
+      addLog('info', "برنامه در حال اجرا در محیط وب است. تبلیغات نیتیو تپسل روی دستگاه اندروید اجرا می‌شوند.");
     }
   };
 
@@ -352,7 +351,7 @@ export const registerPreloadedCallback = (callback: () => void) => {
 
 let preloadTimeout: any = null;
 
-// Preload Rewarded Video Ad
+// Preload Rewarded Video Ad on Native Android
 export const preloadRewardedAd = (): void => {
   if (localStorage.getItem("is_full_version") === "true") {
     addLog('info', "نسخه کامل فعال است؛ پیش‌بارگذاری تبلیغ انجام نشد.");
@@ -388,14 +387,8 @@ export const preloadRewardedAd = (): void => {
       addLog('error', "تپسل پلاس: استثنا در درخواست پیش‌بارگذاری ویدیو", e);
     }
   } else {
-    addLog('info', "تپسل پلاس: آمادگی ویدیو جایزه‌ای در مرورگر وب");
-    setTimeout(() => {
-      preloadedAdId = "web-rewarded-ad-id";
-      isPreloading = false;
-      isPreloaded = true;
-      if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
-      if (onAdPreloadedCallback) onAdPreloadedCallback();
-    }, 1000);
+    isPreloading = false;
+    isPreloaded = false;
   }
 };
 
@@ -422,12 +415,14 @@ export const requestAndShowRewardedAd = (
     return;
   }
 
-  addLog('info', "ویدیو از قبل آماده نبود؛ درخواست آنلاین تبلیغ ویدیویی تپسل...");
-
   if (!isNativePlatform()) {
-    onAdOpened();
+    // In browser preview, fulfill reward directly without fake ad video overlays
+    onAdRewarded();
+    onAdClosed();
     return;
   }
+
+  addLog('info', "ویدیو از قبل آماده نبود؛ درخواست آنلاین تبلیغ ویدیویی تپسل...");
 
   let timeoutTimer: any = null;
   let hasHandled = false;
@@ -461,9 +456,9 @@ export const requestAndShowRewardedAd = (
   timeoutTimer = setTimeout(() => {
     clearInterval(checkInterval);
     if (!hasHandled) {
-      handleFailure("تایم‌اوت ۱۲ ثانیه‌ای دریافت تبلیغ ویدیویی تپسل");
+      handleFailure("تایم‌اوت دریافت تبلیغ ویدیویی تپسل");
     }
-  }, 12000);
+  }, 10000);
 
   isPreloading = false;
   preloadRewardedAd();
@@ -494,7 +489,7 @@ export const showRewardedAd = (
         onAdShowFailed
       };
 
-      addLog('info', `تپسل پلاس: دستور نمایش ویدیو جایزه‌ای با ID: ${activeAdId}`);
+      addLog('info', `تپسل پلاس: دستور نمایش ویدیو جایزه‌ای نیتیو با ID: ${activeAdId}`);
       if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideoAd === "function") {
         window.TapsellPlus.showRewardedVideoAd(activeAdId);
       } else if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideo === "function") {
@@ -506,49 +501,17 @@ export const showRewardedAd = (
       preloadRewardedAd();
     }
   } else {
-    onAdOpened();
+    onAdRewarded();
+    onAdClosed();
   }
 };
 
-// Simulated Ad Completion helper for Web Browser Simulator
-export const completeSimulatedAd = (
-  onAdRewarded: () => void,
-  onAdClosed: () => void
-): void => {
-  preloadedAdId = null;
-  isPreloaded = false;
-  addLog('success', "تپسل پلاس: پاداش ویدیو ویدیویی اعطا شد.");
-  onAdRewarded();
-  onAdClosed();
-  preloadRewardedAd();
-};
-
-// Standard Banner Ad state
-let bannerTimer: any = null;
-let webBannerVisible = false;
-let webBannerListeners: ((visible: boolean) => void)[] = [];
-
-export const subscribeWebBanner = (fn: (visible: boolean) => void): (() => void) => {
-  webBannerListeners.push(fn);
-  fn(webBannerVisible);
-  return () => {
-    webBannerListeners = webBannerListeners.filter(l => l !== fn);
-  };
-};
-
-const setWebBannerVisible = (visible: boolean) => {
-  webBannerVisible = visible;
-  webBannerListeners.forEach(fn => fn(visible));
-};
-
-// Show standard banner at the bottom center of the page across all screens
+// Show standard banner at the bottom center of the page across all screens via Native Android SDK
 export const showStandardBannerAd = (): void => {
   if (localStorage.getItem("is_full_version") === "true") {
     addLog('info', "نسخه کامل فعال است؛ نمایش تبلیغ بنری لغو شد.");
-    setWebBannerVisible(false);
     return;
   }
-  setWebBannerVisible(true);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل پلاس: درخواست ساخت تبلیغ بنری استاندارد در پایین صفحه (Gravity.BOTTOM)...");
@@ -564,13 +527,12 @@ export const showStandardBannerAd = (): void => {
       addLog('error', "تپسل پلاس: استثنا در درخواست تبلیغ بنری", e);
     }
   } else {
-    addLog('info', "تپسل پلاس: نمایش بنر استاندارد چسبیده به پایین صفحه");
+    addLog('info', "تپسل پلاس: بنر استاندارد روی دستگاه اندروید در پایین صفحه چسبیده نمایش داده می‌شود.");
   }
 };
 
 // Stop/Hide Standard Banner Ad
 export const hideStandardBannerAd = (): void => {
-  setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل پلاس: مخفی‌سازی بنر استاندارد");
@@ -585,7 +547,6 @@ export const hideStandardBannerAd = (): void => {
 
 // Completely remove the standard banner ad from view and memory
 export const removeStandardBannerAd = (): void => {
-  setWebBannerVisible(false);
   if (isNativePlatform()) {
     try {
       addLog('info', "تپسل پلاس: حذف کامل بنر استاندارد از حافظه");
@@ -597,6 +558,8 @@ export const removeStandardBannerAd = (): void => {
     }
   }
 };
+
+let bannerTimer: any = null;
 
 // Start Refresh Banner Ads every 60 seconds
 export const startBannerRefresh = (): void => {

@@ -40,14 +40,12 @@ import {
   isRewardedAdReady,
   showRewardedAd,
   requestAndShowRewardedAd,
-  completeSimulatedAd,
   isNativePlatform,
   REWARDED_ZONE_ID,
   BANNER_ZONE_ID,
   isFullVersionActive,
   getSystemLogs,
   subscribeSystemLogs,
-  subscribeWebBanner,
   addLog,
   LogEntry
 } from "./utils/tapsell";
@@ -214,17 +212,6 @@ export default function App() {
     }
     return 0;
   });
-
-  const [adOverlayActive, setAdOverlayActive] = useState<boolean>(false);
-  const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
-  const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
-
-  // Web Banner Active State
-  const [webBannerActive, setWebBannerActive] = useState<boolean>(false);
-
-  useEffect(() => {
-    return subscribeWebBanner((visible) => setWebBannerActive(visible));
-  }, []);
 
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -400,28 +387,6 @@ export default function App() {
       if (timer) clearInterval(timer);
     };
   }, [cooldownTime]);
-
-  useEffect(() => {
-    let timer: any = null;
-    if (adOverlayActive) {
-      timer = setInterval(() => {
-        setAdOverlaySeconds((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-        setAdOverlayProgress((prev) => {
-          const next = prev + (100 / 15);
-          return next > 100 ? 100 : next;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [adOverlayActive]);
 
   const recordAdWatched = () => {
     const now = Date.now();
@@ -1173,48 +1138,39 @@ export default function App() {
       return;
     }
 
-    if (isNativePlatform()) {
-      showToast(
-        lang === "fa" 
-          ? "در حال فراخوانی ویدیو تبلیغاتی اسپانسر..." 
-          : "Loading sponsor video ad...", 
-        "info"
-      );
+    showToast(
+      lang === "fa" 
+        ? "در حال فراخوانی و نمایش ویدیو تبلیغاتی نیتیو..." 
+        : "Loading native video ad...", 
+      "info"
+    );
 
-      requestAndShowRewardedAd(
-        () => {
-          showToast(lang === "fa" ? "ویدیو اسپانسر باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened, please watch till the end...", "info");
-        },
-        () => {
-          // Closed
-        },
-        () => {
-          // Rewarded
-          recordAdWatched();
-          executeAnalysis();
-        },
-        (err) => {
-          addLog('warn', "امکان نمایش تبلیغ ویدیویی وجود نداشت - شروع مستقیم آنالیز", err);
-          showToast(
-            lang === "fa"
-              ? "امکان دریافت ویدیو وجود نداشت؛ آنالیز مستقیم انجام شد."
-              : "Could not fetch ad; running analysis directly.",
-            "info"
-          );
-          // Apply 1 minute cooldown (60 seconds)
-          const cooldownUntil = Date.now() + 60 * 1000;
-          localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-          setCooldownTime(60);
-          
-          executeAnalysis();
-        }
-      );
-    } else {
-      // Web Simulator Mode
-      setAdOverlayActive(true);
-      setAdOverlayProgress(0);
-      setAdOverlaySeconds(15);
-    }
+    requestAndShowRewardedAd(
+      () => {
+        showToast(
+          lang === "fa" ? "ویدیو تبلیغاتی باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened...", 
+          "info"
+        );
+      },
+      () => {
+        // Closed
+      },
+      () => {
+        // Rewarded
+        recordAdWatched();
+        executeAnalysis();
+      },
+      (err) => {
+        addLog('warn', "امکان نمایش تبلیغ ویدیویی وجود نداشت - انجام مستقیم آنالیز", err);
+        showToast(
+          lang === "fa"
+            ? "تبلیغ دریافت نشد یا لغو گردید. آنالیز انجام شد."
+            : "Could not fetch ad; running analysis directly.",
+          "info"
+        );
+        executeAnalysis();
+      }
+    );
   };
 
   // Select sample watermelon to demonstrate
@@ -1338,7 +1294,7 @@ export default function App() {
 
   return (
     <div 
-      className={`min-h-screen bg-[#0A0F0D] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white font-sans ${webBannerActive && !isPremium ? "pb-20" : ""}`}
+      className="min-h-screen bg-[#0A0F0D] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white font-sans"
       dir={lang === "fa" ? "rtl" : "ltr"}
       id="main-container"
     >
@@ -2751,126 +2707,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 1. Simulated Tapsell Rewarded Video Ad Overlay (Only shown on Web Browser/PC/AI Studio previews) */}
-      <AnimatePresence>
-        {adOverlayActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] bg-black/95 flex flex-col justify-between p-6 md:p-10 font-sans select-none"
-            id="ad-video-overlay"
-            dir="rtl"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between w-full max-w-4xl mx-auto border-b border-zinc-800/50 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] md:text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold tracking-wider">
-                  SPONSOR VIDEO / ویدیو حامی مالی
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {adOverlaySeconds > 0 ? (
-                  <span className="text-xs text-slate-400 font-mono bg-[#111] px-3 py-1 rounded-xl border border-zinc-800 flex items-center gap-1.5 font-bold">
-                    <RotateCw className="w-3.5 h-3.5 animate-spin text-emerald-500" style={{ animationDuration: '3s' }} />
-                    <span>{adOverlaySeconds} ثانیه تا دریافت جایزه</span>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setAdOverlayActive(false);
-                      recordAdWatched();
-                      executeAnalysis();
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-green-500 transition-all flex items-center gap-1.5 cursor-pointer"
-                    id="ad-close-btn"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>دریافت جایزه و شروع تحلیل هوشمند</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Simulated Video Player Stage */}
-            <div className="flex-1 max-w-4xl w-full mx-auto flex flex-col items-center justify-center py-6">
-              <div className="relative w-full max-w-2xl aspect-video rounded-3xl bg-[#090F0D] border border-emerald-950/40 flex flex-col items-center justify-center p-6 text-center space-y-6 overflow-hidden shadow-2xl">
-                {/* Visual scan pulse background */}
-                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent animate-pulse pointer-events-none" />
-                <div className="absolute top-0 left-0 right-0 h-[1px] bg-emerald-500/20 animate-bounce" style={{ animationDuration: '4s' }} />
-                
-                <div className="w-20 h-20 rounded-full bg-[#141F1A] border border-emerald-900/50 flex items-center justify-center text-4xl shadow-xl shadow-emerald-950/40">
-                  🍉
-                </div>
-                
-                <div className="space-y-2 max-w-md">
-                  <h3 className="text-sm md:text-base font-extrabold text-white">
-                    برنامه هوشمند هندوانه‌سنج صوتی و دیجیتال
-                  </h3>
-                  <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed">
-                    با حمایت حامیان مالی برنامه، سنجش کیفیت برای شما به رایگان ارائه می‌شود. لطفاً تا اتمام ویدیو صبور باشید. از بردباری شما سپاسگزاریم.
-                  </p>
-                </div>
-
-                {/* Simulated Custom Progress bar */}
-                <div className="w-full max-w-md space-y-2 pt-4">
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>{Math.round(adOverlayProgress)}%</span>
-                    <span>15 ثانیه</span>
-                  </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
-                    <motion.div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-green-500" 
-                      style={{ width: `${adOverlayProgress}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="w-full max-w-4xl mx-auto border-t border-zinc-800/50 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-500 text-[10px] md:text-xs">
-              <p>این شبیه‌ساز پس از اتمام تایمر، مجوز شروع آنالیز را صادر می‌کند.</p>
-              <div className="flex items-center gap-4">
-                <span>توسعه یافته با ❤️ برای مایکت و تپسل</span>
-                <span>شناسه زون: {REWARDED_ZONE_ID}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 3. Tapsell Standard Banner Ad (Visible at bottom of all screens when not premium) */}
-      {webBannerActive && !isPremium && (
-        <div 
-          className="fixed bottom-0 left-0 right-0 z-[90] bg-[#0A120E]/95 border-t border-emerald-500/30 backdrop-blur-md p-2.5 px-4 shadow-2xl transition-all"
-          dir="rtl"
-        >
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-black font-extrabold text-sm shadow-md shadow-emerald-500/20">
-                🍉
-              </div>
-              <div className="text-right">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded">
-                    تبلیغات تپسل
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-200">هندوانه‌سنج هوشمند | حامی رسمی برنامه</span>
-                </div>
-                <p className="text-[10px] text-slate-400">نمایش بنر استاندارد تپسل (Tapsell Banner Ad)</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-400 bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-zinc-700/50 hidden sm:inline">
-                Tapsell Plus Banner
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

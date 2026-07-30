@@ -202,17 +202,25 @@ const registerGlobalEventListeners = () => {
 
   addUniversalListener('onInitializeFailed', (e: any) => {
     addLog('error', "تپسل پلاس: خطا در مقداردهی اولیه SDK نیتیو اندروید", e);
+    // Fallback attempt
+    isPreloading = false;
+    setTimeout(() => {
+      preloadRewardedAd();
+      if (localStorage.getItem("is_full_version") !== "true") {
+        showStandardBannerAd();
+      }
+    }, 2000);
   });
 
   addUniversalListener('response', (e: any) => {
     if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
     const data = e.detail || e.data || e;
-    const resId = data.responseId || e.responseId;
+    const resId = data.responseId || data.response_id || e.responseId || e.response_id || (typeof data === 'string' ? data : null);
     const adType = (data.adType || e.adType || "").toString();
 
-    addLog('info', `تپسل پلاس: پاسخ دریافت شد (${adType}) - ID: ${resId || 'نامشخص'}`, data);
+    addLog('info', `تپسل پلاس: پاسخ دریافت شد (${adType || 'ویدیو'}) - ID: ${resId || 'نامشخص'}`, data);
 
-    const isRewarded = !adType || adType.toLowerCase().includes("reward");
+    const isRewarded = !adType || adType.toLowerCase().includes("reward") || adType.toLowerCase().includes("video");
     if (isRewarded && resId) {
       preloadedAdId = resId;
       isPreloading = false;
@@ -312,6 +320,13 @@ export const initializeTapsell = (): void => {
         if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
           window.TapsellPlus.initialize(APP_TOKEN);
         }
+        // Fallback: trigger ad preloads after 1.5s in case onInitializeSuccess event was missed
+        setTimeout(() => {
+          if (localStorage.getItem("is_full_version") !== "true") {
+            preloadRewardedAd();
+            showStandardBannerAd();
+          }
+        }, 1500);
       } catch (e) {
         hasInitializedTapsell = false;
         addLog('error', "تپسل پلاس: استثنا در زمان مقداردهی اولیه", e);

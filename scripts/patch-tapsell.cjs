@@ -1349,12 +1349,26 @@ try {
   console.error('>>> [PATCH] Error updating ProGuard rules:', e.message);
 }
 
-// 5. Ensure AdMob APPLICATION_ID & Tapsell APP_KEY meta-data in AndroidManifest.xml
+// 5. Ensure Tapsell APP_KEY meta-data in AndroidManifest.xml (AdMob removed as requested)
 const manifestPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 try {
   if (fs.existsSync(manifestPath)) {
     let manifestContent = fs.readFileSync(manifestPath, 'utf8');
     let modified = false;
+
+    // Remove any legacy AdMob meta-data if present
+    if (manifestContent.includes('com.google.android.gms.ads.APPLICATION_ID')) {
+      manifestContent = manifestContent.replace(
+        /<!-- Google Mobile Ads SDK App ID required by TapsellPlus AdMob mediation -->\s*<meta-data\s+android:name="com\.google\.android\.gms\.ads\.APPLICATION_ID"\s+android:value="[^"]*"\s*\/>/,
+        ''
+      );
+      manifestContent = manifestContent.replace(
+        /<meta-data\s+android:name="com\.google\.android\.gms\.ads\.APPLICATION_ID"\s+android:value="[^"]*"\s*\/>/,
+        ''
+      );
+      modified = true;
+    }
+
     if (!manifestContent.includes('com.google.android.gms.permission.AD_ID')) {
       manifestContent = manifestContent.replace(
         '<uses-permission android:name="android.permission.INTERNET" />',
@@ -1362,16 +1376,7 @@ try {
       );
       modified = true;
     }
-    if (!manifestContent.includes('com.google.android.gms.ads.APPLICATION_ID')) {
-      const metadataTag = `
-        <!-- Google Mobile Ads SDK App ID required by TapsellPlus AdMob mediation -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
-    </application>`;
-      manifestContent = manifestContent.replace('</application>', metadataTag);
-      modified = true;
-    }
+
     if (manifestContent.includes('ir.tapsell.plus.APP_KEY')) {
       manifestContent = manifestContent.replace(
         /android:name="ir\.tapsell\.plus\.APP_KEY"\s+android:value="[^"]*"/,
@@ -1390,7 +1395,7 @@ try {
     }
     if (modified) {
       fs.writeFileSync(manifestPath, manifestContent, 'utf8');
-      console.log('>>> [PATCH] Updated AndroidManifest.xml with meta-data tags');
+      console.log('>>> [PATCH] Updated AndroidManifest.xml (AdMob removed, Tapsell App Key set)');
     }
   }
 } catch (e) {

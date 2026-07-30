@@ -2,8 +2,8 @@
 // Uses Native Tapsell Plus Mediation SDK (Standard Banner & Rewarded Video) and Myket In-App Purchase
 
 export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
-export const BANNER_ZONE_ID = "6a5e6056470fa5291867c9ab";
-export const REWARDED_ZONE_ID = "6a5df86f64fbcb2234b83d4e";
+export const BANNER_ZONE_ID = "6a6bd82487e27f02e0862437";
+export const REWARDED_ZONE_ID = "6a6bd848916ea735be539be8";
 
 declare global {
   interface Window {

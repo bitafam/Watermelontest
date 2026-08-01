@@ -37,16 +37,12 @@ import {
   initializeTapsell,
   startBannerRefresh,
   stopBannerRefresh,
-  isRewardedAdReady,
-  showRewardedAd,
   requestAndShowRewardedAd,
-  isNativePlatform,
-  REWARDED_ZONE_ID,
-  BANNER_ZONE_ID,
   isFullVersionActive,
   getSystemLogs,
   subscribeSystemLogs,
   addLog,
+  BANNER_ZONE_ID,
   LogEntry
 } from "./utils/tapsell";
 
@@ -397,10 +393,62 @@ export default function App() {
     if (updated.length >= 3) {
       const cooldownUntil = now + 5 * 60 * 1000;
       localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-      setCooldownTime(300); // 300 seconds
+      setCooldownTime(300);
       setWatchedAdTimes([]);
       localStorage.setItem("watermelon_watched_ads", JSON.stringify([]));
     }
+  };
+
+  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
+  const analyzeWatermelon = () => {
+    if (isPremium) {
+      executeAnalysis();
+      return;
+    }
+
+    if (cooldownTime > 0) {
+      showToast(
+        lang === "fa" 
+          ? `لطفاً تا اتمام زمان محدودیت صبور باشید (${cooldownTime} ثانیه باقی‌مانده).` 
+          : `Please wait ${cooldownTime}s until the rate limit ends.`, 
+        "error"
+      );
+      return;
+    }
+
+    showToast(
+      lang === "fa" 
+        ? "در حال فراخوانی و نمایش تبلیغ ویدیویی جایزه‌ای تپسل..." 
+        : "Loading rewarded video ad...", 
+      "info"
+    );
+
+    requestAndShowRewardedAd(
+      () => {
+        showToast(
+          lang === "fa" ? "ویدیو تبلیغاتی باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened...", 
+          "info"
+        );
+      },
+      () => {
+        // Closed
+      },
+      () => {
+        // Rewarded
+        recordAdWatched();
+        executeAnalysis();
+      },
+      (err) => {
+        addLog('warn', "امکان نمایش تبلیغ ویدیویی وجود نداشت - انجام مستقیم آنالیز", err);
+        showToast(
+          lang === "fa"
+            ? "تبلیغ دریافت نشد یا لغو گردید. آنالیز انجام شد."
+            : "Could not fetch ad; running analysis directly.",
+          "info"
+        );
+        executeAnalysis();
+      }
+    );
   };
 
   // Helper function to analyze the watermelon image completely offline/client-side using HTML5 Canvas
@@ -1119,58 +1167,6 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
-  const analyzeWatermelon = () => {
-    if (isPremium) {
-      executeAnalysis();
-      return;
-    }
-
-    if (cooldownTime > 0) {
-      showToast(
-        lang === "fa" 
-          ? `لطفاً تا اتمام زمان محدودیت صبور باشید (${cooldownTime} ثانیه باقی‌مانده).` 
-          : `Please wait ${cooldownTime}s until the rate limit ends.`, 
-        "error"
-      );
-      return;
-    }
-
-    showToast(
-      lang === "fa" 
-        ? "در حال فراخوانی و نمایش ویدیو تبلیغاتی نیتیو..." 
-        : "Loading native video ad...", 
-      "info"
-    );
-
-    requestAndShowRewardedAd(
-      () => {
-        showToast(
-          lang === "fa" ? "ویدیو تبلیغاتی باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened...", 
-          "info"
-        );
-      },
-      () => {
-        // Closed
-      },
-      () => {
-        // Rewarded
-        recordAdWatched();
-        executeAnalysis();
-      },
-      (err) => {
-        addLog('warn', "امکان نمایش تبلیغ ویدیویی وجود نداشت - انجام مستقیم آنالیز", err);
-        showToast(
-          lang === "fa"
-            ? "تبلیغ دریافت نشد یا لغو گردید. آنالیز انجام شد."
-            : "Could not fetch ad; running analysis directly.",
-          "info"
-        );
-        executeAnalysis();
-      }
-    );
   };
 
   // Select sample watermelon to demonstrate

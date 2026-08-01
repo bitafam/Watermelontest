@@ -316,24 +316,23 @@ export const initializeTapsell = (): void => {
       registerGlobalEventListeners();
       hasInitializedTapsell = true;
       try {
-        addLog('info', `تپسل پلاس: راه اندازی SDK نیتیو با APP_TOKEN...`, APP_TOKEN.substring(0, 10) + '...');
+        addLog('info', `تپسل پلاس: راه اندازی SDK نیتیو اندروید...`, APP_TOKEN.substring(0, 10) + '...');
         if (window.TapsellPlus && typeof window.TapsellPlus.initialize === "function") {
           window.TapsellPlus.initialize(APP_TOKEN);
         }
-        // Fallback: trigger ad preloads after 1.5s in case onInitializeSuccess event was missed
         setTimeout(() => {
           if (localStorage.getItem("is_full_version") !== "true") {
             preloadRewardedAd();
             showStandardBannerAd();
           }
-        }, 1500);
+        }, 1200);
       } catch (e) {
         hasInitializedTapsell = false;
         addLog('error', "تپسل پلاس: استثنا در زمان مقداردهی اولیه", e);
       }
     } else {
       hasInitializedTapsell = true;
-      addLog('info', "برنامه در حال اجرا در محیط وب است. تبلیغات نیتیو تپسل روی دستگاه اندروید اجرا می‌شوند.");
+      addLog('info', "برنامه در حال اجرا در محیط وب است. تبلیغات نیتیو تپسل روی دستگاه اندروید با کلیدهای تنظیم شده اجرا می‌شوند.");
     }
   };
 
@@ -402,8 +401,13 @@ export const preloadRewardedAd = (): void => {
       addLog('error', "تپسل پلاس: استثنا در درخواست پیش‌بارگذاری ویدیو", e);
     }
   } else {
-    isPreloading = false;
-    isPreloaded = false;
+    setTimeout(() => {
+      isPreloading = false;
+      isPreloaded = true;
+      preloadedAdId = "web-simulated-ad-" + Date.now();
+      addLog('info', "محیط تست وب: تبلیغ ویدیویی جایزه‌ای آماده نمایش فرض شد.");
+      if (onAdPreloadedCallback) onAdPreloadedCallback();
+    }, 1000);
   }
 };
 
@@ -431,9 +435,11 @@ export const requestAndShowRewardedAd = (
   }
 
   if (!isNativePlatform()) {
-    // In browser preview, fulfill reward directly without fake ad video overlays
-    onAdRewarded();
-    onAdClosed();
+    if (onAdOpened) onAdOpened();
+    setTimeout(() => {
+      if (onAdRewarded) onAdRewarded();
+      if (onAdClosed) onAdClosed();
+    }, 1200);
     return;
   }
 
@@ -516,8 +522,16 @@ export const showRewardedAd = (
       preloadRewardedAd();
     }
   } else {
-    onAdRewarded();
-    onAdClosed();
+    addLog('info', "نمایش ویدیوی جایزه‌ای (محیط تست وب)");
+    if (onAdOpened) onAdOpened();
+    setTimeout(() => {
+      if (onAdRewarded) onAdRewarded();
+      if (onAdClosed) onAdClosed();
+      isPreloading = false;
+      isPreloaded = false;
+      preloadedAdId = null;
+      preloadRewardedAd();
+    }, 1500);
   }
 };
 
@@ -542,7 +556,7 @@ export const showStandardBannerAd = (): void => {
       addLog('error', "تپسل پلاس: استثنا در درخواست تبلیغ بنری", e);
     }
   } else {
-    addLog('info', "تپسل پلاس: بنر استاندارد روی دستگاه اندروید در پایین صفحه چسبیده نمایش داده می‌شود.");
+    addLog('info', `تپسل پلاس: بنر استاندارد فعال شد (Zone ID: ${BANNER_ZONE_ID})`);
   }
 };
 

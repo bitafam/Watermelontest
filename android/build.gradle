@@ -21,6 +21,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://maven.myket.ir' }
         maven { url 'https://repo.tapsell.ir/repository/maven-releases/' }
         maven { url 'https://jitpack.io' }
     }

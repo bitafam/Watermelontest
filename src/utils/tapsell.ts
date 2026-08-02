@@ -1,9 +1,19 @@
 // Tapsell Plus (Mediation) Real Ad Integration & Myket Billing for Capacitor / Android Native
 // Uses Native Tapsell Plus Mediation SDK (Standard Banner & Rewarded Video) and Myket In-App Purchase
 
+import { registerPlugin } from '@capacitor/core';
+
 export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
 export const BANNER_ZONE_ID = "6a6bd82487e27f02e0862437";
 export const REWARDED_ZONE_ID = "6a6bd848916ea735be539be8";
+
+export interface MyketBillingPluginInterface {
+  init(options?: { publicKey?: string }): Promise<void>;
+  purchase(options?: { sku?: string }): Promise<{ purchaseToken: string; orderId?: string; sku?: string }>;
+  checkPurchase(): Promise<{ isPurchased: boolean; purchased: boolean }>;
+}
+
+export const MyketBilling = registerPlugin<MyketBillingPluginInterface>('MyketBilling');
 
 declare global {
   interface Window {
@@ -106,30 +116,87 @@ const ensureTapsellNativeBridge = () => {
     }
   };
 
+  if (!win.TapsellPlus.BANNER_320x50) win.TapsellPlus.BANNER_320x50 = 1;
+  if (!win.TapsellPlus.TOP_BOTTOM_GRAVITY_CENTER) win.TapsellPlus.TOP_BOTTOM_GRAVITY_CENTER = 1;
+  if (!win.TapsellPlus.TOP_BOTTOM_GRAVITY_BOTTOM) win.TapsellPlus.TOP_BOTTOM_GRAVITY_BOTTOM = 2;
+  if (!win.TapsellPlus.TOP_BOTTOM_GRAVITY_TOP) win.TapsellPlus.TOP_BOTTOM_GRAVITY_TOP = 1;
+
   // Attach standard methods to window.TapsellPlus according to Tapsell Plus Mediation spec
   if (!win.TapsellPlus.initialize) {
-    win.TapsellPlus.initialize = (appKey: string, s?: any, e?: any) => execCall('initialize', [appKey], s, e);
+    win.TapsellPlus.initialize = (appKey: any, s?: any, e?: any) => {
+      const key = (typeof appKey === 'object' && appKey !== null) ? (appKey.appKey || appKey.appId || appKey.app_key || '') : appKey;
+      execCall('initialize', [key], s, e);
+    };
   }
   if (!win.TapsellPlus.requestRewardedVideoAd) {
-    win.TapsellPlus.requestRewardedVideoAd = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+    win.TapsellPlus.requestRewardedVideoAd = (zoneId: any, s?: any, e?: any) => {
+      const zId = (typeof zoneId === 'object' && zoneId !== null) ? (zoneId.zoneId || zoneId.zone_id || '') : zoneId;
+      execCall('requestRewardedVideoAd', [zId], s, e);
+    };
   }
   if (!win.TapsellPlus.requestRewardedVideo) {
-    win.TapsellPlus.requestRewardedVideo = (zoneId: string, s?: any, e?: any) => execCall('requestRewardedVideoAd', [zoneId], s, e);
+    win.TapsellPlus.requestRewardedVideo = (zoneId: any, s?: any, e?: any) => {
+      const zId = (typeof zoneId === 'object' && zoneId !== null) ? (zoneId.zoneId || zoneId.zone_id || '') : zoneId;
+      execCall('requestRewardedVideoAd', [zId], s, e);
+    };
   }
   if (!win.TapsellPlus.showRewardedVideoAd) {
-    win.TapsellPlus.showRewardedVideoAd = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+    win.TapsellPlus.showRewardedVideoAd = (responseId: any, s?: any, e?: any) => {
+      const resId = (typeof responseId === 'object' && responseId !== null) ? (responseId.responseId || responseId.response_id || '') : responseId;
+      execCall('showRewardedVideoAd', [resId], s, e);
+    };
   }
   if (!win.TapsellPlus.showRewardedVideo) {
-    win.TapsellPlus.showRewardedVideo = (responseId: string, s?: any, e?: any) => execCall('showRewardedVideoAd', [responseId], s, e);
+    win.TapsellPlus.showRewardedVideo = (responseId: any, s?: any, e?: any) => {
+      const resId = (typeof responseId === 'object' && responseId !== null) ? (responseId.responseId || responseId.response_id || '') : responseId;
+      execCall('showRewardedVideoAd', [resId], s, e);
+    };
   }
   if (!win.TapsellPlus.requestStandardBannerAd) {
-    win.TapsellPlus.requestStandardBannerAd = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+    win.TapsellPlus.requestStandardBannerAd = (zoneId: any, pos: any = 2, size: any = 1, s?: any, e?: any) => {
+      let zId = zoneId;
+      let p = 2;
+      let sz = 1;
+      let success = s;
+      let error = e;
+
+      if (typeof zoneId === 'object' && zoneId !== null) {
+        zId = zoneId.zoneId || zoneId.zone_id || '';
+        sz = zoneId.bannerType || zoneId.size || 1;
+        success = pos;
+        error = size;
+      } else {
+        p = pos || 2;
+        sz = size || 1;
+      }
+      execCall('requestStandardBannerAd', [zId, p, sz], success, error);
+    };
+  }
+  if (!win.TapsellPlus.showStandardBannerAd) {
+    win.TapsellPlus.showStandardBannerAd = (zoneIdOrOptions: any, s?: any, e?: any) => {
+      let zId = zoneIdOrOptions;
+      let p = 2;
+      if (typeof zoneIdOrOptions === 'object' && zoneIdOrOptions !== null) {
+        zId = zoneIdOrOptions.responseId || zoneIdOrOptions.response_id || zoneIdOrOptions.zoneId || zoneIdOrOptions.zone_id || '';
+        if (zoneIdOrOptions.verticalGravity === 2 || zoneIdOrOptions.verticalGravity === 80) p = 2;
+      }
+      execCall('showStandardBannerAd', [zId, p], s, e);
+    };
   }
   if (!win.TapsellPlus.showBannerAd) {
-    win.TapsellPlus.showBannerAd = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+    win.TapsellPlus.showBannerAd = (zoneId: any, pos = 2, size = 1, s?: any, e?: any) => {
+      const zId = (typeof zoneId === 'object' && zoneId !== null) ? (zoneId.zoneId || zoneId.zone_id || zoneId.responseId || '') : zoneId;
+      execCall('createBanner', [zId, pos, size], s, e);
+    };
   }
   if (!win.TapsellPlus.createBanner) {
-    win.TapsellPlus.createBanner = (zoneId: string, pos = 2, size = 1, s?: any, e?: any) => execCall('createBanner', [zoneId, pos, size], s, e);
+    win.TapsellPlus.createBanner = (zoneId: any, pos = 2, size = 1, s?: any, e?: any) => {
+      const zId = (typeof zoneId === 'object' && zoneId !== null) ? (zoneId.zoneId || zoneId.zone_id || zoneId.responseId || '') : zoneId;
+      execCall('createBanner', [zId, pos, size], s, e);
+    };
+  }
+  if (!win.TapsellPlus.hideStandardBannerAd) {
+    win.TapsellPlus.hideStandardBannerAd = (s?: any, e?: any) => execCall('hideBanner', [], s, e);
   }
   if (!win.TapsellPlus.hideBanner) {
     win.TapsellPlus.hideBanner = (s?: any, e?: any) => execCall('hideBanner', [], s, e);
@@ -617,6 +684,18 @@ export const stopBannerRefresh = (): void => {
 // Premium check: returns true if the user has purchased the full version
 export const isFullVersionActive = async (): Promise<boolean> => {
   if (isNativePlatform()) {
+    try {
+      const res = await MyketBilling.checkPurchase();
+      const active = !!(res && (res.isPurchased || res.purchased));
+      if (active) {
+        addLog('info', "مایکت (Capacitor): وضعیت خرید تایید شد.");
+        localStorage.setItem("is_full_version", "true");
+        return true;
+      }
+    } catch (e) {
+      addLog('info', "MyketBilling Capacitor plugin checkPurchase fallback", e);
+    }
+
     return new Promise((resolve) => {
       const handleSuccess = (result: string) => {
         addLog('info', `مایکت: استعلام وضعیت خرید: ${result}`);
@@ -665,6 +744,19 @@ export const isFullVersionActive = async (): Promise<boolean> => {
 // Purchase full version: triggers purchase flow and returns "success", "already_owned", or throws error
 export const purchaseFullVersion = async (): Promise<string> => {
   if (isNativePlatform()) {
+    try {
+      addLog('info', "مایکت: ارسال درخواست شروع درگاه خرید درون‌برنامه‌ای (MyketBilling Capacitor)...");
+      const res = await MyketBilling.purchase({ sku: 'full_version' });
+      addLog('success', `مایکت: خرید با موفقیت انجام شد! توکن: ${res.purchaseToken}`);
+      localStorage.setItem("is_full_version", "true");
+      return "success";
+    } catch (pluginError: any) {
+      addLog('warn', "MyketBilling plugin purchase error / fallback to TapsellPlus", pluginError);
+      if (pluginError && typeof pluginError.message === 'string' && pluginError.message.includes("لغو")) {
+        throw new Error("پرداخت توسط شما لغو شد.");
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const handleSuccess = (result: string) => {
         addLog('success', `مایکت: نتیجه فرایند پرداخت: ${result}`);

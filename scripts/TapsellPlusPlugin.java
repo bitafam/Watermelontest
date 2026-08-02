@@ -82,24 +82,61 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 		Log.i("TapsellPlusPlugin", "execute action: " + action);
 
 		if (action.equalsIgnoreCase("initialize") || action.equalsIgnoreCase("init")) {
-			String appKey = args.optString(0, "");
+			String appKey = "";
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					appKey = obj.optString("appKey", obj.optString("app_key", obj.optString("appId", "")));
+				} else {
+					appKey = args.optString(0, "");
+				}
+			}
 			init(appKey);
 			CallbackContext.success();
 			return true;
 		}
 		if (action.equalsIgnoreCase("createBanner") || action.equalsIgnoreCase("showBannerAd") || action.equalsIgnoreCase("requestBannerAd") || action.equalsIgnoreCase("requestStandardBannerAd") || action.equalsIgnoreCase("showStandardBannerAd") || action.equalsIgnoreCase("createStandardBanner")) {
-			String zoneId = args.optString(0, "");
-			int position = args.optInt(1, 2); // 2 = Gravity.BOTTOM
-			int size = args.optInt(2, 1);
+			String zoneId = "";
+			int position = 2; // 2 = Gravity.BOTTOM
+			int size = 1;
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					zoneId = obj.optString("zoneId", obj.optString("zone_id", obj.optString("responseId", obj.optString("response_id", ""))));
+					position = obj.optInt("horizontalGravity", obj.optInt("position", obj.optInt("verticalGravity", 2)));
+					if (obj.has("verticalGravity") && (obj.optInt("verticalGravity") == 2 || obj.optInt("verticalGravity") == 80)) {
+						position = 2;
+					}
+					size = obj.optInt("bannerType", obj.optInt("size", 1));
+				} else {
+					zoneId = args.optString(0, "");
+					position = args.optInt(1, 2);
+					size = args.optInt(2, 1);
+				}
+			}
 			createBanner(zoneId, position, size);
 			CallbackContext.success();
 			return true;
 		}
 		if (action.equalsIgnoreCase("createBannerAtXY")) {
-			String zoneId = args.optString(0, "");
-			int x = args.optInt(1, 0);
-			int y = args.optInt(2, 0);
-			int size = args.optInt(3, 1);
+			String zoneId = "";
+			int x = 0;
+			int y = 0;
+			int size = 1;
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					zoneId = obj.optString("zoneId", obj.optString("zone_id", ""));
+					x = obj.optInt("x", 0);
+					y = obj.optInt("y", 0);
+					size = obj.optInt("bannerType", obj.optInt("size", 1));
+				} else {
+					zoneId = args.optString(0, "");
+					x = args.optInt(1, 0);
+					y = args.optInt(2, 0);
+					size = args.optInt(3, 1);
+				}
+			}
 			createBannerAtXY(zoneId, x, y, size);
 			CallbackContext.success();
 			return true;
@@ -120,25 +157,57 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 			return true;
 		}
 		if (action.equalsIgnoreCase("requestRewardedVideo") || action.equalsIgnoreCase("requestRewardedVideoAd")) {
-			String zoneId = args.optString(0, "");
+			String zoneId = "";
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					zoneId = obj.optString("zoneId", obj.optString("zone_id", ""));
+				} else {
+					zoneId = args.optString(0, "");
+				}
+			}
 			requestRewardedVideo(zoneId);
 			CallbackContext.success();
 		    return true;
 		}
 		if (action.equalsIgnoreCase("requestInterstitial") || action.equalsIgnoreCase("requestInterstitialAd")) {
-			String zoneId = args.optString(0, "");
+			String zoneId = "";
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					zoneId = obj.optString("zoneId", obj.optString("zone_id", ""));
+				} else {
+					zoneId = args.optString(0, "");
+				}
+			}
 			requestInterstitial(zoneId);
 			CallbackContext.success();
 		    return true;
 		}
 		if (action.equalsIgnoreCase("showInterstitial") || action.equalsIgnoreCase("showInterstitialAd")) {
-			String responseId = args.optString(0, "");
+			String responseId = "";
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					responseId = obj.optString("responseId", obj.optString("response_id", ""));
+				} else {
+					responseId = args.optString(0, "");
+				}
+			}
 			showInterstitial(responseId);
 			CallbackContext.success();
 		    return true;
 		}
 		if (action.equalsIgnoreCase("showRewardedVideo") || action.equalsIgnoreCase("showRewardedVideoAd")) {
-			String responseId = args.optString(0, "");
+			String responseId = "";
+			if (args.length() > 0) {
+				JSONObject obj = args.optJSONObject(0);
+				if (obj != null) {
+					responseId = obj.optString("responseId", obj.optString("response_id", ""));
+				} else {
+					responseId = args.optString(0, "");
+				}
+			}
 			showRewardedVideo(responseId);
 			CallbackContext.success();
 		    return true;

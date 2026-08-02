@@ -64,7 +64,11 @@
 
         <!-- Tapsell App Key / Configuration -->
         <meta-data
-            android:name="ir.tapsell.plus.APP_KEY" android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk" />
+            android:name="ir.tapsell.plus.appId"
+            android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk" />
+        <meta-data
+            android:name="ir.tapsell.plus.APP_KEY"
+            android:value="qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk" />
     
         <!-- Google Mobile Ads SDK App ID (Required by Google Mobile Ads SDK bundled in TapsellPlus to prevent startup crash) -->
         <meta-data

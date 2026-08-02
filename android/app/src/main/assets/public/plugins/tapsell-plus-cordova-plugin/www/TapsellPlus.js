@@ -1,29 +1,7 @@
 var exec = require('cordova/exec');
 
-var listeners = {};
-
 var TapsellPlus = {
-	on: function (eventName, callback) {
-		if (!listeners[eventName]) {
-			listeners[eventName] = [];
-		}
-		listeners[eventName].push(callback);
-	},
-	off: function (eventName, callback) {
-		if (listeners[eventName]) {
-			listeners[eventName] = listeners[eventName].filter(function(cb) { return cb !== callback; });
-		}
-	},
-	emit: function (eventName, data) {
-		if (listeners[eventName]) {
-			listeners[eventName].forEach(function(cb) {
-				try { cb(data); } catch(e) { console.error('TapsellPlus listener error', e); }
-			});
-		}
-	},
 	initialize: function (appKey, successCallback, errorCallback) {
-		if (typeof successCallback === 'function') this.on('onInitializeSuccess', successCallback);
-		if (typeof errorCallback === 'function') this.on('onInitializeFailed', errorCallback);
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'initialize', [appKey]);
 	},
 	setGDPRConsent: function (consent, successCallback, errorCallback) {
@@ -56,23 +34,8 @@ var TapsellPlus = {
 	requestRewardedVideoAd: function (zoneId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestRewardedVideoAd', [zoneId]);
 	},
-	requestRewardedVideo: function (zoneId, successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestRewardedVideoAd', [zoneId]);
-	},
 	showRewardedVideoAd: function (responseId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showRewardedVideoAd', [responseId]);
-	},
-	showRewardedVideo: function (responseId, successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showRewardedVideoAd', [responseId]);
-	},
-	createBanner: function (zoneId, position, size, successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showBannerAd', [zoneId, position, size]);
-	},
-	hideBanner: function (successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'hideBanner', []);
-	},
-	removeBanner: function (successCallback, errorCallback) {
-		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'removeBanner', []);
 	},
 	requestInterstitialAd: function (zoneId, successCallback, errorCallback) {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'requestInterstitialAd', [zoneId]);
@@ -81,22 +44,10 @@ var TapsellPlus = {
 		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'showInterstitialAd', [responseId]);
 	},
 	purchaseFullVersion: function (successCallback, errorCallback) {
-		exec(successCallback, function(err) {
-			if (err === 'Class not found' || (typeof err === 'string' && err.indexOf('not found') !== -1)) {
-				exec(successCallback, errorCallback, 'TapsellPlus', 'purchaseFullVersion', []);
-			} else {
-				if (errorCallback) errorCallback(err);
-			}
-		}, 'TapsellPlusPlugin', 'purchaseFullVersion', []);
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'purchaseFullVersion', []);
 	},
 	checkFullVersion: function (successCallback, errorCallback) {
-		exec(successCallback, function(err) {
-			if (err === 'Class not found' || (typeof err === 'string' && err.indexOf('not found') !== -1)) {
-				exec(successCallback, errorCallback, 'TapsellPlus', 'checkFullVersion', []);
-			} else {
-				if (errorCallback) errorCallback(err);
-			}
-		}, 'TapsellPlusPlugin', 'checkFullVersion', []);
+		exec(successCallback, errorCallback, 'TapsellPlusPlugin', 'checkFullVersion', []);
 	}
 };
 

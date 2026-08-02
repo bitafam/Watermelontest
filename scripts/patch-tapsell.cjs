@@ -101,7 +101,24 @@ try {
 }
 
 // 2. Sync patched Java Plugin file
-if (fs.existsSync(capacitorJavaPath)) {
+if (fs.existsSync(localJavaSourcePath)) {
+  const javaContent = fs.readFileSync(localJavaSourcePath, 'utf8');
+  try {
+    ensureDirectoryExistence(capacitorJavaPath);
+    fs.writeFileSync(capacitorJavaPath, javaContent, 'utf8');
+    console.log('>>> [PATCH] Copied master TapsellPlusPlugin.java to Capacitor Android');
+  } catch (e) {
+    console.error('>>> [PATCH] Error copying Java source to Capacitor:', e.message);
+  }
+
+  try {
+    ensureDirectoryExistence(nodeModulesJavaPath);
+    fs.writeFileSync(nodeModulesJavaPath, javaContent, 'utf8');
+    console.log('>>> [PATCH] Copied master TapsellPlusPlugin.java to node_modules');
+  } catch (e) {
+    console.error('>>> [PATCH] Error copying Java source to node_modules:', e.message);
+  }
+} else if (fs.existsSync(capacitorJavaPath)) {
   const javaContent = fs.readFileSync(capacitorJavaPath, 'utf8');
   
   // Copy to local backup/source
@@ -117,17 +134,6 @@ if (fs.existsSync(capacitorJavaPath)) {
     console.log('>>> [PATCH] Patched TapsellPlusPlugin.java in node_modules');
   } catch (e) {
     console.error('>>> [PATCH] Error patching node_modules Java:', e.message);
-  }
-} else if (fs.existsSync(localJavaSourcePath)) {
-  const javaContent = fs.readFileSync(localJavaSourcePath, 'utf8');
-  try {
-    ensureDirectoryExistence(capacitorJavaPath);
-    fs.writeFileSync(capacitorJavaPath, javaContent, 'utf8');
-    ensureDirectoryExistence(nodeModulesJavaPath);
-    fs.writeFileSync(nodeModulesJavaPath, javaContent, 'utf8');
-    console.log('>>> [PATCH] Restored TapsellPlusPlugin.java to Capacitor and node_modules');
-  } catch (e) {
-    console.error('>>> [PATCH] Error restoring Java source:', e.message);
   }
 }
 

@@ -52,6 +52,7 @@ jobs:
 
       - name: Initialize Capacitor Android
         run: |
+          node scripts/patch-tapsell.cjs
           if [ ! -d "android" ]; then
             npx cap add android
           fi

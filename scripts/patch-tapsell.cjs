@@ -137,4 +137,43 @@ if (fs.existsSync(localJavaSourcePath)) {
   }
 }
 
+// 3. Sync IInAppBillingService.aidl file
+const localAidlSourcePath = path.join(__dirname, 'IInAppBillingService.aidl');
+const capacitorAidlPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'aidl', 'com', 'android', 'vending', 'billing', 'IInAppBillingService.aidl');
+const appAidlPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'aidl', 'com', 'android', 'vending', 'billing', 'IInAppBillingService.aidl');
+const nodeModulesAidlPath = path.join(__dirname, '..', 'node_modules', 'tapsell-plus-cordova-plugin', 'src', 'aidl', 'com', 'android', 'vending', 'billing', 'IInAppBillingService.aidl');
+
+const defaultAidlContent = `package com.android.vending.billing;
+
+import android.os.Bundle;
+
+interface IInAppBillingService {
+    int isBillingSupported(int apiVersion, String packageName, String type);
+    Bundle getSkuDetails(int apiVersion, String packageName, String type, in Bundle skusBundle);
+    Bundle getBuyIntent(int apiVersion, String packageName, String sku, String type, String developerPayload);
+    Bundle getPurchases(int apiVersion, String packageName, String type, String continuationToken);
+    int consumePurchase(int apiVersion, String packageName, String purchaseToken);
+}
+`;
+
+let aidlContent = defaultAidlContent;
+if (fs.existsSync(localAidlSourcePath)) {
+  aidlContent = fs.readFileSync(localAidlSourcePath, 'utf8');
+} else {
+  try {
+    ensureDirectoryExistence(localAidlSourcePath);
+    fs.writeFileSync(localAidlSourcePath, defaultAidlContent, 'utf8');
+  } catch (e) {}
+}
+
+[capacitorAidlPath, appAidlPath, nodeModulesAidlPath].forEach((p) => {
+  try {
+    ensureDirectoryExistence(p);
+    fs.writeFileSync(p, aidlContent, 'utf8');
+    console.log('>>> [PATCH] Synced IInAppBillingService.aidl to:', p);
+  } catch (e) {
+    console.error('>>> [PATCH] Error syncing AIDL to', p, ':', e.message);
+  }
+});
+
 console.log('>>> [PATCH] TapsellPlus patch completed successfully!');

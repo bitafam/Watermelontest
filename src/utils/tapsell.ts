@@ -379,6 +379,8 @@ export const initializeTapsell = (): void => {
     if (hasInitializedTapsell) return;
 
     if (isNativePlatform()) {
+      const win = window as any;
+      if (!win.cordova || !win.TapsellPlus) { return; }
       ensureTapsellNativeBridge();
       registerGlobalEventListeners();
       hasInitializedTapsell = true;

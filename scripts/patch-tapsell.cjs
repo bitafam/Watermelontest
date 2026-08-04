@@ -226,7 +226,7 @@ if (fs.existsSync(localAidlSourcePath)) {
   } catch (e) {}
 }
 
-[capacitorAidlPath, appAidlPath, nodeModulesAidlPath].forEach((p) => {
+[capacitorAidlPath].forEach((p) => {
   try {
     ensureDirectoryExistence(p);
     fs.writeFileSync(p, aidlContent, 'utf8');

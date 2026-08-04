@@ -458,9 +458,9 @@ export const preloadRewardedAd = (): void => {
     try {
       addLog('info', "تپسل پلاس: درخواست پیش‌بارگذاری ویدیو جایزه‌ای...", REWARDED_ZONE_ID);
       if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideoAd === "function") {
-        window.TapsellPlus.requestRewardedVideoAd(REWARDED_ZONE_ID);
+        window.TapsellPlus.requestRewardedVideoAd(REWARDED_ZONE_ID, () => {}, () => {});
       } else if (window.TapsellPlus && typeof window.TapsellPlus.requestRewardedVideo === "function") {
-        window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
+        window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID, () => {}, () => {});
       }
     } catch (e) {
       isPreloading = false;
@@ -579,9 +579,9 @@ export const showRewardedAd = (
 
       addLog('info', `تپسل پلاس: دستور نمایش ویدیو جایزه‌ای نیتیو با ID: ${activeAdId}`);
       if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideoAd === "function") {
-        window.TapsellPlus.showRewardedVideoAd(activeAdId);
+        window.TapsellPlus.showRewardedVideoAd(activeAdId, () => {}, () => {});
       } else if (window.TapsellPlus && typeof window.TapsellPlus.showRewardedVideo === "function") {
-        window.TapsellPlus.showRewardedVideo(activeAdId);
+        window.TapsellPlus.showRewardedVideo(activeAdId, () => {}, () => {});
       }
     } catch (e) {
       addLog('error', "تپسل پلاس: استثنا در فراخوانی showRewardedVideo", e);
@@ -613,11 +613,11 @@ export const showStandardBannerAd = (): void => {
       addLog('info', "تپسل پلاس: درخواست ساخت تبلیغ بنری استاندارد در پایین صفحه (Gravity.BOTTOM)...");
       ensureTapsellNativeBridge();
       if (typeof window.TapsellPlus.requestStandardBannerAd === "function") {
-        window.TapsellPlus.requestStandardBannerAd(BANNER_ZONE_ID, 2, 1);
+        window.TapsellPlus.requestStandardBannerAd(BANNER_ZONE_ID, 2, 1, () => {}, () => {});
       } else if (typeof window.TapsellPlus.showBannerAd === "function") {
-        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2, 1);
+        window.TapsellPlus.showBannerAd(BANNER_ZONE_ID, 2, 1, () => {}, () => {});
       } else if (typeof window.TapsellPlus.createBanner === "function") {
-        window.TapsellPlus.createBanner(BANNER_ZONE_ID, 2, 1);
+        window.TapsellPlus.createBanner(BANNER_ZONE_ID, 2, 1, () => {}, () => {});
       }
     } catch (e) {
       addLog('error', "تپسل پلاس: استثنا در درخواست تبلیغ بنری", e);

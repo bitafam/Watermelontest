@@ -226,13 +226,25 @@ if (fs.existsSync(localAidlSourcePath)) {
   } catch (e) {}
 }
 
-[capacitorAidlPath].forEach((p) => {
+[appAidlPath].forEach((p) => {
   try {
     ensureDirectoryExistence(p);
     fs.writeFileSync(p, aidlContent, 'utf8');
     console.log('>>> [PATCH] Synced IInAppBillingService.aidl to:', p);
   } catch (e) {
     console.error('>>> [PATCH] Error syncing AIDL to', p, ':', e.message);
+  }
+});
+
+// Remove from capacitor-cordova-android-plugins and node_modules to avoid duplicate class
+[capacitorAidlPath, nodeModulesAidlPath].forEach((p) => {
+  try {
+    if (fs.existsSync(p)) {
+      fs.unlinkSync(p);
+      console.log('>>> [PATCH] Removed duplicate AIDL from:', p);
+    }
+  } catch (e) {
+    // Ignore
   }
 });
 

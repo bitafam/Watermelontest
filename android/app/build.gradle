@@ -52,7 +52,6 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
-    implementation 'ir.tapsell.plus:tapsell-plus-sdk-android:2.1.8'
 }
 
 apply from: 'capacitor.build.gradle'

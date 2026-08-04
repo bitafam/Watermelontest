@@ -118,9 +118,12 @@ public class MyketBillingPlugin extends Plugin {
 
     @PluginMethod
     public void purchase(PluginCall call) {
-        String sku = call.getString("sku", call.getString("productId", "full_version"));
+        String sku = call.getString("sku", call.getString("productId", "Fullversion"));
         if (sku == null || sku.isEmpty()) {
-            sku = "full_version";
+            sku = "Fullversion";
+        }
+        if (sku.equals("full_version") || sku.equalsIgnoreCase("premium")) {
+            sku = "Fullversion";
         }
         
         activePurchaseCall = call;
@@ -213,8 +216,13 @@ public class MyketBillingPlugin extends Plugin {
                 boolean purchased = false;
                 if (response == 0) {
                     ArrayList<String> ownedSkus = ownedItems.getStringArrayList("INAPP_PURCHASE_ITEM_LIST");
-                    if (ownedSkus != null && !ownedSkus.isEmpty()) {
-                        purchased = true;
+                    if (ownedSkus != null) {
+                        for (String itemSku : ownedSkus) {
+                            if (itemSku != null && (itemSku.equalsIgnoreCase("Fullversion") || itemSku.equalsIgnoreCase("full_version") || itemSku.equalsIgnoreCase("premium"))) {
+                                purchased = true;
+                                break;
+                            }
+                        }
                     }
                 }
                 JSObject res = new JSObject();

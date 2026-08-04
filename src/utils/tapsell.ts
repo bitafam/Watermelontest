@@ -746,7 +746,7 @@ export const purchaseFullVersion = async (): Promise<string> => {
   if (isNativePlatform()) {
     try {
       addLog('info', "مایکت: ارسال درخواست شروع درگاه خرید درون‌برنامه‌ای (MyketBilling Capacitor)...");
-      const res = await MyketBilling.purchase({ sku: 'full_version' });
+      const res = await MyketBilling.purchase({ sku: 'Fullversion' });
       addLog('success', `مایکت: خرید با موفقیت انجام شد! توکن: ${res.purchaseToken}`);
       localStorage.setItem("is_full_version", "true");
       return "success";

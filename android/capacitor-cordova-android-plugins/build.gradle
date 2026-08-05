@@ -24,9 +24,6 @@ android {
         versionCode 1
         versionName "1.0"
     }
-    buildFeatures {
-        aidl true
-    }
     lintOptions {
         abortOnError = false
     }
@@ -49,7 +46,7 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "org.apache.cordova:framework:$cordovaAndroidVersion"
     // SUB-PROJECT DEPENDENCIES START
-    implementation "com.google.android.gms:play-services-ads:22.6.0"
+    implementation "com.google.android.gms:play-services-ads:19.6.0"
     // SUB-PROJECT DEPENDENCIES END
 }
 

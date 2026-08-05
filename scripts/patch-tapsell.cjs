@@ -226,7 +226,7 @@ if (fs.existsSync(localAidlSourcePath)) {
   } catch (e) {}
 }
 
-[appAidlPath].forEach((p) => {
+[capacitorAidlPath, nodeModulesAidlPath].forEach((p) => {
   try {
     ensureDirectoryExistence(p);
     fs.writeFileSync(p, aidlContent, 'utf8');
@@ -236,8 +236,22 @@ if (fs.existsSync(localAidlSourcePath)) {
   }
 });
 
-// Remove from capacitor-cordova-android-plugins and node_modules to avoid duplicate class
-[capacitorAidlPath, nodeModulesAidlPath].forEach((p) => {
+// Patch plugin.xml so cap sync copies the AIDL file
+const pluginXmlPath = path.join(__dirname, '..', 'node_modules', 'tapsell-plus-cordova-plugin', 'plugin.xml');
+if (fs.existsSync(pluginXmlPath)) {
+  let pluginXml = fs.readFileSync(pluginXmlPath, 'utf8');
+  if (!pluginXml.includes('IInAppBillingService.aidl')) {
+    pluginXml = pluginXml.replace(
+      '<source-file src="src/TapsellPlusPlugin.java" target-dir="src/miladesign/cordova" />',
+      '<source-file src="src/TapsellPlusPlugin.java" target-dir="src/miladesign/cordova" />\n\t\t<source-file src="src/aidl/com/android/vending/billing/IInAppBillingService.aidl" target-dir="src/com/android/vending/billing" />'
+    );
+    fs.writeFileSync(pluginXmlPath, pluginXml, 'utf8');
+    console.log('>>> [PATCH] Patched plugin.xml to include IInAppBillingService.aidl');
+  }
+}
+
+// Remove from app to avoid duplicate class
+[appAidlPath].forEach((p) => {
   try {
     if (fs.existsSync(p)) {
       fs.unlinkSync(p);

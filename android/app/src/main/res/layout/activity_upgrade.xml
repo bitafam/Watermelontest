@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_regular"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:gravity="center_horizontal"
+    android:padding="24dp"
+    android:layout_gravity="center"
+    android:id="@+id/upgrade_layout">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingBottom="16dp">
+
+            <!-- Premium Crown/Gem Icon Placeholder -->
+            <ImageView
+                android:id="@+id/img_crown"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="24dp"
+                android:src="@android:drawable/btn_star_big_on"
+                android:tint="@color/colorPrimary" />
+
+            <TextView
+                android:id="@+id/txt_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="ارتقاء به نسخه ویژه و نامحدود"
+                android:textColor="@color/black"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/txt_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="با ارتقاء به نسخه ویژه، از تمامی امکانات بدون هیچ‌گونه محدودیتی استفاده کنید."
+                android:textColor="@color/gray_dark"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.2"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp" />
+
+            <!-- Features List -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="32dp"
+                android:background="@color/gray_light"
+                android:padding="16dp"
+                android:id="@+id/features_container">
+
+                <!-- Feature 1 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="right|center_vertical"
+                    android:paddingBottom="12dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="حذف کامل تبلیغات آزاردهنده بنری و ویدیویی"
+                        android:textColor="@color/black"
+                        android:textSize="15sp"
+                        android:gravity="right" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginLeft="12dp"
+                        android:src="@android:drawable/checkbox_on_background"
+                        android:tint="@color/colorPrimary" />
+                </LinearLayout>
+
+                <!-- Feature 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="right|center_vertical"
+                    android:paddingBottom="12dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="آنالیز نامحدود هندوانه بدون فواصل زمانی انتظار"
+                        android:textColor="@color/black"
+                        android:textSize="15sp"
+                        android:gravity="right" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginLeft="12dp"
+                        android:src="@android:drawable/checkbox_on_background"
+                        android:tint="@color/colorPrimary" />
+                </LinearLayout>
+
+                <!-- Feature 3 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="right|center_vertical"
+                    android:paddingBottom="12dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="سنجش هوشمند و الگوریتم‌های پردازشی پیشرفته‌تر"
+                        android:textColor="@color/black"
+                        android:textSize="15sp"
+                        android:gravity="right" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginLeft="12dp"
+                        android:src="@android:drawable/checkbox_on_background"
+                        android:tint="@color/colorPrimary" />
+                </LinearLayout>
+
+                <!-- Feature 4 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="right|center_vertical">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="پشتیبانی دائم و کمک به توسعه بهبود برنامه"
+                        android:textColor="@color/black"
+                        android:textSize="15sp"
+                        android:gravity="right" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginLeft="12dp"
+                        android:src="@android:drawable/checkbox_on_background"
+                        android:tint="@color/colorPrimary" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Purchase Status Info -->
+    <TextView
+        android:id="@+id/txt_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textColor="@color/red"
+        android:textSize="13sp"
+        android:visibility="gone"
+        android:gravity="center" />
+
+    <ProgressBar
+        android:id="@+id/progress_loading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone" />
+
+    <!-- Control Buttons -->
+    <Button
+        android:id="@+id/btn_buy"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:backgroundTint="@color/colorPrimary"
+        android:text="خرید نسخه ویژه (Fullversion)"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btn_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        style="?android:attr/borderlessButtonStyle"
+        android:text="انصراف و بازگشت"
+        android:textColor="@color/gray_dark"
+        android:textSize="14sp" />
+
+</LinearLayout>

@@ -32,6 +32,12 @@
 
         </activity>
 
+        <activity
+            android:name=".UpgradeActivity"
+            android:label="ارتقاء به نسخه ویژه"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -45,6 +51,7 @@
 
     <!-- Permissions -->
 
+    <uses-permission android:name="ir.mservices.market.BILLING" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />

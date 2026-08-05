@@ -152,23 +152,28 @@ jobs:
         shell: bash
         run: |
           cd android
-          mkdir -p gradle/wrapper
-          WRAPPER_JAR_URL="https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar"
-          for i in 1 2 3; do
-            curl -fsSLo gradle/wrapper/gradle-wrapper.jar --location --max-time 120 "$WRAPPER_JAR_URL" && break || sleep 3
-          done
-          if jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
-            echo "gradle-wrapper.jar successfully downloaded and validated OK."
+          
+          if [ -s gradle/wrapper/gradle-wrapper.jar ] && jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo "Valid gradle-wrapper.jar present. Skipping regeneration."
           else
-            echo "::warning::Downloaded gradle-wrapper.jar invalid or missing. Attempting to regenerate using gradle wrapper task..."
-            if ./gradlew wrapper --gradle-version 8.14.3 >/dev/null 2>&1; then
-              echo "gradle wrapper regenerated successfully."
+            echo "gradle-wrapper.jar missing or invalid. Downloading directly from official Gradle GitHub source..."
+            
+            mkdir -p gradle/wrapper
+            
+            # آدرس مستقیم، قطعی و معتبر فایل از گیتهاب رسمی گریدل
+            WRAPPER_JAR_URL="https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar"
+            
+            # دانلود با فلگ -L برای دنبال کردن ریدایرکتهای احتمالی گیتهاب
+            curl -fsSLo gradle/wrapper/gradle-wrapper.jar --location --retry 5 --retry-delay 3 --max-time 120 "$WRAPPER_JAR_URL"
+            
+            if jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+              echo "gradle-wrapper.jar successfully downloaded and validated OK."
             else
-              echo "::error::Could not obtain a valid gradle-wrapper.jar"
-              ls -la gradle/wrapper || true
+              echo "::error::Downloaded gradle-wrapper.jar is invalid or corrupted."
               exit 1
             fi
           fi
+          
           chmod +x gradlew
 
       - name: Build Production Release APK

@@ -5,6 +5,11 @@ android {
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.apps.wmqd"
+        manifestPlaceholders = [
+            marketApplicationId : "com.apps.wmqd",
+            marketBindAddress   : "com.apps.wmqd.market.BIND",
+            marketPermission    : "com.apps.wmqd.market.PERMISSION"
+        ]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

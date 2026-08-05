@@ -13,6 +13,8 @@ import ir.tapsell.plus.TapsellPlusBannerType;
 import ir.tapsell.plus.TapsellPlusInitListener;
 import ir.tapsell.plus.listener.AdRequestCallback;
 import ir.tapsell.plus.listener.AdShowListener;
+import ir.tapsell.plus.model.AdNetworkError;
+import ir.tapsell.plus.model.AdNetworks;
 import ir.tapsell.plus.model.TapsellPlusAdModel;
 
 public class TapsellAdHelper {
@@ -37,6 +39,11 @@ public class TapsellAdHelper {
                 @Override
                 public void onError(String error) {
                     Log.e(TAG, "Failed to initialize Tapsell SDK: " + error);
+                }
+
+                @Override
+                public void onInitializeFailed(AdNetworks adNetworks, AdNetworkError error) {
+                    Log.e(TAG, "Tapsell SDK Initialization Failed: adNetworks = " + adNetworks + ", error = " + error);
                 }
             });
         } catch (Exception e) {

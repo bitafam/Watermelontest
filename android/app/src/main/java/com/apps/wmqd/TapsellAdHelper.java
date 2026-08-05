@@ -33,7 +33,12 @@ public class TapsellAdHelper {
             TapsellPlus.initialize(context, APP_KEY, new TapsellPlusInitListener() {
                 @Override
                 public void onInitialized() {
-                    Log.d(TAG, "Tapsell SDK Initialized Successfully");
+                    Log.d(TAG, "Tapsell SDK Initialized (Legacy)");
+                }
+
+                @Override
+                public void onInitializeSuccess(AdNetworks adNetworks) {
+                    Log.d(TAG, "Tapsell SDK Initialize Success: " + (adNetworks != null ? adNetworks.toString() : ""));
                 }
 
                 @Override

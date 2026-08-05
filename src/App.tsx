@@ -1011,8 +1011,8 @@ export default function App() {
       return { allowed: false, timeLeft, type: "cooldown" };
     }
 
-    // 5-minute penalty for 4 scans check
-    if (validTimestamps.length >= 4) {
+    // 5-minute penalty for more than 4 scans check (>= 5 scans)
+    if (validTimestamps.length >= 5) {
       const oldest = validTimestamps[0];
       const timeLeft = 5 * 60 * 1000 - (now - oldest);
       return { allowed: false, timeLeft, type: "penalty" };
@@ -2590,27 +2590,7 @@ export default function App() {
       )}
       <TapsellBanner />
 
-      {showVideoAd && (
-        <TapsellVideoAd 
-          onComplete={() => {
-            setShowVideoAd(false);
-            if (pendingActionRef.current) {
-              pendingActionRef.current();
-              pendingActionRef.current = null;
-            }
-          }}
-        />
-      )}
-      {rateLimitTimeLeft !== null && (
-        <RateLimitOverlay 
-          timeLeft={rateLimitTimeLeft}
-          onUpgradeClick={() => {
-            setRateLimitTimeLeft(null);
-            setActiveTab("upgrade");
-          }}
-        />
-      )}
-      <TapsellBanner />
+
 
       {/* Dynamic Toast System */}
       <AnimatePresence>

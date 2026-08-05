@@ -41,10 +41,20 @@ export function TapsellBanner() {
       }
     };
 
-    // Small delay to ensure Cordova/Capacitor is ready
-    setTimeout(initAndShowBanner, 1000);
+    let initInterval: any;
+    if (window.TapsellPlus) {
+      initAndShowBanner();
+    } else {
+      initInterval = setInterval(() => {
+        if (window.TapsellPlus) {
+          clearInterval(initInterval);
+          initAndShowBanner();
+        }
+      }, 500);
+    }
 
     return () => {
+      if (typeof initInterval !== "undefined") clearInterval(initInterval);
       if (window.TapsellPlus) {
         try {
           window.TapsellPlus.hideBanner();
@@ -84,27 +94,31 @@ export function TapsellVideoAd({ onComplete }: { onComplete: () => void }) {
       }
 
       const onResponse = (e: any) => {
-        if (e.adType === "rewardedVideo") {
-          window.TapsellPlus.showRewardedVideo(e.responseId);
+        const data = e.detail || e.data || e;
+        if (data.adType === "rewardedVideo") {
+          window.TapsellPlus.showRewardedVideo(data.responseId);
           setLoading(false);
         }
       };
 
       const onError = (e: any) => {
-        if (e.adType === "rewardedVideo") {
-          console.error("Tapsell Video Error", e.message);
+        const data = e.detail || e.data || e;
+        if (data.adType === "rewardedVideo") {
+          console.error("Tapsell Video Error", data.message);
           finishAd(); // fail gracefully
         }
       };
 
       const onClosed = (e: any) => {
-        if (e.adType === "rewardedVideo") {
+        const data = e.detail || e.data || e;
+        if (data.adType === "rewardedVideo") {
           finishAd();
         }
       };
 
       const onRewarded = (e: any) => {
-        if (e.adType === "rewardedVideo") {
+        const data = e.detail || e.data || e;
+        if (data.adType === "rewardedVideo") {
           // Rewarded successfully
         }
       };

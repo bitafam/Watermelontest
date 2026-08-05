@@ -7,8 +7,8 @@ android {
         applicationId "com.apps.wmqd"
         manifestPlaceholders = [
             marketApplicationId : "com.apps.wmqd",
-            marketBindAddress   : "com.apps.wmqd.market.BIND",
-            marketPermission    : "com.apps.wmqd.market.PERMISSION"
+            marketBindAddress   : "ir.mservices.market.InAppBillingService.BIND",
+            marketPermission    : "ir.mservices.market.BILLING"
         ]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

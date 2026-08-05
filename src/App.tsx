@@ -31,7 +31,10 @@ import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
-import { Crop, Copy } from "lucide-react";
+import { TapsellBanner, TapsellVideoAd } from "./components/TapsellAds";
+import { RateLimitOverlay } from "./components/RateLimitOverlay";
+import { MyketUpgradePage } from "./components/MyketUpgradePage";
+import { Crop, Copy, Zap } from "lucide-react";
 
 // Official package ID for Myket publication
 const PACKAGE_ID = "com.apps.wmqd";
@@ -157,7 +160,10 @@ const SAMPLE_WATERMELONS = [
 
 export default function App() {
   const lang = "fa";
-  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact">("scanner");
+  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact" | "upgrade">("scanner");
+  const [showVideoAd, setShowVideoAd] = useState(false);
+  const [rateLimitTimeLeft, setRateLimitTimeLeft] = useState<{ time: number, type: "cooldown" | "penalty" } | null>(null);
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -988,6 +994,64 @@ export default function App() {
     }
   };
 
+  const checkRateLimit = () => {
+    if (localStorage.getItem("isPremium") === "true") return { allowed: true };
+    const historyRaw = localStorage.getItem("scan_timestamps");
+    let timestamps: number[] = [];
+    if (historyRaw) {
+      try { timestamps = JSON.parse(historyRaw); } catch(e) {}
+    }
+    const now = Date.now();
+    const validTimestamps = timestamps.filter((t: number) => now - t < 5 * 60 * 1000);
+    
+    // 1-minute cooldown check
+    const lastScan = timestamps[timestamps.length - 1];
+    if (lastScan && now - lastScan < 60 * 1000) {
+      const timeLeft = 60 * 1000 - (now - lastScan);
+      return { allowed: false, timeLeft, type: "cooldown" };
+    }
+
+    // 5-minute penalty for 4 scans check
+    if (validTimestamps.length >= 4) {
+      const oldest = validTimestamps[0];
+      const timeLeft = 5 * 60 * 1000 - (now - oldest);
+      return { allowed: false, timeLeft, type: "penalty" };
+    }
+
+    return { allowed: true };
+  };
+
+  const recordScan = () => {
+    if (localStorage.getItem("isPremium") === "true") return;
+    const historyRaw = localStorage.getItem("scan_timestamps");
+    let timestamps: number[] = [];
+    if (historyRaw) {
+      try { timestamps = JSON.parse(historyRaw); } catch(e) {}
+    }
+    timestamps.push(Date.now());
+    localStorage.setItem("scan_timestamps", JSON.stringify(timestamps));
+  };
+
+  const triggerAnalyzeWithAd = () => {
+    if (!image) return;
+    const rateLimit = checkRateLimit();
+    if (!rateLimit.allowed && rateLimit.timeLeft && rateLimit.type) {
+      setRateLimitTimeLeft({ time: rateLimit.timeLeft, type: rateLimit.type as "cooldown" | "penalty" });
+      return;
+    }
+    
+    if (localStorage.getItem("isPremium") !== "true") {
+      pendingActionRef.current = () => {
+        recordScan();
+        analyzeWatermelon();
+      };
+      setShowVideoAd(true);
+    } else {
+      recordScan();
+      analyzeWatermelon();
+    }
+  };
+
   // Trigger analysis
   const analyzeWatermelon = async () => {
     if (!image) return;
@@ -1242,6 +1306,19 @@ export default function App() {
               <MessageSquare className="w-4 h-4" />
               {lang === "fa" ? "تماس با ما" : "Contact Us"}
             </button>
+            {localStorage.getItem("isPremium") !== "true" && (
+              <button
+                onClick={() => setActiveTab("upgrade")}
+                className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "upgrade"
+                    ? "bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20 text-amber-300 shadow-md"
+                    : "text-amber-500/80 hover:text-amber-400 border border-transparent"
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                {lang === "fa" ? "ارتقاء به نسخه کامل" : "Upgrade"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1249,6 +1326,8 @@ export default function App() {
           <AccuracyGuide />
         ) : activeTab === "contact" ? (
           <ContactUs onBack={() => setActiveTab("scanner")} />
+        ) : activeTab === "upgrade" ? (
+          <MyketUpgradePage onUpgradeSuccess={() => setActiveTab("scanner")} onBack={() => setActiveTab("scanner")} />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
@@ -1403,7 +1482,7 @@ export default function App() {
               {image && !loading && (
                 <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex gap-2" id="action-buttons">
                   <button
-                    onClick={analyzeWatermelon}
+                    onClick={triggerAnalyzeWithAd}
                     className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
                     id="analyze-btn"
                   >
@@ -2486,6 +2565,52 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {showVideoAd && (
+        <TapsellVideoAd 
+          onComplete={() => {
+            setShowVideoAd(false);
+            if (pendingActionRef.current) {
+              pendingActionRef.current();
+              pendingActionRef.current = null;
+            }
+          }}
+        />
+      )}
+      {rateLimitTimeLeft !== null && (
+        <RateLimitOverlay 
+          timeLeft={rateLimitTimeLeft.time}
+          type={rateLimitTimeLeft.type}
+          onExpire={() => setRateLimitTimeLeft(null)}
+          onUpgradeClick={() => {
+            setRateLimitTimeLeft(null);
+            setActiveTab("upgrade");
+          }}
+        />
+      )}
+      <TapsellBanner />
+
+      {showVideoAd && (
+        <TapsellVideoAd 
+          onComplete={() => {
+            setShowVideoAd(false);
+            if (pendingActionRef.current) {
+              pendingActionRef.current();
+              pendingActionRef.current = null;
+            }
+          }}
+        />
+      )}
+      {rateLimitTimeLeft !== null && (
+        <RateLimitOverlay 
+          timeLeft={rateLimitTimeLeft}
+          onUpgradeClick={() => {
+            setRateLimitTimeLeft(null);
+            setActiveTab("upgrade");
+          }}
+        />
+      )}
+      <TapsellBanner />
 
       {/* Dynamic Toast System */}
       <AnimatePresence>

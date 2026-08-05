@@ -31,20 +31,7 @@ import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
-import PremiumUpgrade from "./components/PremiumUpgrade";
-import { Crop, Copy, Terminal } from "lucide-react";
-import {
-  initializeTapsell,
-  startBannerRefresh,
-  stopBannerRefresh,
-  requestAndShowRewardedAd,
-  isFullVersionActive,
-  getSystemLogs,
-  subscribeSystemLogs,
-  addLog,
-  BANNER_ZONE_ID,
-  LogEntry
-} from "./utils/tapsell";
+import { Crop, Copy } from "lucide-react";
 
 // Official package ID for Myket publication
 const PACKAGE_ID = "com.apps.wmqd";
@@ -170,8 +157,7 @@ const SAMPLE_WATERMELONS = [
 
 export default function App() {
   const lang = "fa";
-  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact" | "upgrade">("scanner");
-  const [isPremium, setIsPremium] = useState<boolean>(() => localStorage.getItem("is_full_version") === "true");
+  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact">("scanner");
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -192,22 +178,6 @@ export default function App() {
   const [updateProgress, setUpdateProgress] = useState<number>(0);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
-
-  // Tapsell Ads & Rate Limit States
-  const [watchedAdTimes, setWatchedAdTimes] = useState<number[]>(() => {
-    const saved = localStorage.getItem("watermelon_watched_ads");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [cooldownTime, setCooldownTime] = useState<number>(() => {
-    const saved = localStorage.getItem("watermelon_cooldown_until");
-    if (saved) {
-      const until = parseInt(saved, 10);
-      const diff = Math.ceil((until - Date.now()) / 1000);
-      return diff > 0 ? diff : 0;
-    }
-    return 0;
-  });
 
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -346,110 +316,6 @@ export default function App() {
     "Inspecting the stem status and connective tissue moisture...",
     "Executing OCR to scan for any labels, price tags or codes..."
   ];
-
-  // Tapsell & Rate Limits Effects and Helpers
-  useEffect(() => {
-    initializeTapsell();
-    const syncPremiumAndBanners = async () => {
-      const active = await isFullVersionActive();
-      setIsPremium(active);
-      if (!active) {
-        startBannerRefresh();
-      } else {
-        stopBannerRefresh();
-      }
-    };
-    syncPremiumAndBanners();
-    return () => {
-      stopBannerRefresh();
-    };
-  }, []);
-
-  useEffect(() => {
-    let timer: any = null;
-    if (cooldownTime > 0) {
-      timer = setInterval(() => {
-        setCooldownTime((prev) => {
-          const next = prev - 1;
-          if (next <= 0) {
-            localStorage.removeItem("watermelon_cooldown_until");
-            return 0;
-          }
-          return next;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [cooldownTime]);
-
-  const recordAdWatched = () => {
-    const now = Date.now();
-    const updated = [...watchedAdTimes, now].filter(t => now - t < 5 * 60 * 1000);
-    setWatchedAdTimes(updated);
-    localStorage.setItem("watermelon_watched_ads", JSON.stringify(updated));
-
-    if (updated.length >= 3) {
-      const cooldownUntil = now + 5 * 60 * 1000;
-      localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-      setCooldownTime(300);
-      setWatchedAdTimes([]);
-      localStorage.setItem("watermelon_watched_ads", JSON.stringify([]));
-    }
-  };
-
-  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
-  const analyzeWatermelon = () => {
-    if (isPremium) {
-      executeAnalysis();
-      return;
-    }
-
-    if (cooldownTime > 0) {
-      showToast(
-        lang === "fa" 
-          ? `لطفاً تا اتمام زمان محدودیت صبور باشید (${cooldownTime} ثانیه باقی‌مانده).` 
-          : `Please wait ${cooldownTime}s until the rate limit ends.`, 
-        "error"
-      );
-      return;
-    }
-
-    showToast(
-      lang === "fa" 
-        ? "در حال فراخوانی و نمایش تبلیغ ویدیویی جایزه‌ای تپسل..." 
-        : "Loading rewarded video ad...", 
-      "info"
-    );
-
-    requestAndShowRewardedAd(
-      () => {
-        showToast(
-          lang === "fa" ? "ویدیو تبلیغاتی باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened...", 
-          "info"
-        );
-      },
-      () => {
-        // Closed
-      },
-      () => {
-        // Rewarded
-        recordAdWatched();
-        executeAnalysis();
-      },
-      (err) => {
-        addLog('warn', "امکان نمایش تبلیغ ویدیویی وجود نداشت - انجام مستقیم آنالیز", err);
-        showToast(
-          lang === "fa"
-            ? "تبلیغ دریافت نشد یا لغو گردید. آنالیز انجام شد."
-            : "Could not fetch ad; running analysis directly.",
-          "info"
-        );
-        executeAnalysis();
-      }
-    );
-  };
 
   // Helper function to analyze the watermelon image completely offline/client-side using HTML5 Canvas
   const analyzeWatermelonLocal = (imageSrc: string, sType: string | null): Promise<AnalysisResult> => {
@@ -1122,8 +988,8 @@ export default function App() {
     }
   };
 
-  // Actual analysis execution
-  const executeAnalysis = async () => {
+  // Trigger analysis
+  const analyzeWatermelon = async () => {
     if (!image) return;
     setLoading(true);
     setCustomError(null);
@@ -1331,7 +1197,7 @@ export default function App() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="tracking-wide">ورژن 2.0.1</span>
+              <span className="tracking-wide">ورژن 1.0.1</span>
             </span>
           </div>
         </div>
@@ -1345,47 +1211,36 @@ export default function App() {
           <div className="bg-[#050807]/90 border border-emerald-900/40 p-1.5 rounded-2xl flex flex-wrap justify-center items-center gap-1 shadow-xl">
             <button
               onClick={() => setActiveTab("scanner")}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "scanner"
                   ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
               }`}
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-4 h-4" />
               {lang === "fa" ? "اسکنر هوشمند" : "Smart Scanner"}
             </button>
             <button
               onClick={() => setActiveTab("guide")}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "guide"
                   ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
               }`}
             >
-              <HelpCircle className="w-3.5 h-3.5" />
+              <HelpCircle className="w-4 h-4" />
               {lang === "fa" ? "راهنمای جامع دقت" : "Accuracy Guide"}
             </button>
             <button
               onClick={() => setActiveTab("contact")}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "contact"
                   ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
                   : "text-slate-400 hover:text-slate-200 border border-transparent"
               }`}
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              <MessageSquare className="w-4 h-4" />
               {lang === "fa" ? "تماس با ما" : "Contact Us"}
-            </button>
-            <button
-              onClick={() => setActiveTab("upgrade")}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                activeTab === "upgrade"
-                  ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 text-emerald-300 shadow-md"
-                  : "text-slate-400 hover:text-slate-200 border border-transparent"
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              {lang === "fa" ? "ارتقاء برنامه" : "Upgrade App"}
             </button>
           </div>
         </div>
@@ -1394,14 +1249,6 @@ export default function App() {
           <AccuracyGuide />
         ) : activeTab === "contact" ? (
           <ContactUs onBack={() => setActiveTab("scanner")} />
-        ) : activeTab === "upgrade" ? (
-          <PremiumUpgrade 
-            onBack={() => setActiveTab("scanner")} 
-            onUpgradeSuccess={() => {
-              setIsPremium(true);
-              stopBannerRefresh();
-            }}
-          />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
@@ -1554,48 +1401,23 @@ export default function App() {
 
               {/* Run Analysis Action Section - placed higher directly under the image */}
               {image && !loading && (
-                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex flex-col gap-3" id="action-buttons">
-                  {cooldownTime > 0 && !isPremium ? (
-                    <div className="text-center p-1" id="limit-box">
-                      <button
-                        onClick={() => setActiveTab("upgrade")}
-                        className="w-full py-4 px-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-between gap-3 text-xs md:text-sm cursor-pointer"
-                        id="buy-full-app-btn"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-black animate-pulse" />
-                          <span>
-                            {lang === "fa" ? "خرید نسخه کامل و بدون تبلیغات" : "Purchase Premium Full Version"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-black/15 px-2.5 py-1 rounded-lg text-xs font-mono font-bold">
-                          <RotateCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
-                          <span>
-                            {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, "0")}
-                          </span>
-                        </div>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={analyzeWatermelon}
-                        className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
-                        id="analyze-btn"
-                      >
-                        <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
-                        {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
-                      </button>
-                      
-                      <button
-                        onClick={resetAll}
-                        className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
-                        title={lang === "fa" ? "انصراف" : "Cancel"}
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex gap-2" id="action-buttons">
+                  <button
+                    onClick={analyzeWatermelon}
+                    className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                    id="analyze-btn"
+                  >
+                    <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+                    {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
+                  </button>
+                  
+                  <button
+                    onClick={resetAll}
+                    className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all"
+                    title={lang === "fa" ? "انصراف" : "Cancel"}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
               
@@ -2145,7 +1967,7 @@ export default function App() {
               <div className="bg-[#0A0F0D] rounded-xl p-4 border border-emerald-950 space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">نسخه نصب‌شده فعلی:</span>
-                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">2.0.1</span>
+                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">1.0.1</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-xs">
@@ -2702,7 +2524,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

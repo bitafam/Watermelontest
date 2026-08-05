@@ -159,7 +159,7 @@ export default function ContactUs({ onBack }: ContactUsProps) {
             </div>
           </div>
 
-          {/* Other Apps on Myket Button */}
+          {/* Other Apps on Myket Button - Beautiful Action */}
           <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-[#14231B]/30 p-4 rounded-xl border border-emerald-500/10">
             <div className="space-y-1 text-center sm:text-right">
               <h4 className="text-xs font-bold text-emerald-300">دیگر برنامه‌های امیرحسین سالاری را دیده‌اید؟</h4>
@@ -170,7 +170,7 @@ export default function ContactUs({ onBack }: ContactUsProps) {
               className="px-5 py-2.5 bg-[#10b981] hover:bg-[#059669] text-[#050807] font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/10 active:scale-95"
             >
               <Layers className="w-4 h-4" />
-              <span>دیگر برنامه‌ها (مایکت)</span>
+              <span>دیگر برنامه‌های ما (مایکت)</span>
               <ExternalLink className="w-3 h-3" />
             </button>
           </div>

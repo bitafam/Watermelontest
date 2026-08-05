@@ -7,23 +7,14 @@ android {
         applicationId "com.apps.wmqd"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "2.0"
+        versionCode 1
+        versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
-    }
-    buildFeatures {
-        aidl true
-    }
-    packagingOptions {
-        pickFirst '**/IInAppBillingService.class'
-        pickFirst '**/IInAppBillingService$*.class'
-        exclude 'META-INF/NOTICE'
-        exclude 'META-INF/LICENSE'
     }
     buildTypes {
         release {
@@ -34,16 +25,13 @@ android {
 }
 
 repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://maven.myket.ir' }
-    flatDir {
-        dirs 'libs', '../capacitor-cordova-android-plugins/src/main/libs'
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"

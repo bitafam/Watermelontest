@@ -3,7 +3,6 @@
 buildscript {
     
     repositories {
-        maven { url 'https://maven.myket.ir' }
         google()
         mavenCentral()
     }
@@ -20,11 +19,8 @@ apply from: "variables.gradle"
 
 allprojects {
     repositories {
-        maven { url 'https://maven.myket.ir' }
         google()
         mavenCentral()
-        maven { url 'https://repo.tapsell.ir/repository/maven-releases/' }
-        maven { url 'https://jitpack.io' }
     }
 }
 

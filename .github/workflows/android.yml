@@ -1,4 +1,4 @@
-name: Build Android App (APK Only)
+name: Build Android App (Capacitor)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Android APK & AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +24,6 @@ jobs:
 
       - name: Install Web Dependencies
         run: |
-          rm -rf node_modules package-lock.json
           npm install
 
       - name: Build React Web App
@@ -40,25 +39,24 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android Build Tools
+      - name: Install Android Build Tools 29.0.3
         run: |
           if [ -n "$ANDROID_SDK_ROOT" ] && [ -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" "build-tools;29.0.3" || true
+            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "build-tools;29.0.3" || true
           elif command -v sdkmanager >/dev/null 2>&1; then
-            yes | sdkmanager "build-tools;34.0.0" "build-tools;29.0.3" || true
+            yes | sdkmanager "build-tools;29.0.3" || true
           else
-            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" "build-tools;29.0.3" || true
+            echo "sdkmanager not found in standard paths, trying default locations..."
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;29.0.3" || true
           fi
 
       - name: Initialize Capacitor Android
         run: |
-          node scripts/patch-tapsell.cjs
+          # Ensure android platform folder is initialized and synced correctly
           if [ ! -d "android" ]; then
             npx cap add android
           fi
           npx cap sync android
-          node scripts/patch-tapsell.cjs
-          npx cap copy android
 
       - name: Install ImageMagick
         run: |
@@ -67,6 +65,7 @@ jobs:
 
       - name: Generate Custom Android App Launcher Icons & Splash Screens
         run: |
+          # Convert our custom watermelon app icon to various mipmap resolutions for Android
           ICON_SRC="src/assets/images/watermelon_app_icon_1783756956652.jpg"
           ALT_ICON="src/assets/images/watermelon_icon_1783707024080.jpg"
           if [ ! -f "$ICON_SRC" ] && [ -f "$ALT_ICON" ]; then
@@ -76,9 +75,11 @@ jobs:
           if [ -f "$ICON_SRC" ]; then
             echo "Generating custom Android app launcher icons from $ICON_SRC..."
             
+            # Delete default adaptive launcher icon XML files and find/delete any other ic_launcher XMLs to force Android 8+ to use our custom PNG launcher icons
             rm -rf android/app/src/main/res/mipmap-anydpi-v26
             find android/app/src/main/res/ -name "ic_launcher*.xml" -delete
             
+            # Ensure target directories exist
             mkdir -p android/app/src/main/res/mipmap-mdpi
             mkdir -p android/app/src/main/res/mipmap-hdpi
             mkdir -p android/app/src/main/res/mipmap-xhdpi
@@ -86,6 +87,7 @@ jobs:
             mkdir -p android/app/src/main/res/mipmap-xxxhdpi
             mkdir -p android/app/src/main/res/drawable
             
+            # Generate Standard, Round, and Foreground Launcher Icons
             convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
             convert "$ICON_SRC" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
@@ -106,8 +108,10 @@ jobs:
             convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
             convert "$ICON_SRC" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
             
+            # Generate Fallback Splash Screen
             convert "$ICON_SRC" -resize 512x512 android/app/src/main/res/drawable/splash.png
             
+            # Generate Portrait Splash Screens
             mkdir -p android/app/src/main/res/drawable-port-mdpi
             convert "$ICON_SRC" -resize 150x150 -background "#ffffff" -gravity center -extent 320x480 android/app/src/main/res/drawable-port-mdpi/splash.png
             
@@ -123,6 +127,7 @@ jobs:
             mkdir -p android/app/src/main/res/drawable-port-xxxhdpi
             convert "$ICON_SRC" -resize 512x512 -background "#ffffff" -gravity center -extent 1280x1920 android/app/src/main/res/drawable-port-xxxhdpi/splash.png
             
+            # Generate Landscape Splash Screens
             mkdir -p android/app/src/main/res/drawable-land-mdpi
             convert "$ICON_SRC" -resize 150x150 -background "#ffffff" -gravity center -extent 480x320 android/app/src/main/res/drawable-land-mdpi/splash.png
             
@@ -139,53 +144,68 @@ jobs:
             convert "$ICON_SRC" -resize 512x512 -background "#ffffff" -gravity center -extent 1920x1280 android/app/src/main/res/drawable-land-xxxhdpi/splash.png
             
             echo "Successfully generated and replaced all Android launcher icons and splash screens."
+          else
+            echo "::warning::Source app icon not found at $ICON_SRC. Skipping custom icon generation and keeping default/existing assets."
           fi
 
       - name: Fix and Regenerate Gradle Wrapper
         shell: bash
         run: |
           cd android
+          
           if [ -s gradle/wrapper/gradle-wrapper.jar ] && jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
-            echo "Valid gradle-wrapper.jar present."
+            echo "Valid gradle-wrapper.jar present. Skipping regeneration."
           else
-            echo "gradle-wrapper.jar missing or invalid. Downloading..."
+            echo "gradle-wrapper.jar missing or invalid. Downloading directly from official Gradle GitHub source..."
+            
             mkdir -p gradle/wrapper
+            
+            # آدرس مستقیم، قطعی و معتبر فایل از گیتهاب رسمی گریدل
             WRAPPER_JAR_URL="https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar"
+            
+            # دانلود با فلگ -L برای دنبال کردن ریدایرکتهای احتمالی گیتهاب
             curl -fsSLo gradle/wrapper/gradle-wrapper.jar --location --retry 5 --retry-delay 3 --max-time 120 "$WRAPPER_JAR_URL"
+            
+            if jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+              echo "gradle-wrapper.jar successfully downloaded and validated OK."
+            else
+              echo "::error::Downloaded gradle-wrapper.jar is invalid or corrupted."
+              exit 1
+            fi
           fi
+          
           chmod +x gradlew
 
-      - name: Build Release APK
+      - name: Build Production Release APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Align and Sign APK
+      - name: Decode Keystore File
+        run: |
+          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | tr -d '\r\n ' | base64 -d > android/app/release.keystore
+
+      - name: Align and Sign APK with apksigner (v2/v3)
         run: |
           cd android/app/build/outputs/apk/release
-          UNSIGNED_APK=$(ls app-release-unsigned.apk 2>/dev/null || ls *-unsigned.apk | head -n 1 || ls *.apk | head -n 1)
+          UNSIGNED_APK=$(ls app-release-unsigned.apk 2>/dev/null || ls *-unsigned.apk | head -n 1)
           
           ZIPALIGN_PATH=$(find $ANDROID_HOME/build-tools/ -name "zipalign" | sort -V | tail -n 1)
           APKSIGNER_PATH=$(find $ANDROID_HOME/build-tools/ -name "apksigner" | sort -V | tail -n 1)
           
-          if [ -n "${{ secrets.ANDROID_SIGNING_KEY }}" ]; then
-            echo "${{ secrets.ANDROID_SIGNING_KEY }}" | tr -d '\r\n ' | base64 -d > ../../../../release.keystore
-            $ZIPALIGN_PATH -v 4 $UNSIGNED_APK aligned-app.apk
-            $APKSIGNER_PATH sign --ks ../../../../release.keystore \
-              --ks-key-alias "${{ secrets.ANDROID_ALIAS }}" \
-              --ks-pass pass:"${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
-              --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
-              --out Smart-Watermelon-Detector.apk aligned-app.apk
-            $APKSIGNER_PATH verify Smart-Watermelon-Detector.apk
-          else
-            echo "Signing secret not set. Copying unsigned APK for artifact upload."
-            cp $UNSIGNED_APK Smart-Watermelon-Detector.apk
-          fi
+          $ZIPALIGN_PATH -v 4 $UNSIGNED_APK aligned-app.apk
+          
+          $APKSIGNER_PATH sign --ks ../../../../release.keystore \
+            --ks-key-alias "${{ secrets.ANDROID_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --out Smart-Watermelon-Detector-Signed.apk aligned-app.apk
+          
+          $APKSIGNER_PATH verify Smart-Watermelon-Detector-Signed.apk
 
-      - name: Upload APK Artifact
+      - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Smart-Watermelon-Detector-APK
-          path: android/app/build/outputs/apk/release/Smart-Watermelon-Detector.apk
-
+          name: Smart-Watermelon-Detector-Release-APK
+          path: android/app/build/outputs/apk/release/Smart-Watermelon-Detector-Signed.apk

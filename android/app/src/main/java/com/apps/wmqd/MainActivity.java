@@ -41,7 +41,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         ViewGroup bannerContainer = findViewById(R.id.banner_container);
         if (bannerContainer != null) {
@@ -54,14 +54,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         ViewGroup bannerContainer = findViewById(R.id.banner_container);
         TapsellAdHelper.destroyBanner(bannerContainer);
         super.onDestroy();
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         // If coming back from UpgradeActivity, refresh the banner ad and user states
         if (requestCode == MyketIapHelper.RC_REQUEST) {

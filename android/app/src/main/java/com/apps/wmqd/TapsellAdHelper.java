@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 
 import ir.tapsell.plus.TapsellPlus;
 import ir.tapsell.plus.TapsellPlusBannerType;
+import ir.tapsell.plus.TapsellPlusInitListener;
 import ir.tapsell.plus.listener.AdRequestCallback;
 import ir.tapsell.plus.listener.AdShowListener;
 import ir.tapsell.plus.model.TapsellPlusAdModel;
@@ -27,8 +28,17 @@ public class TapsellAdHelper {
 
     public static void initialize(Context context) {
         try {
-            TapsellPlus.initialize(context, APP_KEY);
-            Log.d(TAG, "Tapsell SDK Initialized Successfully");
+            TapsellPlus.initialize(context, APP_KEY, new TapsellPlusInitListener() {
+                @Override
+                public void onInitialized() {
+                    Log.d(TAG, "Tapsell SDK Initialized Successfully");
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "Failed to initialize Tapsell SDK: " + error);
+                }
+            });
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize Tapsell SDK", e);
         }

@@ -44,7 +44,7 @@ dependencies {
     
     // Tapsell and Myket SDK Integrations
     implementation 'ir.tapsell.plus:tapsell-plus-sdk-android:2.2.4'
-    implementation 'com.github.myketstore:myket-billing-client:1.18'
+    implementation 'ir.myket:billingclient:6.0.0'
 
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

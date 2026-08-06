@@ -23,6 +23,7 @@ allprojects {
         mavenCentral()
         maven { url "https://jitpack.io" }
         maven { url "https://repo.tapsell.ir/repository/tapsell/" }
+        maven { url "https://maven.myket.ir" }
     }
 }
 

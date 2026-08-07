@@ -2849,25 +2849,9 @@ export default function App() {
 
               {/* Header */}
               <div className="space-y-2">
-                <h3 className="text-base md:text-lg font-black text-white flex items-center justify-center gap-2">
-                  <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
-                  <span>آماده‌سازی لایه‌های سنجش هوشمند</span>
+                <h3 className="text-lg font-black text-white flex items-center justify-center gap-2">
+                  <span>لطفاً شکیبا باشید</span>
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-                  در حال دریافت تاییدیه تبلیغاتی تپسل و فرکانس‌یابی آکوستیک ضربات هندوانه... لطفاً چند لحظه شکیبا باشید.
-                </p>
-              </div>
-
-              {/* Action hints or steps */}
-              <div className="w-full bg-[#111] p-3 rounded-2xl border border-zinc-800/50 space-y-2 text-[11px] text-slate-400">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="font-medium text-emerald-400">اتصال به سرورهای مایکت و تپسل... تایید شد</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>آماده‌سازی موتور پردازش و یادگیری محلی تصاویر...</span>
-                </div>
               </div>
             </div>
           </motion.div>

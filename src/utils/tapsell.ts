@@ -1,9 +1,9 @@
 // Tapsell Plus Ad Integration for Capacitor / Web
 // Handles standard banners and rewarded videos with real native Cordova support
 
-export const APP_TOKEN = "qgsppfsspbeljgffmmmmnnoinbohsqnpjbijbtgljkgnahoromfeelinjodndfmrntfbhk";
-export const BANNER_ZONE_ID = "6a5e6056470fa5291867c9ab";
-export const REWARDED_ZONE_ID = "6a5df86f64fbcb2234b83d4e";
+export const APP_TOKEN = "87385b4e-06dc-4524-81dc-ed80044d583f";
+export const BANNER_ZONE_ID = "6a7312c02d8bc412b49fd3f0";
+export const REWARDED_ZONE_ID = "6a7312aa2d8bc412b49fd3ef";
 
 declare global {
   interface Window {

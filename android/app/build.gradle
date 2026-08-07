@@ -7,19 +7,14 @@ android {
         applicationId "com.apps.wmqd"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
-        manifestPlaceholders = [
-            marketApplicationId: "ir.mservices.market",
-            marketBindAddress  : "ir.mservices.market.BIND",
-            marketPermission   : "ir.mservices.market.BILLING"
-        ]
     }
     buildTypes {
         release {
@@ -41,11 +36,6 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    
-    // Tapsell and Myket SDK Integrations
-    implementation 'ir.tapsell.plus:tapsell-plus-sdk-android:2.2.4'
-    implementation 'com.github.myketstore:myket-billing-client:1.18'
-
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

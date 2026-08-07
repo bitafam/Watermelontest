@@ -4,5 +4,6 @@ xmlns:amazon="http://schemas.amazon.com/apk/res/android">
 <application  >
 
 </application>
-
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 </manifest>

@@ -46,12 +46,13 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "org.apache.cordova:framework:$cordovaAndroidVersion"
     // SUB-PROJECT DEPENDENCIES START
-
+    implementation "com.google.android.gms:play-services-ads:19.6.0"
     // SUB-PROJECT DEPENDENCIES END
 }
 
 // PLUGIN GRADLE EXTENSIONS START
 apply from: "cordova.variables.gradle"
+apply from: "../../node_modules/tapsell-plus-cordova-plugin/src/build.gradle"
 // PLUGIN GRADLE EXTENSIONS END
 
 for (def func : cdvPluginPostBuildExtras) {

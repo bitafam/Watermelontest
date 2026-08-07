@@ -32,6 +32,21 @@ import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
 import { Crop, Copy } from "lucide-react";
+import {
+  initializeTapsell,
+  startBannerRefresh,
+  stopBannerRefresh,
+  isRewardedAdReady,
+  showRewardedAd,
+  completeSimulatedAd,
+  isNativePlatform,
+  REWARDED_ZONE_ID
+} from "./utils/tapsell";
+import {
+  initMyketBilling,
+  checkOwnsFullVersion,
+  buyFullVersion
+} from "./utils/myket";
 
 // Official package ID for Myket publication
 const PACKAGE_ID = "com.apps.wmqd";
@@ -179,6 +194,36 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
+  // Tapsell Ads & Rate Limit States
+  const [watchedAdTimes, setWatchedAdTimes] = useState<number[]>(() => {
+    const saved = localStorage.getItem("watermelon_watched_ads");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [cooldownTime, setCooldownTime] = useState<number>(() => {
+    const saved = localStorage.getItem("watermelon_cooldown_until");
+    if (saved) {
+      const until = parseInt(saved, 10);
+      const diff = Math.ceil((until - Date.now()) / 1000);
+      return diff > 0 ? diff : 0;
+    }
+    return 0;
+  });
+
+  const [adOverlayActive, setAdOverlayActive] = useState<boolean>(false);
+  const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
+  const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
+
+  // Myket In-App Purchase States
+  const [isPremium, setIsPremium] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("watermelon_premium_user") === "true";
+    }
+    return false;
+  });
+  const [showSimulatedPaymentModal, setShowSimulatedPaymentModal] = useState<boolean>(false);
+  const [paymentResolveRef, setPaymentResolveRef] = useState<((val: boolean) => void) | null>(null);
+
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
@@ -316,6 +361,93 @@ export default function App() {
     "Inspecting the stem status and connective tissue moisture...",
     "Executing OCR to scan for any labels, price tags or codes..."
   ];
+
+  // Tapsell & Rate Limits Effects and Helpers
+  useEffect(() => {
+    if (localStorage.getItem("watermelon_premium_user") === "true") {
+      setIsPremium(true);
+      setCooldownTime(0);
+      return;
+    }
+
+    initializeTapsell();
+    startBannerRefresh();
+    return () => {
+      stopBannerRefresh();
+    };
+  }, []);
+
+  // Myket Billing Initialization and Check
+  useEffect(() => {
+    const initAndCheckBilling = async () => {
+      const initSuccess = await initMyketBilling();
+      if (initSuccess) {
+        const owns = await checkOwnsFullVersion();
+        if (owns) {
+          setIsPremium(true);
+          setCooldownTime(0);
+          stopBannerRefresh();
+        }
+      }
+    };
+    initAndCheckBilling();
+  }, []);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (cooldownTime > 0) {
+      timer = setInterval(() => {
+        setCooldownTime((prev) => {
+          const next = prev - 1;
+          if (next <= 0) {
+            localStorage.removeItem("watermelon_cooldown_until");
+            return 0;
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [cooldownTime]);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (adOverlayActive) {
+      timer = setInterval(() => {
+        setAdOverlaySeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+        setAdOverlayProgress((prev) => {
+          const next = prev + (100 / 15);
+          return next > 100 ? 100 : next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [adOverlayActive]);
+
+  const recordAdWatched = () => {
+    const now = Date.now();
+    const updated = [...watchedAdTimes, now].filter(t => now - t < 5 * 60 * 1000);
+    setWatchedAdTimes(updated);
+    localStorage.setItem("watermelon_watched_ads", JSON.stringify(updated));
+
+    if (updated.length >= 3) {
+      const cooldownUntil = now + 5 * 60 * 1000;
+      localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+      setCooldownTime(300); // 300 seconds
+      setWatchedAdTimes([]);
+      localStorage.setItem("watermelon_watched_ads", JSON.stringify([]));
+    }
+  };
 
   // Helper function to analyze the watermelon image completely offline/client-side using HTML5 Canvas
   const analyzeWatermelonLocal = (imageSrc: string, sType: string | null): Promise<AnalysisResult> => {
@@ -988,8 +1120,8 @@ export default function App() {
     }
   };
 
-  // Trigger analysis
-  const analyzeWatermelon = async () => {
+  // Actual analysis execution
+  const executeAnalysis = async () => {
     if (!image) return;
     setLoading(true);
     setCustomError(null);
@@ -1032,6 +1164,97 @@ export default function App() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle Myket In-App Billing Upgrade
+  const handleUpgradeToPremium = async () => {
+    try {
+      showToast(lang === "fa" ? "در حال اتصال به درگاه مایکت..." : "Connecting to Myket...", "info");
+      
+      const success = await buyFullVersion(async () => {
+        // Trigger simulated payment modal for web browser / AI Studio preview
+        return new Promise<boolean>((resolve) => {
+          setPaymentResolveRef(() => resolve);
+          setShowSimulatedPaymentModal(true);
+        });
+      });
+
+      if (success) {
+        setIsPremium(true);
+        setCooldownTime(0);
+        stopBannerRefresh();
+        showToast(
+          lang === "fa" 
+            ? "تبریک! نسخه کامل و طلایی با موفقیت فعال شد. تمامی تبلیغات و محدودیت‌ها برداشته شدند." 
+            : "Congratulations! Premium Gold has been successfully activated. All ads and limitations are removed.", 
+          "success"
+        );
+      } else {
+        showToast(
+          lang === "fa" ? "عملیات پرداخت لغو شد یا ناموفق بود." : "Payment cancelled or failed.", 
+          "error"
+        );
+      }
+    } catch (err) {
+      console.error("Myket Billing Error:", err);
+      showToast(
+        lang === "fa" ? "خطا در برقراری ارتباط با مایکت." : "Error communicating with Myket.", 
+        "error"
+      );
+    }
+  };
+
+  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
+  const analyzeWatermelon = () => {
+    // If user is premium, completely bypass all ads and cooldowns!
+    if (isPremium) {
+      executeAnalysis();
+      return;
+    }
+
+    if (cooldownTime > 0) {
+      showToast(lang === "fa" ? "لطفاً تا اتمام زمان محدودیت صبور باشید یا نسخه طلایی را ارتقا دهید." : "Please wait until the rate limit ends or upgrade to Premium Gold.", "error");
+      return;
+    }
+
+    if (isNativePlatform()) {
+      if (isRewardedAdReady()) {
+        showRewardedAd(
+          () => {
+            showToast(lang === "fa" ? "ویدیو اسپانسر باز شد؛ لطفاً تا پایان تماشا کنید..." : "Sponsor video opened, please watch till the end...", "info");
+          },
+          () => {
+            // Closed
+          },
+          () => {
+            // Rewarded
+            recordAdWatched();
+            executeAnalysis();
+          },
+          (err) => {
+            console.warn("Tapsell rewarded ad failed to show, running inspection directly:", err);
+            // Apply 1 minute cooldown (60 seconds) silently
+            const cooldownUntil = Date.now() + 60 * 1000;
+            localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+            setCooldownTime(60);
+            
+            executeAnalysis();
+          }
+        );
+      } else {
+        // Apply 1 minute cooldown (60 seconds) silently
+        const cooldownUntil = Date.now() + 60 * 1000;
+        localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+        setCooldownTime(60);
+        
+        executeAnalysis();
+      }
+    } else {
+      // Web Simulator Mode
+      setAdOverlayActive(true);
+      setAdOverlayProgress(0);
+      setAdOverlaySeconds(15);
     }
   };
 
@@ -1197,7 +1420,7 @@ export default function App() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="tracking-wide">ورژن 1.0.1</span>
+              <span className="tracking-wide">ورژن 2.0.1</span>
             </span>
           </div>
         </div>
@@ -1401,23 +1624,48 @@ export default function App() {
 
               {/* Run Analysis Action Section - placed higher directly under the image */}
               {image && !loading && (
-                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex gap-2" id="action-buttons">
-                  <button
-                    onClick={analyzeWatermelon}
-                    className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
-                    id="analyze-btn"
-                  >
-                    <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
-                    {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
-                  </button>
-                  
-                  <button
-                    onClick={resetAll}
-                    className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all"
-                    title={lang === "fa" ? "انصراف" : "Cancel"}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                <div className="p-4 border-t border-emerald-900/20 bg-[#0B120F]/40 flex flex-col gap-3" id="action-buttons">
+                  {cooldownTime > 0 ? (
+                    <div className="text-center p-1" id="limit-box">
+                      <button
+                        onClick={handleUpgradeToPremium}
+                        className="w-full py-4 px-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-between gap-3 text-xs md:text-sm cursor-pointer"
+                        id="buy-full-app-btn"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-black animate-pulse" />
+                          <span>
+                            {lang === "fa" ? "خرید نسخه کامل و بدون تبلیغات" : "Purchase Premium Full Version"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-black/15 px-2.5 py-1 rounded-lg text-xs font-mono font-bold">
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
+                          <span>
+                            {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, "0")}
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={analyzeWatermelon}
+                        className="flex-1 py-3 bg-gradient-to-br from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-bold rounded-xl shadow-xl shadow-emerald-950/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-xs md:text-sm cursor-pointer"
+                        id="analyze-btn"
+                      >
+                        <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+                        {lang === "fa" ? "شروع آنالیز و سنجش کیفیت دیجیتال" : "Start Digital Inspection"}
+                      </button>
+                      
+                      <button
+                        onClick={resetAll}
+                        className="px-3 py-3 bg-[#141F1A] hover:bg-[#1E2E27] border border-emerald-900/50 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                        title={lang === "fa" ? "انصراف" : "Cancel"}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -1967,7 +2215,7 @@ export default function App() {
               <div className="bg-[#0A0F0D] rounded-xl p-4 border border-emerald-950 space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400">نسخه نصب‌شده فعلی:</span>
-                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">1.0.1</span>
+                  <span className="font-mono font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">2.0.1</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-xs">
@@ -2524,6 +2772,209 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 1. Simulated Tapsell Rewarded Video Ad Overlay (Only shown on Web Browser/PC/AI Studio previews) */}
+      <AnimatePresence>
+        {adOverlayActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/95 flex flex-col justify-between p-6 md:p-10 font-sans select-none"
+            id="ad-video-overlay"
+            dir="rtl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between w-full max-w-4xl mx-auto border-b border-zinc-800/50 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] md:text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold tracking-wider">
+                  SPONSOR VIDEO / ویدیو حامی مالی
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {adOverlaySeconds > 0 ? (
+                  <span className="text-xs text-slate-400 font-mono bg-[#111] px-3 py-1 rounded-xl border border-zinc-800 flex items-center gap-1.5 font-bold">
+                    <RotateCw className="w-3.5 h-3.5 animate-spin text-emerald-500" style={{ animationDuration: '3s' }} />
+                    <span>{adOverlaySeconds} ثانیه تا دریافت جایزه</span>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setAdOverlayActive(false);
+                      recordAdWatched();
+                      executeAnalysis();
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-green-500 transition-all flex items-center gap-1.5 cursor-pointer"
+                    id="ad-close-btn"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>دریافت جایزه و شروع تحلیل هوشمند</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Simulated Video Player Stage */}
+            <div className="flex-1 max-w-4xl w-full mx-auto flex flex-col items-center justify-center py-6">
+              <div className="relative w-full max-w-2xl aspect-video rounded-3xl bg-[#090F0D] border border-emerald-950/40 flex flex-col items-center justify-center p-6 text-center space-y-6 overflow-hidden shadow-2xl">
+                {/* Visual scan pulse background */}
+                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent animate-pulse pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-emerald-500/20 animate-bounce" style={{ animationDuration: '4s' }} />
+                
+                <div className="w-20 h-20 rounded-full bg-[#141F1A] border border-emerald-900/50 flex items-center justify-center text-4xl shadow-xl shadow-emerald-950/40">
+                  🍉
+                </div>
+                
+                <div className="space-y-2 max-w-md">
+                  <h3 className="text-sm md:text-base font-extrabold text-white">
+                    برنامه هوشمند هندوانه‌سنج صوتی و دیجیتال
+                  </h3>
+                  <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed">
+                    با حمایت حامیان مالی برنامه، سنجش کیفیت برای شما به رایگان ارائه می‌شود. لطفاً تا اتمام ویدیو صبور باشید. از بردباری شما سپاسگزاریم.
+                  </p>
+                </div>
+
+                {/* Simulated Custom Progress bar */}
+                <div className="w-full max-w-md space-y-2 pt-4">
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>{Math.round(adOverlayProgress)}%</span>
+                    <span>15 ثانیه</span>
+                  </div>
+                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-green-500" 
+                      style={{ width: `${adOverlayProgress}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="w-full max-w-4xl mx-auto border-t border-zinc-800/50 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-500 text-[10px] md:text-xs">
+              <p>این شبیه‌ساز پس از اتمام تایمر، مجوز شروع آنالیز را صادر می‌کند.</p>
+              <div className="flex items-center gap-4">
+                <span>توسعه یافته با ❤️ برای مایکت و تپسل</span>
+                <span>شناسه زون: {REWARDED_ZONE_ID}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Myket Simulated Sandbox Payment Gateway */}
+        {showSimulatedPaymentModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4 backdrop-blur-sm"
+            id="myket-simulated-modal"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+              dir="rtl"
+            >
+              {/* Myket Header Bar */}
+              <div className="bg-[#FFC107] p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🛍️</span>
+                  <span className="text-black font-extrabold text-sm font-sans tracking-wide">درگاه پرداخت درون‌برنامه‌ای مایکت</span>
+                </div>
+                <div className="bg-black/10 px-2 py-0.5 rounded text-[10px] text-black font-mono font-bold">
+                  Myket Sandbox
+                </div>
+              </div>
+
+              {/* Billing Details */}
+              <div className="p-6 space-y-4">
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>نام برنامه:</span>
+                    <span className="text-slate-200 font-bold">هندوانه‌سنج صوتی هوشمند</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>شناسه کالا:</span>
+                    <span className="text-amber-500 font-mono font-bold">Fullversion</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>نوع محصول:</span>
+                    <span className="text-slate-200 font-medium">ارتقای طلایی (دائمی)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-300">امکانات نسخه طلایی:</h4>
+                  <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
+                    <li>حذف دائمی تمامی تبلیغات بنری و ویدیوهای تپسل</li>
+                    <li>رفع محدودیت زمانی و قفل شمارنده بین سنجش‌ها</li>
+                    <li>دسترسی کامل به آنالیز صوتی و چارت فرکانسی هندوانه</li>
+                    <li>ارتقای دقت موتور هوش مصنوعی با اولویت سرور ممتاز</li>
+                  </ul>
+                </div>
+
+                <div className="border-t border-zinc-800 pt-4 flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-200">مبلغ قابل پرداخت:</span>
+                  <div className="text-right">
+                    <span className="text-lg font-black text-amber-500">۱۹,۰۰۰</span>
+                    <span className="text-[10px] text-slate-400 mr-1">تومان</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="bg-zinc-950 px-6 py-4 border-t border-zinc-800/50 flex gap-3">
+                <button
+                  onClick={() => {
+                    if (paymentResolveRef) paymentResolveRef(true);
+                    setShowSimulatedPaymentModal(false);
+                  }}
+                  className="flex-1 py-3 bg-[#FFC107] hover:bg-[#FFB300] text-black font-black rounded-xl text-xs shadow-lg transition-transform active:scale-[0.98] cursor-pointer"
+                >
+                  تأیید پرداخت و فعال‌سازی نسخه طلایی
+                </button>
+                <button
+                  onClick={() => {
+                    if (paymentResolveRef) paymentResolveRef(false);
+                    setShowSimulatedPaymentModal(false);
+                  }}
+                  className="px-4 py-3 bg-zinc-900 hover:bg-zinc-800 text-slate-400 hover:text-white border border-zinc-800 rounded-xl text-xs font-semibold transition-transform active:scale-[0.98] cursor-pointer"
+                >
+                  انصراف
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Simulated Standard Banner Ad (Only shown on Web Browser/PC/AI Studio previews if not premium) */}
+      {!isPremium && !isNativePlatform() && (
+        <div 
+          className="fixed bottom-0 left-0 right-0 h-16 bg-zinc-950 border-t border-emerald-950/40 flex items-center justify-center z-[90] px-4 shadow-2xl backdrop-blur-md" 
+          id="simulated-banner-ad-web"
+          dir="rtl"
+        >
+          <div className="max-w-xl w-full flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded font-bold font-mono">AD / اسپانسر</span>
+              <div className="text-right">
+                <p className="text-slate-100 text-[11px] md:text-xs font-bold leading-tight">هندوانه‌سنج صوتی هوشمند را ارتقا دهید!</p>
+                <p className="text-slate-400 text-[9px] md:text-[10px] leading-tight mt-1">بدون محدودیت استفاده، بدون تبلیغات و با امکانات صوتی اختصاصی پوست هندوانه</p>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgradeToPremium}
+              className="text-[11px] bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black px-3 py-2 rounded-xl font-extrabold shadow-lg transition-transform transform active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              {lang === "fa" ? "ارتقای طلایی" : "Premium Gold"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -34,18 +34,11 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
       descEn: "Remove the waiting time limit between scans. Analyze as many watermelons as you want."
     },
     {
-      icon: <Activity className="w-5 h-5 text-indigo-500" />,
-      titleFa: "دسترسی به آنالیز فرکانسی و نمودار صوتی",
-      titleEn: "Advanced Frequency Analysis",
-      descFa: "مشاهده دقیق چارت فرکانسی، دامنه ارتعاش و آنالیز آکوستیک ضربه برای تشخیص فوق‌دقیق رسیده بودن.",
-      descEn: "Unlock real-time acoustic frequency charts and audio signal decibel statistics."
-    },
-    {
       icon: <Sparkles className="w-5 h-5 text-pink-500" />,
-      titleFa: "موتور هوش مصنوعی ممتاز (دقت فوق‌العاده)",
-      titleEn: "Priority AI Engine Accuracy",
-      descFa: "استفاده از الگوریتم‌های پیشرفته‌تر با اولویت پردازش در سرور ابری ابزار برای افزایش چشمگیر دقت سنجش.",
-      descEn: "Access enhanced machine learning models powered by priority premium servers."
+      titleFa: "موتور پردازش آفلاین فوق‌العاده سریع",
+      titleEn: "Priority Local Offline Engine",
+      descFa: "بهینه‌سازی حداکثری و افزایش فرکانس پردازش محلی تصاویر بدون نیاز به اینترنت؛ ایده‌آل برای استفاده در بازارهای میوه بدون آنتن‌دهی.",
+      descEn: "Maximum optimization and enhanced local frame rate processing. Works entirely offline, ideal for fruit markets."
     }
   ];
 
@@ -65,17 +58,17 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
 
         <div className="space-y-2">
           <h2 className="text-xl md:text-2xl font-black text-amber-300 font-sans tracking-tight">
-            ارتقای طلایی هندوانه‌سنج صوتی هوشمند
+            ارتقای برنامه هندونه‌سنج هوشمند
           </h2>
           <p className="text-xs text-slate-400 max-w-lg mx-auto">
-            با خرید نسخه طلایی، تمامی محدودیت‌ها را بردارید و با دقت بی‌نظیر هوش مصنوعی، رسیده بودن هندوانه را در مغازه‌ها بسنجید.
+            با خرید نسخه کامل، تمامی محدودیت‌ها را بردارید و با دقت بی‌نظیر، رسیده بودن هندوانه را در مغازه‌ها بسنجید.
           </p>
         </div>
 
         {isPremium ? (
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400 font-bold text-xs">
             <Check className="w-4 h-4" />
-            شما قبلاً این محصول را تهیه کرده‌اید و نسخه طلایی برای شما فعال است.
+            شما قبلاً این محصول را تهیه کرده‌اید و نسخه کامل برای شما فعال است.
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 pt-2">
@@ -99,7 +92,7 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
 
       {/* Grid of features */}
       <div className="space-y-3" id="premium-features-list">
-        <h3 className="text-xs font-bold text-emerald-400/80 pr-2">امکانات فوق‌العاده نسخه طلایی (Premium Gold):</h3>
+        <h3 className="text-xs font-bold text-emerald-400/80 pr-2">امکانات فوق‌العاده نسخه کامل (Premium Full):</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {features.map((item, index) => (
@@ -128,7 +121,7 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
         <div className="text-[11px] space-y-1">
           <p className="font-bold text-slate-300">پشتیبانی و اصالت خرید</p>
           <p>
-            خرید شما به صورت دائمی به حساب کاربری مایکت شما متصل خواهد شد. در صورت تغییر دستگاه یا پاک شدن برنامه، با همان حساب کاربری مایکت نسخه طلایی به صورت رایگان بازیابی خواهد شد.
+            خرید شما به صورت دائمی به حساب کاربری مایکت شما متصل خواهد شد. در صورت تغییر دستگاه یا پاک شدن برنامه، با همان حساب کاربری مایکت نسخه کامل به صورت رایگان بازیابی خواهد شد.
           </p>
         </div>
       </div>

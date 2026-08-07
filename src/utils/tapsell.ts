@@ -141,7 +141,12 @@ export const isRealNativeApp = (): boolean => {
 
 // Initialize Tapsell Plus
 export const initializeTapsell = (): void => {
+  let initialized = false;
+
   const init = () => {
+    if (initialized) return;
+    initialized = true;
+
     if (isNativePlatform()) {
       registerGlobalEventListeners();
       try {
@@ -164,20 +169,39 @@ export const initializeTapsell = (): void => {
   };
 
   if (typeof document !== "undefined") {
+    // 1. If TapsellPlus is already available, initialize immediately
     if (isNativePlatform()) {
       init();
-    } else if (isRealNativeApp()) {
-      console.log("Tapsell: Native App webview detected. Strictly waiting for deviceready event...");
+      return;
+    }
+
+    // 2. If running inside native app wrapper, set up listener and fallback polling
+    if (isRealNativeApp()) {
+      console.log("Tapsell: Native App webview detected. Setting up deviceready and fallback polling...");
       document.addEventListener("deviceready", () => {
-        console.log("Tapsell: deviceready fired in native app.");
+        console.log("Tapsell: deviceready event fired.");
         init();
       }, false);
-    } else {
-      // In standard web browser testing, wait 1 second fallback to initialize simulator
-      setTimeout(() => {
-        if (!hasRegisteredEvents) {
+
+      // Robust fallback: poll for window.TapsellPlus in case deviceready already fired
+      let checkCount = 0;
+      const interval = setInterval(() => {
+        checkCount++;
+        if (isNativePlatform()) {
+          console.log("Tapsell: Polling found window.TapsellPlus. Initializing...");
+          clearInterval(interval);
+          init();
+        } else if (checkCount >= 10) {
+          // If polled for 5 seconds and still no TapsellPlus, initialize simulator/fallback
+          clearInterval(interval);
+          console.log("Tapsell: Polling finished, TapsellPlus not found on native platform. Falling back...");
           init();
         }
+      }, 500);
+    } else {
+      // 3. Web Browser Testing: wait 1 second fallback to initialize simulator
+      setTimeout(() => {
+        init();
       }, 1000);
     }
   }

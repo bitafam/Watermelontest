@@ -146,34 +146,44 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					_removeBanner();
 				}
 				bannerLayout = new FrameLayout(mActivity);
-				int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+				FrameLayout.LayoutParams fLayoutParams = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
 				if (position == TOP_LEFT) {
-					gravity = Gravity.TOP | Gravity.LEFT;
+					fLayoutParams.gravity = Gravity.TOP | Gravity.LEFT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
+					 Log.e(LOG_TAG, "createBanner 2");
 				} else if (position == TOP_CENTER) {
-					gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+					fLayoutParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == TOP_RIGHT) {
-					gravity = Gravity.TOP | Gravity.RIGHT;
+					fLayoutParams.gravity = Gravity.TOP | Gravity.RIGHT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == LEFT) {
-					gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+					fLayoutParams.gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == CENTER) {
-					gravity = Gravity.CENTER;
+					fLayoutParams.gravity = Gravity.CENTER;
+			    	bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == RIGHT) {
-					gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
+					fLayoutParams.gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == BOTTOM_LEFT) {
-					gravity = Gravity.BOTTOM | Gravity.LEFT;
+					fLayoutParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == BOTTOM_CENTER) {
-					gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+					fLayoutParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				} else if (position == BOTTOM_RIGHT) {
-					gravity = Gravity.BOTTOM | Gravity.RIGHT;
-				}
-				
-				ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
-				
-				if (parentGroup != null) {
-					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-					params.gravity = gravity;
-					bannerLayout.setLayoutParams(params);
-					parentGroup.addView(bannerLayout);
+					fLayoutParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+					bannerLayout.setLayoutParams(fLayoutParams);
+				    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 				}
 				
 				TapsellPlus.requestStandardBannerAd(
@@ -207,16 +217,11 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 					_removeBanner();
 				}
 				bannerLayout = new FrameLayout(mActivity);
-				
-				ViewGroup parentGroup = (ViewGroup) mActivity.findViewById(android.R.id.content);
-				
-				if (parentGroup != null) {
-					FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-					params.leftMargin = x;
-					params.topMargin = y;
-					bannerLayout.setLayoutParams(params);
-					parentGroup.addView(bannerLayout);
-				}
+			    FrameLayout.LayoutParams fLayoutParams = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+			    fLayoutParams.leftMargin = x;
+		    	fLayoutParams.topMargin = y;
+			    bannerLayout.setLayoutParams(fLayoutParams);
+			    ((ViewGroup) getParentGroup().getParent()).addView(bannerLayout, 1);
 
 			    TapsellPlus.requestStandardBannerAd(
 						mActivity, zoneId,
@@ -250,13 +255,9 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				TapsellPlus.destroyStandardBanner(mActivity, standardBannerResponseId, bannerLayout);
 	    				standardBannerResponseId = null;
 	    			}
-					if (bannerLayout != null) {
-						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
-						if (parent != null) {
-							parent.removeView(bannerLayout);
-						}
-						bannerLayout = null;
-					}
+		        	ViewGroup viewGroup;
+		      		if (((viewGroup = getParentGroup()) != null) && ((viewGroup instanceof ViewGroup)) && (((ViewGroup)viewGroup.getParent()).getChildAt(1) != null))
+		      			((ViewGroup)viewGroup.getParent()).removeViewAt(1);
 		        }
 	    	});
 	    }
@@ -272,13 +273,9 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	    				TapsellPlus.destroyStandardBanner(mActivity, standardBannerResponseId, bannerLayout);
 	    				standardBannerResponseId = null;
 	    			}
-					if (bannerLayout != null) {
-						ViewGroup parent = (ViewGroup) bannerLayout.getParent();
-						if (parent != null) {
-							parent.removeView(bannerLayout);
-						}
-						bannerLayout = null;
-					}
+		        	ViewGroup viewGroup;
+	        		if (((viewGroup = getParentGroup()) != null) && ((viewGroup instanceof ViewGroup)) && (((ViewGroup)viewGroup.getParent()).getChildAt(1) != null))
+	        			((ViewGroup)viewGroup.getParent()).removeViewAt(1);
 		        }
 	    	});
 	    }
@@ -448,24 +445,17 @@ public class TapsellPlusPlugin extends CordovaPlugin {
         }
 	};
 	
-	public void fireEvent(final String obj, final String eventName, final String jsonData) {
-		if (mActivity != null) {
-			mActivity.runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					String js;
-					if("window".equals(obj)) {
-						js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
-					} else {
-						js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
-						if(jsonData != null) {
-							js += "," + jsonData;
-						}
-						js += ");";
-					}
-					webView.loadUrl(js);
+	public void fireEvent(String obj, String eventName, String jsonData) {
+			String js;
+			if("window".equals(obj)) {
+				js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
+			} else {
+				js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
+				if(jsonData != null) {
+					js += "," + jsonData;
 				}
-			});
-		}
+				js += ");";
+			}
+			webView.loadUrl(js);
 	}
 }

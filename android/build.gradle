@@ -27,3 +27,18 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+// Copy the billing AIDL file if it exists, so the plugins compile successfully
+def aidlSrc = file("../node_modules/cordova-plugin-android-iab/src/android/com/android/vending/billing/IInAppBillingService.aidl")
+if (aidlSrc.exists()) {
+    def aidlDestDir = file("capacitor-cordova-android-plugins/src/main/aidl/com/android/vending/billing")
+    aidlDestDir.mkdirs()
+    def aidlDestFile = file("capacitor-cordova-android-plugins/src/main/aidl/com/android/vending/billing/IInAppBillingService.aidl")
+    if (!aidlDestFile.exists() || aidlDestFile.length() != aidlSrc.length()) {
+        aidlDestFile.bytes = aidlSrc.bytes
+        println "SUCCESS: Copied IInAppBillingService.aidl to plugin project"
+    }
+} else {
+    println "WARNING: cordova-plugin-android-iab AIDL not found in node_modules"
+}
+

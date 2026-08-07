@@ -23,7 +23,8 @@ import {
   Calendar,
   Share2,
   MessageSquare,
-  Smartphone
+  Smartphone,
+  Zap
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./types";
@@ -31,6 +32,7 @@ import { AnalysisResult, SavedAnalysis, VisualHotspot, WatermelonItem } from "./
 import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
+import UpgradeView from "./components/UpgradeView";
 import { Crop, Copy } from "lucide-react";
 import {
   initializeTapsell,
@@ -40,6 +42,7 @@ import {
   showRewardedAd,
   completeSimulatedAd,
   isNativePlatform,
+  isRealNativeApp,
   REWARDED_ZONE_ID
 } from "./utils/tapsell";
 import {
@@ -172,7 +175,7 @@ const SAMPLE_WATERMELONS = [
 
 export default function App() {
   const lang = "fa";
-  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact">("scanner");
+  const [activeTab, setActiveTab] = useState<"scanner" | "guide" | "contact" | "upgrade">("scanner");
   const [image, setImage] = useState<string | null>(null);
   const [soundType, setSoundType] = useState<"hollow" | "dull" | "metallic" | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -1465,6 +1468,17 @@ export default function App() {
               <MessageSquare className="w-4 h-4" />
               {lang === "fa" ? "تماس با ما" : "Contact Us"}
             </button>
+            <button
+              onClick={() => setActiveTab("upgrade")}
+              className={`px-4 sm:px-5 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "upgrade"
+                  ? "bg-gradient-to-br from-amber-500/15 to-yellow-500/5 border border-amber-500/20 text-amber-300 shadow-md shadow-amber-500/5"
+                  : "text-slate-400 hover:text-slate-200 border border-transparent"
+              }`}
+            >
+              <Zap className="w-4 h-4 text-amber-500" />
+              {lang === "fa" ? "ارتقاء برنامه" : "Upgrade App"}
+            </button>
           </div>
         </div>
 
@@ -1472,6 +1486,8 @@ export default function App() {
           <AccuracyGuide />
         ) : activeTab === "contact" ? (
           <ContactUs onBack={() => setActiveTab("scanner")} />
+        ) : activeTab === "upgrade" ? (
+          <UpgradeView onBack={() => setActiveTab("scanner")} isPremium={isPremium} handleUpgrade={handleUpgradeToPremium} />
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6" id="workbench-grid">
@@ -2951,8 +2967,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 2. Simulated Standard Banner Ad (Only shown on Web Browser/PC/AI Studio previews if not premium) */}
-      {!isPremium && !isNativePlatform() && (
+      {/* 2. Simulated Standard Banner Ad (Only shown on Web Browser/PC/AI Studio previews if not premium and not on native platform) */}
+      {!isPremium && !isRealNativeApp() && !isNativePlatform() && (
         <div 
           className="fixed bottom-0 left-0 right-0 h-16 bg-zinc-950 border-t border-emerald-950/40 flex items-center justify-center z-[90] px-4 shadow-2xl backdrop-blur-md" 
           id="simulated-banner-ad-web"

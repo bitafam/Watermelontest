@@ -8,6 +8,8 @@ export const REWARDED_ZONE_ID = "6a7312aa2d8bc412b49fd3ef";
 declare global {
   interface Window {
     TapsellPlus?: any;
+    Capacitor?: any;
+    cordova?: any;
   }
 }
 
@@ -126,6 +128,17 @@ const registerGlobalEventListeners = () => {
   });
 };
 
+// Check if running on a real native webview wrapper (Capacitor/Cordova)
+export const isRealNativeApp = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return !!(
+    window.Capacitor || 
+    window.cordova || 
+    window.location.href.startsWith("capacitor://") || 
+    window.location.href.startsWith("http://localhost/")
+  );
+};
+
 // Initialize Tapsell Plus
 export const initializeTapsell = (): void => {
   const init = () => {
@@ -136,6 +149,11 @@ export const initializeTapsell = (): void => {
         window.TapsellPlus.initialize(APP_TOKEN);
         // Preload the first rewarded ad immediately
         preloadRewardedAd();
+        
+        // Auto-load standard banner once initialized successfully on native platform
+        setTimeout(() => {
+          showStandardBannerAd();
+        }, 1500);
       } catch (e) {
         console.error("Tapsell: Exception during initialization", e);
       }
@@ -148,13 +166,14 @@ export const initializeTapsell = (): void => {
   if (typeof document !== "undefined") {
     if (isNativePlatform()) {
       init();
-    } else {
-      // In native environment, wait for deviceready to ensure TapsellPlus is injected
+    } else if (isRealNativeApp()) {
+      console.log("Tapsell: Native App webview detected. Strictly waiting for deviceready event...");
       document.addEventListener("deviceready", () => {
+        console.log("Tapsell: deviceready fired in native app.");
         init();
       }, false);
-      
-      // Fallback check after 1 second for faster startup or standard browser testing
+    } else {
+      // In standard web browser testing, wait 1 second fallback to initialize simulator
       setTimeout(() => {
         if (!hasRegisteredEvents) {
           init();

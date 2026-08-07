@@ -24,6 +24,23 @@ allprojects {
     }
 }
 
+subprojects { project ->
+    afterEvaluate {
+        if (project.name == 'capacitor-cordova-android-plugins') {
+            project.android {
+                buildFeatures {
+                    aidl = true
+                }
+                sourceSets {
+                    main {
+                        aidl.srcDirs = ['src/main/java', 'src/main/aidl']
+                    }
+                }
+            }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

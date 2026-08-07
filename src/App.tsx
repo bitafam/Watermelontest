@@ -217,7 +217,7 @@ export default function App() {
   const [adOverlayActive, setAdOverlayActive] = useState<boolean>(false);
   const [adOverlayProgress, setAdOverlayProgress] = useState<number>(0);
   const [adOverlaySeconds, setAdOverlaySeconds] = useState<number>(15);
-  const [adPreparationCountdown, setAdPreparationCountdown] = useState<number | null>(null);
+  const [isWaitingForAd, setIsWaitingForAd] = useState<boolean>(false);
 
   // Myket In-App Purchase States
   const [isPremium, setIsPremium] = useState<boolean>(() => {
@@ -1226,26 +1226,22 @@ export default function App() {
     // Try preloading the ad immediately
     preloadRewardedAd();
 
-    // Start 7-second countdown delay to allow ads to load
-    setAdPreparationCountdown(7);
+    // If rewarded ad is already ready, show it instantly without any pause/delay!
+    if (isRewardedAdReady()) {
+      proceedWithAdFlow();
+      return;
+    }
+
+    // Otherwise, start a 5-second delay to allow the ad to load. Show "Please wait" spinner overlay.
+    setIsWaitingForAd(true);
     
-    const interval = setInterval(() => {
-      setAdPreparationCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          // Countdown finished, proceed to ad showing phase
-          setTimeout(() => {
-            setAdPreparationCountdown(null);
-            proceedWithAdFlow();
-          }, 300);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    setTimeout(() => {
+      setIsWaitingForAd(false);
+      proceedWithAdFlow();
+    }, 5000);
   };
 
-  // Proceed with standard Tapsell flow after the 7-second pre-loading delay
+  // Proceed with standard Tapsell flow after pre-loading check
   const proceedWithAdFlow = () => {
     if (isNativePlatform()) {
       if (isRewardedAdReady()) {
@@ -1272,7 +1268,7 @@ export default function App() {
           }
         );
       } else {
-        console.log("Tapsell: Rewarded ad not ready after 7 seconds delay, running directly.");
+        console.log("Tapsell: Rewarded ad not ready after 5 seconds delay, running directly.");
         // Apply 1 minute cooldown (60 seconds) silently
         const cooldownUntil = Date.now() + 60 * 1000;
         localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
@@ -2816,9 +2812,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Ad Preparation 7-Seconds Delay Overlay */}
+      {/* Ad Preparation 5-Seconds Delay Overlay */}
       <AnimatePresence>
-        {adPreparationCountdown !== null && (
+        {isWaitingForAd && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -2827,24 +2823,21 @@ export default function App() {
             id="ad-preparation-overlay"
             dir="rtl"
           >
-            <div className="relative w-full max-w-md p-8 rounded-3xl bg-[#090F0D] border border-emerald-950/60 flex flex-col items-center justify-center space-y-6 shadow-2xl overflow-hidden">
+            <div className="relative w-full max-w-sm p-8 rounded-3xl bg-[#090F0D] border border-emerald-950/60 flex flex-col items-center justify-center space-y-6 shadow-2xl overflow-hidden">
               {/* Spinning circular glow effect */}
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent animate-pulse pointer-events-none" />
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500/30 animate-pulse" />
 
-              {/* Large visually impressive countdown indicator */}
-              <div className="relative w-28 h-28 flex items-center justify-center">
+              {/* Large visually impressive loading spinner */}
+              <div className="relative w-20 h-20 flex items-center justify-center">
                 {/* Outer spinning ring */}
                 <div className="absolute inset-0 rounded-full border-4 border-emerald-950"></div>
                 <div 
                   className="absolute inset-0 rounded-full border-4 border-t-emerald-400 border-r-emerald-500 animate-spin" 
-                  style={{ animationDuration: '2.5s' }}
+                  style={{ animationDuration: '2s' }}
                 ></div>
-                
-                {/* Numeric Countdown */}
-                <span className="text-4xl font-black text-emerald-300 font-mono tracking-tight animate-pulse">
-                  {adPreparationCountdown}
-                </span>
+                {/* Watermelon emoji in center */}
+                <span className="text-2xl animate-pulse">🍉</span>
               </div>
 
               {/* Header */}

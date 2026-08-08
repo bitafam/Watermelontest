@@ -36,6 +36,13 @@ let activeAdCallbacks: {
 let hasRegisteredEvents = false;
 export let hasInitializedReal = false;
 export let hasInitializedSim = false;
+export let hasRealSdkInitializedSuccessfully = false;
+
+let onErrorCallback: ((msg: string) => void) | null = null;
+
+export const registerErrorCallback = (callback: (msg: string) => void) => {
+  onErrorCallback = callback;
+};
 
 // Register global document event listeners for Cordova TapsellPlus
 const registerGlobalEventListeners = () => {
@@ -43,6 +50,24 @@ const registerGlobalEventListeners = () => {
   hasRegisteredEvents = true;
 
   console.log("Tapsell: Registering global Cordova event listeners...");
+
+  document.addEventListener('onInitializeSuccess', () => {
+    console.log("Tapsell Event: onInitializeSuccess received!");
+    hasRealSdkInitializedSuccessfully = true;
+    
+    // Now that initialization is successful, start preloading and show standard banner
+    preloadRewardedAd();
+    showStandardBannerAd();
+  });
+
+  document.addEventListener('onInitializeFailed', () => {
+    console.error("Tapsell Event: onInitializeFailed received.");
+    hasRealSdkInitializedSuccessfully = false;
+    hasInitializedReal = false; // Allow retry on failure
+    if (onErrorCallback) {
+      onErrorCallback("تنش‌زدایی/اتصال اولیه تپسل با شکست مواجه شد");
+    }
+  });
 
   document.addEventListener('response', (e: any) => {
     const data = e.detail || e.data || e;
@@ -66,6 +91,9 @@ const registerGlobalEventListeners = () => {
     const message = data.message;
 
     console.error("Tapsell Event: error", { adType, message });
+    if (onErrorCallback && message) {
+      onErrorCallback(`خطای دریافت ${adType}: ${message}`);
+    }
 
     const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
     if (isRewarded) {
@@ -119,6 +147,10 @@ const registerGlobalEventListeners = () => {
     const message = data.message;
     console.error("Tapsell Event: onError", { adType, message });
     
+    if (onErrorCallback && message) {
+      onErrorCallback(`خطای نمایش ${adType}: ${message}`);
+    }
+    
     const isRewarded = adType.toLowerCase() === "rewardvideo" || adType.toLowerCase() === "rewardedvideo";
     if (isRewarded) {
       const cb = activeAdCallbacks?.onAdShowFailed;
@@ -154,13 +186,8 @@ export const initializeTapsell = (): void => {
         console.log("Tapsell: Initializing real SDK with token", APP_TOKEN);
         window.TapsellPlus.initialize(APP_TOKEN);
         
-        // Preload the first rewarded ad immediately
-        preloadRewardedAd();
-        
-        // Auto-load standard banner once initialized successfully on native platform
-        setTimeout(() => {
-          showStandardBannerAd();
-        }, 1500);
+        // We no longer call preloadRewardedAd() and showStandardBannerAd() synchronously here.
+        // We wait for the Cordova event 'onInitializeSuccess' to be fired!
       } catch (e) {
         console.error("Tapsell: Exception during initialization", e);
         hasInitializedReal = false; // Allow retry on failure
@@ -175,6 +202,7 @@ export const initializeTapsell = (): void => {
 
       if (hasInitializedSim || hasInitializedReal) return;
       hasInitializedSim = true;
+      hasRealSdkInitializedSuccessfully = true; // Web Simulator is always successfully initialized!
       console.log("Tapsell: Web mode - Simulator Initialized with token", APP_TOKEN);
       preloadRewardedAd();
     }

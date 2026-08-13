@@ -188,6 +188,16 @@ export const initializeTapsell = (): void => {
         
         // We no longer call preloadRewardedAd() and showStandardBannerAd() synchronously here.
         // We wait for the Cordova event 'onInitializeSuccess' to be fired!
+        // Robust Fallback: In case the custom Cordova document event is delayed or not received
+        // within 6 seconds, we force-initialize and attempt preloading/banner display.
+        setTimeout(() => {
+          if (!hasRealSdkInitializedSuccessfully) {
+            console.log("Tapsell Fallback: onInitializeSuccess event not received within 6 seconds. Running initialization fallback...");
+            hasRealSdkInitializedSuccessfully = true;
+            preloadRewardedAd();
+            showStandardBannerAd();
+          }
+        }, 6000);
       } catch (e) {
         console.error("Tapsell: Exception during initialization", e);
         hasInitializedReal = false; // Allow retry on failure

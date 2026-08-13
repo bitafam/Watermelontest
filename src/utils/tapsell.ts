@@ -16,7 +16,19 @@ declare global {
 // Check if running on native device via Capacitor (window.TapsellPlus is injected)
 export const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
-  return !!window.TapsellPlus;
+  return typeof window.TapsellPlus !== "undefined" && window.TapsellPlus !== null;
+};
+
+// Check if running on a real native webview wrapper (Capacitor/Cordova)
+export const isRealNativeApp = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return !!(
+    (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+    window.Capacitor || 
+    window.cordova || 
+    window.location.href.startsWith("capacitor://") || 
+    window.location.href.startsWith("http://localhost/")
+  );
 };
 
 // State variables for preloading rewarded ads
@@ -44,32 +56,38 @@ export const registerErrorCallback = (callback: (msg: string) => void) => {
   onErrorCallback = callback;
 };
 
-// Register global document event listeners for Cordova TapsellPlus
+// Helper to check if the user is a premium user
+export const isPremiumUser = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("watermelon_premium_user") === "true";
+};
+
+// Register global document & window event listeners for Cordova / TapsellPlus
 const registerGlobalEventListeners = () => {
   if (hasRegisteredEvents || typeof window === "undefined") return;
   hasRegisteredEvents = true;
 
-  console.log("Tapsell: Registering global Cordova event listeners...");
+  console.log("Tapsell: Registering global Cordova and DOM event listeners...");
 
-  document.addEventListener('onInitializeSuccess', () => {
+  const handleInitSuccess = () => {
     console.log("Tapsell Event: onInitializeSuccess received!");
     hasRealSdkInitializedSuccessfully = true;
     
-    // Now that initialization is successful, start preloading and show standard banner
+    // Start preloading rewarded ad & start banner refresh
     preloadRewardedAd();
-    showStandardBannerAd();
-  });
+    startBannerRefresh();
+  };
 
-  document.addEventListener('onInitializeFailed', () => {
+  const handleInitFailed = () => {
     console.error("Tapsell Event: onInitializeFailed received.");
     hasRealSdkInitializedSuccessfully = false;
     hasInitializedReal = false; // Allow retry on failure
     if (onErrorCallback) {
-      onErrorCallback("تنش‌زدایی/اتصال اولیه تپسل با شکست مواجه شد");
+      onErrorCallback("اتصال اولیه تپسل با شکست مواجه شد");
     }
-  });
+  };
 
-  document.addEventListener('response', (e: any) => {
+  const handleResponse = (e: any) => {
     const data = e.detail || e.data || e;
     const resId = data.responseId;
     const adType = data.adType || "";
@@ -83,9 +101,9 @@ const registerGlobalEventListeners = () => {
       isPreloaded = true;
       if (onAdPreloadedCallback) onAdPreloadedCallback();
     }
-  });
+  };
 
-  document.addEventListener('error', (e: any) => {
+  const handleError = (e: any) => {
     const data = e.detail || e.data || e;
     const adType = data.adType || "";
     const message = data.message;
@@ -102,9 +120,9 @@ const registerGlobalEventListeners = () => {
       // Retry preloading after 15 seconds
       setTimeout(() => preloadRewardedAd(), 15000);
     }
-  });
+  };
 
-  document.addEventListener('onOpened', (e: any) => {
+  const handleOpened = (e: any) => {
     const data = e.detail || e.data || e;
     const adType = data.adType || "";
     console.log("Tapsell Event: onOpened", { adType });
@@ -113,9 +131,9 @@ const registerGlobalEventListeners = () => {
     if (isRewarded && activeAdCallbacks?.onAdOpened) {
       activeAdCallbacks.onAdOpened();
     }
-  });
+  };
 
-  document.addEventListener('onClosed', (e: any) => {
+  const handleClosed = (e: any) => {
     const data = e.detail || e.data || e;
     const adType = data.adType || "";
     console.log("Tapsell Event: onClosed", { adType });
@@ -128,9 +146,9 @@ const registerGlobalEventListeners = () => {
       // Preload next ad immediately
       preloadRewardedAd();
     }
-  });
+  };
 
-  document.addEventListener('onRewarded', (e: any) => {
+  const handleRewarded = (e: any) => {
     const data = e.detail || e.data || e;
     const adType = data.adType || "";
     console.log("Tapsell Event: onRewarded", { adType });
@@ -139,9 +157,9 @@ const registerGlobalEventListeners = () => {
     if (isRewarded && activeAdCallbacks?.onAdRewarded) {
       activeAdCallbacks.onAdRewarded();
     }
-  });
+  };
 
-  document.addEventListener('onError', (e: any) => {
+  const handleShowError = (e: any) => {
     const data = e.detail || e.data || e;
     const adType = data.adType || "";
     const message = data.message;
@@ -159,103 +177,121 @@ const registerGlobalEventListeners = () => {
       // Preload next ad immediately
       preloadRewardedAd();
     }
-  });
-};
-
-// Check if running on a real native webview wrapper (Capacitor/Cordova)
-export const isRealNativeApp = (): boolean => {
-  if (typeof window === "undefined") return false;
-  return !!(
-    window.Capacitor || 
-    window.cordova || 
-    window.location.href.startsWith("capacitor://") || 
-    window.location.href.startsWith("http://localhost/")
-  );
-};
-
-// Initialize Tapsell Plus
-export const initializeTapsell = (): void => {
-  const init = () => {
-    if (isNativePlatform()) {
-      if (hasInitializedReal) return;
-      hasInitializedReal = true;
-      hasInitializedSim = false; // Disable simulator if real is available
-
-      registerGlobalEventListeners();
-      try {
-        console.log("Tapsell: Initializing real SDK with token", APP_TOKEN);
-        window.TapsellPlus.initialize(APP_TOKEN);
-        
-        // We no longer call preloadRewardedAd() and showStandardBannerAd() synchronously here.
-        // We wait for the Cordova event 'onInitializeSuccess' to be fired!
-        // Robust Fallback: In case the custom Cordova document event is delayed or not received
-        // within 6 seconds, we force-initialize and attempt preloading/banner display.
-        setTimeout(() => {
-          if (!hasRealSdkInitializedSuccessfully) {
-            console.log("Tapsell Fallback: onInitializeSuccess event not received within 6 seconds. Running initialization fallback...");
-            hasRealSdkInitializedSuccessfully = true;
-            preloadRewardedAd();
-            showStandardBannerAd();
-          }
-        }, 6000);
-      } catch (e) {
-        console.error("Tapsell: Exception during initialization", e);
-        hasInitializedReal = false; // Allow retry on failure
-      }
-    } else {
-      // If we are running inside a real native app wrapper, DO NOT fall back to web simulator mode
-      // because we want real ads. We will keep waiting for TapsellPlus to load.
-      if (isRealNativeApp()) {
-        console.log("Tapsell: Still waiting for window.TapsellPlus to load on native app...");
-        return;
-      }
-
-      if (hasInitializedSim || hasInitializedReal) return;
-      hasInitializedSim = true;
-      hasRealSdkInitializedSuccessfully = true; // Web Simulator is always successfully initialized!
-      console.log("Tapsell: Web mode - Simulator Initialized with token", APP_TOKEN);
-      preloadRewardedAd();
-    }
   };
 
-  if (typeof document !== "undefined") {
-    // 1. If TapsellPlus is already available, initialize immediately
-    if (isNativePlatform()) {
-      init();
-      return;
-    }
+  // Register on document and window for complete safety
+  document.addEventListener('onInitializeSuccess', handleInitSuccess);
+  window.addEventListener('onInitializeSuccess', handleInitSuccess);
 
-    // 2. If running inside native app wrapper, set up listener and fallback polling
-    if (isRealNativeApp()) {
-      console.log("Tapsell: Native App webview detected. Setting up deviceready and fallback polling...");
-      
-      const onDeviceReady = () => {
-        console.log("Tapsell: deviceready event fired.");
-        init();
-      };
-      
-      document.addEventListener("deviceready", onDeviceReady, false);
+  document.addEventListener('onInitializeFailed', handleInitFailed);
+  window.addEventListener('onInitializeFailed', handleInitFailed);
 
-      // Robust fallback: poll for window.TapsellPlus in case deviceready already fired or is delayed
-      let checkCount = 0;
-      const interval = setInterval(() => {
-        checkCount++;
-        if (isNativePlatform()) {
-          console.log("Tapsell: Polling found window.TapsellPlus. Initializing real SDK...");
-          clearInterval(interval);
-          init();
-        } else if (checkCount >= 20) {
-          // Poll for up to 10 seconds
-          clearInterval(interval);
-          console.log("Tapsell: Polling finished. Real TapsellPlus not found on native platform yet.");
-        }
-      }, 500);
-    } else {
-      // 3. Web Browser Testing: wait 1 second fallback to initialize simulator
-      setTimeout(() => {
-        init();
-      }, 1000);
-    }
+  document.addEventListener('response', handleResponse);
+  window.addEventListener('response', handleResponse);
+
+  document.addEventListener('error', handleError);
+  window.addEventListener('error', handleError);
+
+  document.addEventListener('onOpened', handleOpened);
+  window.addEventListener('onOpened', handleOpened);
+
+  document.addEventListener('onClosed', handleClosed);
+  window.addEventListener('onClosed', handleClosed);
+
+  document.addEventListener('onRewarded', handleRewarded);
+  window.addEventListener('onRewarded', handleRewarded);
+
+  document.addEventListener('onError', handleShowError);
+  window.addEventListener('onError', handleShowError);
+};
+
+// Initialize Real Native Tapsell SDK
+const initRealSdk = (): void => {
+  if (hasInitializedReal) return;
+  if (!isNativePlatform()) {
+    console.log("Tapsell: window.TapsellPlus not present yet.");
+    return;
+  }
+
+  hasInitializedReal = true;
+  hasInitializedSim = false;
+  registerGlobalEventListeners();
+
+  try {
+    console.log("Tapsell: Initializing real SDK with token:", APP_TOKEN);
+    console.log("Tapsell: window.TapsellPlus methods:", Object.keys(window.TapsellPlus));
+    window.TapsellPlus.initialize(APP_TOKEN);
+
+    // Fallback: If onInitializeSuccess event is delayed or not received within 5 seconds,
+    // proceed with preloading and banner refresh
+    setTimeout(() => {
+      if (!hasRealSdkInitializedSuccessfully) {
+        console.log("Tapsell Fallback: onInitializeSuccess not received in 5s. Proceeding with fallback init...");
+        hasRealSdkInitializedSuccessfully = true;
+        preloadRewardedAd();
+        startBannerRefresh();
+      }
+    }, 5000);
+  } catch (e) {
+    console.error("Tapsell: Exception during initialize()", e);
+    hasInitializedReal = false;
+  }
+};
+
+// Initialize Simulator for Browser Testing
+const initSim = (): void => {
+  if (hasInitializedSim || hasInitializedReal) return;
+  hasInitializedSim = true;
+  hasRealSdkInitializedSuccessfully = true;
+  console.log("Tapsell: Web Browser mode - Simulator Initialized with token", APP_TOKEN);
+  preloadRewardedAd();
+};
+
+// Main entry point for initializing Tapsell
+export const initializeTapsell = (): void => {
+  if (typeof document === "undefined") return;
+
+  // 1. If TapsellPlus is already injected on window, initialize directly
+  if (isNativePlatform()) {
+    console.log("Tapsell: TapsellPlus already available on window. Initializing...");
+    initRealSdk();
+    return;
+  }
+
+  // 2. If running inside native container (Capacitor/Cordova)
+  if (isRealNativeApp()) {
+    console.log("Tapsell: Native container detected. Setting up deviceready listener and polling...");
+    
+    const onDeviceReady = () => {
+      console.log("Tapsell: deviceready event triggered");
+      console.log("Tapsell: window.TapsellPlus is:", window.TapsellPlus);
+      if (isNativePlatform()) {
+        initRealSdk();
+      }
+    };
+
+    document.addEventListener("deviceready", onDeviceReady, false);
+
+    // Also poll every 300ms for up to 10 seconds in case deviceready already fired
+    let pollCount = 0;
+    const interval = setInterval(() => {
+      pollCount++;
+      if (isNativePlatform()) {
+        console.log("Tapsell: Polling discovered window.TapsellPlus!");
+        clearInterval(interval);
+        initRealSdk();
+      } else if (pollCount >= 30) {
+        clearInterval(interval);
+        console.log("Tapsell: Polling ended. TapsellPlus plugin not found on window.");
+      }
+    }, 300);
+  } else {
+    // 3. Pure web browser - initialize simulator after brief delay
+    setTimeout(() => {
+      if (!isNativePlatform()) {
+        initSim();
+      }
+    }, 500);
   }
 };
 
@@ -272,7 +308,7 @@ export const preloadRewardedAd = (): void => {
   if (isPreloading || isPreloaded) return;
 
   if (isNativePlatform() && !hasInitializedReal) {
-    console.log("Tapsell: Preload called but real SDK not initialized yet. Initializing now...");
+    console.log("Tapsell: Preload requested before initialization. Initializing now...");
     initializeTapsell();
     return;
   }
@@ -281,7 +317,7 @@ export const preloadRewardedAd = (): void => {
 
   if (isNativePlatform()) {
     try {
-      console.log("Tapsell: Preloading real rewarded video...");
+      console.log("Tapsell: Requesting real rewarded video from zone:", REWARDED_ZONE_ID);
       window.TapsellPlus.requestRewardedVideo(REWARDED_ZONE_ID);
     } catch (e) {
       isPreloading = false;
@@ -332,7 +368,7 @@ export const showRewardedAd = (
         onAdShowFailed
       };
 
-      console.log("Tapsell: Displaying real rewarded video...", activeAdId);
+      console.log("Tapsell: Displaying real rewarded video with ID:", activeAdId);
       window.TapsellPlus.showRewardedVideo(activeAdId);
     } catch (e) {
       console.error("Tapsell: Error showing rewarded ad", e);
@@ -358,12 +394,6 @@ export const completeSimulatedAd = (
   preloadRewardedAd();
 };
 
-// Helper to check if the user is a premium user
-export const isPremiumUser = (): boolean => {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem("watermelon_premium_user") === "true";
-};
-
 // Standard Banner Ad state
 let bannerTimer: any = null;
 
@@ -377,24 +407,24 @@ export const showStandardBannerAd = (): void => {
 
   if (isNativePlatform()) {
     if (!hasInitializedReal) {
-      console.log("Tapsell: Banner requested but real SDK not initialized yet. Initializing now...");
+      console.log("Tapsell: Banner requested before initialization. Initializing now...");
       initializeTapsell();
       return;
     }
     try {
-      console.log("Tapsell: Creating real bottom standard banner...");
+      console.log("Tapsell: Creating real bottom standard banner for zone:", BANNER_ZONE_ID);
       
-      // Determine correct position using SDK constants, fallback to 7 (BOTTOM_CENTER) if not defined
-      const position = (window.TapsellPlus && window.TapsellPlus.AD_POSITION && window.TapsellPlus.AD_POSITION.BOTTOM_CENTER !== undefined)
+      // Determine position using SDK constants, default to 7 (BOTTOM_CENTER)
+      const position = (window.TapsellPlus?.AD_POSITION?.BOTTOM_CENTER !== undefined)
         ? window.TapsellPlus.AD_POSITION.BOTTOM_CENTER
         : 7; // BOTTOM_CENTER
         
-      // Determine correct size using SDK constants, fallback to 1 (BANNER_320x50) if not defined
-      const size = (window.TapsellPlus && window.TapsellPlus.AD_SIZE && window.TapsellPlus.AD_SIZE.BANNER_320x50 !== undefined)
+      // Determine size using SDK constants, default to 1 (BANNER_320x50)
+      const size = (window.TapsellPlus?.AD_SIZE?.BANNER_320x50 !== undefined)
         ? window.TapsellPlus.AD_SIZE.BANNER_320x50
         : 1; // BANNER_320x50
 
-      console.log(`Tapsell: createBanner positions: pos=${position}, size=${size}`);
+      console.log(`Tapsell: createBanner(zone=${BANNER_ZONE_ID}, pos=${position}, size=${size})`);
       
       window.TapsellPlus.createBanner(
         BANNER_ZONE_ID,
@@ -405,7 +435,7 @@ export const showStandardBannerAd = (): void => {
       console.error("Tapsell: Error requesting standard banner", e);
     }
   } else {
-    console.log("Tapsell Simulator: Requesting standard banner at bottom center");
+    console.log("Tapsell Simulator: Displaying bottom standard banner ad");
   }
 };
 

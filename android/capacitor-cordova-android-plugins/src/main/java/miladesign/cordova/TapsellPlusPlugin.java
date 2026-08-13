@@ -446,16 +446,20 @@ public class TapsellPlusPlugin extends CordovaPlugin {
 	};
 	
 	public void fireEvent(String obj, String eventName, String jsonData) {
-			String js;
-			if("window".equals(obj)) {
-				js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
-			} else {
-				js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
-				if(jsonData != null) {
-					js += "," + jsonData;
-				}
-				js += ");";
-			}
-			webView.loadUrl(js);
+		String jsonParam = (jsonData != null) ? jsonData : "null";
+		String js = "javascript:(function(){"
+				+ "try{"
+				+ "  if(window.cordova && typeof window.cordova.fireDocumentEvent === 'function'){"
+				+ "    window.cordova.fireDocumentEvent('" + eventName + "'" + (jsonData != null ? ("," + jsonData) : "") + ");"
+				+ "  }"
+				+ "  var data = " + jsonParam + ";"
+				+ "  var evt = new CustomEvent('" + eventName + "', { detail: data });"
+				+ "  document.dispatchEvent(evt);"
+				+ "  window.dispatchEvent(evt);"
+				+ "}catch(e){"
+				+ "  console.error('Tapsell fireEvent error:', e);"
+				+ "}"
+				+ "})();";
+		webView.loadUrl(js);
 	}
 }

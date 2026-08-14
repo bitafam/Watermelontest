@@ -692,6 +692,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	});
 					    }
 
+					    @Override
 					    public void onError(final String reason) {
 					    	Log.e(TAG, "==================================================");
 					    	Log.e(TAG, "Adivery Banner: Request at XY Failed");
@@ -711,6 +712,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	fireEvent("adivery", "onShowFailed", json);
 					    }
 
+					    @Override
 					    public void onAdClicked() {
 					    	Log.d(TAG, "Adivery Banner: onAdClicked at XY");
 					    	String json = String.format("{\"adType\":\"%s\",\"status\":\"CLICKED\",\"zone\":\"%s\"}", "Banner", zoneId);

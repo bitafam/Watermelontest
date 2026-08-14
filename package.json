@@ -8,7 +8,8 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "postinstall": "node -e \"const fs=require('fs');const p='node_modules/adivery-cordova-plugin/src/build.gradle';if(fs.existsSync(p)){fs.writeFileSync(p, 'repositories {\\n  google()\\n  mavenCentral()\\n}\\ndependencies {\\n  implementation \\'com.adivery:sdk:3.4.1\\'\\n}\\n');}\""
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

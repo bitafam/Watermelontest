@@ -52,6 +52,19 @@ jobs:
 
       - name: Initialize Capacitor Android
         run: |
+          # Patch adivery plugin build.gradle to prevent resolving dead/unavailable adcolony/jcenter repositories
+          if [ -f "node_modules/adivery-cordova-plugin/src/build.gradle" ]; then
+            cat << 'EOF' > node_modules/adivery-cordova-plugin/src/build.gradle
+          repositories {
+              google()
+              mavenCentral()
+          }
+
+          dependencies {
+              implementation 'com.adivery:sdk:3.4.1'
+          }
+          EOF
+          fi
           # Ensure android platform folder is initialized and synced correctly
           if [ ! -d "android" ]; then
             npx cap add android

@@ -26,13 +26,49 @@ module.exports = {
         ); 
     },
     createBanner: function(zoneId, position, type) {
+        try {
+            console.log("[Adivery.js] Banner: calling cordova.exec('Adivery', 'createBanner', ...)", { zoneId: zoneId, position: position, type: type });
+            if (typeof window !== "undefined" && window.dispatchEvent) {
+                var evt = new CustomEvent("onBannerCordovaExecCalling", {
+                    detail: { zoneId: zoneId, position: position, type: type, timestamp: Date.now() }
+                });
+                window.dispatchEvent(evt);
+            }
+        } catch (e) {
+            console.error("[Adivery.js] Error dispatching onBannerCordovaExecCalling", e);
+        }
+
         cordova.exec(
-			null,
-			null,
+			function(win) {
+                console.log("[Adivery.js] Banner: cordova.exec success callback", win);
+            },
+			function(err) {
+                console.error("[Adivery.js] Banner: cordova.exec error callback", err);
+                try {
+                    if (typeof window !== "undefined" && window.dispatchEvent) {
+                        var errEvt = new CustomEvent("onBannerCordovaExecError", {
+                            detail: { error: err, timestamp: Date.now() }
+                        });
+                        window.dispatchEvent(errEvt);
+                    }
+                } catch (ignore) {}
+            },
             'Adivery',
             'createBanner',
             [ zoneId, position, type ]
-        ); 
+        );
+
+        try {
+            console.log("[Adivery.js] Banner: cordova.exec('createBanner') invocation completed (sync return)");
+            if (typeof window !== "undefined" && window.dispatchEvent) {
+                var retEvt = new CustomEvent("onBannerCordovaExecReturned", {
+                    detail: { zoneId: zoneId, timestamp: Date.now() }
+                });
+                window.dispatchEvent(retEvt);
+            }
+        } catch (e) {
+            console.error("[Adivery.js] Error dispatching onBannerCordovaExecReturned", e);
+        }
     },
     createBannerAtXY: function(zoneId, x, y, type) {
         cordova.exec(

@@ -15,15 +15,19 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Cpu,
   Layers,
   Maximize2,
   Minimize2,
   Play,
   RotateCcw,
   Square,
+  Terminal,
   Trash2,
   Tv,
-  X
+  Workflow,
+  X,
+  Zap
 } from "lucide-react";
 
 export const BannerDebugOverlay: React.FC = () => {
@@ -34,7 +38,7 @@ export const BannerDebugOverlay: React.FC = () => {
   const [state, setState] = useState<BannerDiagnosticState>(getBannerDiagnosticState());
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "view" | "events">("overview");
+  const [activeTab, setActiveTab] = useState<"pipeline" | "overview" | "view" | "events">("pipeline");
 
   useEffect(() => {
     const unsubscribe = subscribeBannerDiagnostic((newState) => {
@@ -84,9 +88,62 @@ export const BannerDebugOverlay: React.FC = () => {
 
   const badgeStyle = getStatusBadge(state.status);
 
+  // Pipeline execution step items
+  const pipelineSteps = [
+    {
+      id: "js_request",
+      title: "1. JS showStandardBannerAd()",
+      desc: "JS initiated banner request for Zone",
+      done: state.jsRequestStarted,
+      active: state.status === "Request Started" && !state.cordovaExecCalled
+    },
+    {
+      id: "cordova_exec",
+      title: "2. cordova.exec('createBanner')",
+      desc: state.cordovaExecReturned ? "Dispatched & returned synchronously" : "Calling Cordova bridge",
+      done: state.cordovaExecCalled || state.cordovaExecReturned,
+      active: state.cordovaExecCalled && !state.nativeActionReceived
+    },
+    {
+      id: "native_action",
+      title: "3. Native AdiveryPlugin.execute()",
+      desc: state.threadInfo ? `Received on: ${state.threadInfo}` : "Awaiting native plugin action",
+      done: state.nativeActionReceived,
+      active: state.nativeActionReceived && !state.sdkCallStarted
+    },
+    {
+      id: "sdk_call",
+      title: "4. Adivery.requestBannerAd()",
+      desc: state.sdkCallReturned ? "Native SDK call returned successfully" : state.sdkCallStarted ? "Invoking SDK method" : "Pending SDK call",
+      done: state.sdkCallReturned || state.sdkCallStarted,
+      active: state.sdkCallStarted && !state.sdkCallbackReceived && !state.isTimeout
+    },
+    {
+      id: "sdk_callback",
+      title: "5. AdiveryBannerCallback",
+      desc: state.isTimeout
+        ? "TIMEOUT (15s): No callback from SDK"
+        : state.sdkCallbackType === "LOADED"
+        ? "onAdLoaded received"
+        : state.sdkCallbackType === "ERROR"
+        ? `onError received: ${state.sdkCallbackReason || "Failed"}`
+        : "Awaiting SDK callback...",
+      done: state.sdkCallbackReceived,
+      failed: state.isTimeout || state.sdkCallbackType === "ERROR",
+      active: state.sdkCallReturned && !state.sdkCallbackReceived && !state.isTimeout
+    },
+    {
+      id: "view_attach",
+      title: "6. View Attached & Visible",
+      desc: state.isVisible ? `Rendered on screen (${state.viewWidthPx}x${state.viewHeightPx}px)` : "Pending layout and render",
+      done: state.isVisible || state.isAttached,
+      active: state.isLoaded && !state.isVisible
+    }
+  ];
+
   return (
     <>
-      {/* Floating Toggle Button */}
+      {/* Floating Trigger Button */}
       <div
         id="adivery-banner-debug-floating-trigger"
         className="fixed top-2.5 left-2.5 z-50 flex items-center gap-1.5 font-sans"
@@ -102,6 +159,11 @@ export const BannerDebugOverlay: React.FC = () => {
           <span className={`w-2 h-2 rounded-full ${badgeStyle.dot}`} />
           <span className="font-semibold tracking-wide">ADIVERY BANNER</span>
           <span className="opacity-90 font-bold uppercase">{state.status}</span>
+          {state.isTimeout && (
+            <span className="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.2 rounded border border-rose-800 font-bold">
+              TIMEOUT
+            </span>
+          )}
           {state.nextRetrySeconds !== null && state.nextRetrySeconds > 0 && (
             <span className="text-[10px] bg-rose-950/60 text-rose-300 px-1.5 py-0.5 rounded border border-rose-800/40">
               {state.nextRetrySeconds}s
@@ -117,7 +179,7 @@ export const BannerDebugOverlay: React.FC = () => {
           id="adivery-banner-debug-modal"
           className="fixed inset-x-2 top-12 z-50 max-w-xl mx-auto rounded-2xl bg-slate-950/95 border border-slate-800/90 shadow-2xl backdrop-blur-xl text-slate-100 overflow-hidden font-sans text-xs transition-all animate-in fade-in slide-in-from-top-2"
           dir="ltr"
-          style={{ maxHeight: isMinimized ? "68px" : "85vh" }}
+          style={{ maxHeight: isMinimized ? "68px" : "88vh" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800">
@@ -153,7 +215,7 @@ export const BannerDebugOverlay: React.FC = () => {
           </div>
 
           {!isMinimized && (
-            <div className="flex flex-col h-full max-h-[calc(85vh-50px)] overflow-hidden">
+            <div className="flex flex-col h-full max-h-[calc(88vh-50px)] overflow-hidden">
               {/* Quick Action Bar */}
               <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-900/50 border-b border-slate-800/80">
                 <button
@@ -176,6 +238,18 @@ export const BannerDebugOverlay: React.FC = () => {
 
               {/* Navigation Tabs */}
               <div className="flex border-b border-slate-800 bg-slate-950 px-2 pt-1 gap-1">
+                <button
+                  id="tab-debug-pipeline"
+                  onClick={() => setActiveTab("pipeline")}
+                  className={`px-3 py-1.5 rounded-t-lg font-medium transition-all flex items-center gap-1.5 ${
+                    activeTab === "pipeline"
+                      ? "bg-slate-900 text-emerald-400 border-t-2 border-emerald-400 font-semibold"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Workflow className="w-3.5 h-3.5" />
+                  Pipeline Trace
+                </button>
                 <button
                   id="tab-debug-overview"
                   onClick={() => setActiveTab("overview")}
@@ -218,6 +292,100 @@ export const BannerDebugOverlay: React.FC = () => {
 
               {/* Content Panels */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 font-mono">
+                {/* TAB 0: PIPELINE TRACE */}
+                {activeTab === "pipeline" && (
+                  <div className="space-y-3">
+                    {/* Pipeline Intro info */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] space-y-1">
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                          <Cpu className="w-3.5 h-3.5" />
+                          Adivery SDK State:
+                        </span>
+                        <span className={`px-2 py-0.5 rounded font-bold ${state.isAdiveryConfigured ? "bg-emerald-950 text-emerald-300 border border-emerald-800" : "bg-amber-950 text-amber-300 border border-amber-800"}`}>
+                          {state.isAdiveryConfigured ? "CONFIGURED" : "NOT CONFIGURED"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400 text-[10px] pt-1 border-t border-slate-800/60">
+                        <span>Active Thread:</span>
+                        <span className="text-cyan-300">{state.threadInfo || "None"} (isMain: {String(state.isMainThread)})</span>
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Flow List */}
+                    <div className="space-y-2">
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                        Execution Flow from JS to Native SDK:
+                      </div>
+                      <div className="space-y-1.5">
+                        {pipelineSteps.map((step) => (
+                          <div
+                            key={step.id}
+                            className={`p-2.5 rounded-xl border transition-all ${
+                              step.failed
+                                ? "bg-rose-950/30 border-rose-800 text-rose-200"
+                                : step.done
+                                ? "bg-emerald-950/20 border-emerald-800/60 text-slate-200"
+                                : step.active
+                                ? "bg-amber-950/20 border-amber-500 text-amber-200 animate-pulse"
+                                : "bg-slate-900/40 border-slate-800 text-slate-400"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-0.5">
+                                <div className="font-bold text-xs flex items-center gap-1.5">
+                                  {step.failed ? (
+                                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                  ) : step.done ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  ) : step.active ? (
+                                    <Activity className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
+                                  ) : (
+                                    <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                                  )}
+                                  <span className={step.done ? "text-emerald-300" : step.failed ? "text-rose-300" : "text-slate-200"}>
+                                    {step.title}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] pl-5 opacity-80 font-sans">
+                                  {step.desc}
+                                </div>
+                              </div>
+
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  step.failed
+                                    ? "bg-rose-900 text-rose-200"
+                                    : step.done
+                                    ? "bg-emerald-900 text-emerald-200"
+                                    : step.active
+                                    ? "bg-amber-900 text-amber-200"
+                                    : "bg-slate-800 text-slate-400"
+                                }`}
+                              >
+                                {step.failed ? "FAIL" : step.done ? "DONE" : step.active ? "IN PROGRESS" : "WAITING"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Timeout Diagnosis Alert */}
+                    {state.isTimeout && (
+                      <div className="p-3 rounded-xl bg-rose-950/50 border-2 border-rose-600 text-rose-200 space-y-1.5 animate-in fade-in">
+                        <div className="flex items-center gap-1.5 font-bold text-rose-300 text-xs">
+                          <AlertCircle className="w-4 h-4 text-rose-400" />
+                          Diagnostic Diagnosis: Adivery SDK Black-hole
+                        </div>
+                        <div className="text-[11px] font-sans text-rose-100 leading-relaxed">
+                          The native method <code className="bg-rose-900/60 px-1 py-0.5 rounded">Adivery.requestBannerAd()</code> was invoked and completed on the UI thread, but the Adivery SDK did not invoke its callback within 15 seconds.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* TAB 1: OVERVIEW & STATE */}
                 {activeTab === "overview" && (
                   <div className="space-y-3">
@@ -380,7 +548,7 @@ export const BannerDebugOverlay: React.FC = () => {
                     <div className="flex justify-between items-center pb-1 border-b border-slate-800">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Last 20 Adivery Events:
+                        Last 25 Adivery Events:
                       </span>
                       <button
                         id="btn-clear-banner-logs"
@@ -406,7 +574,7 @@ export const BannerDebugOverlay: React.FC = () => {
                             <div className="flex items-center justify-between">
                               <span className="text-slate-500 font-mono">[{evt.time}]</span>
                               <span className={`px-1.5 py-0.2 rounded font-semibold text-[9px] ${
-                                evt.type.toLowerCase().includes("fail") || evt.type.toLowerCase().includes("error")
+                                evt.type.toLowerCase().includes("fail") || evt.type.toLowerCase().includes("error") || evt.type.toLowerCase().includes("timeout")
                                   ? "bg-rose-950 text-rose-300 border border-rose-800/50"
                                   : evt.type.toLowerCase().includes("load") || evt.type.toLowerCase().includes("attach")
                                   ? "bg-emerald-950 text-emerald-300 border border-emerald-800/50"

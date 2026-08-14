@@ -6,6 +6,7 @@ import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.adivery.sdk.Adivery;
 import com.adivery.sdk.AdiveryBannerCallback;
@@ -17,6 +18,7 @@ import com.adivery.sdk.BannerType;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -35,6 +37,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 	private RelativeLayout banner;
 	private AdiveryLoadedAd loadedAd;
 	private Application _app;
+	private static boolean isConfigured = false;
 	
 	public static final int TOP_LEFT = 0;
 	public static final int TOP_CENTER = 1;
@@ -66,6 +69,33 @@ public class AdiveryPlugin extends CordovaPlugin {
 			String zoneId = args.getString(0);
 			int position = args.getInt(1);
 			int size = args.getInt(2);
+
+			boolean isMain = (Looper.myLooper() == Looper.getMainLooper());
+			String threadName = Thread.currentThread().getName();
+			Log.i(TAG, "==================================================");
+			Log.i(TAG, "NATIVE createBanner ACTION RECEIVED");
+			Log.i(TAG, "  zone=" + zoneId);
+			Log.i(TAG, "  position=" + position + " (" + getPositionName(position) + ")");
+			Log.i(TAG, "  size=" + size);
+			Log.i(TAG, "  thread=" + threadName + " (isMain=" + isMain + ")");
+			Log.i(TAG, "  isConfigured=" + isConfigured);
+			Log.i(TAG, "==================================================");
+
+			try {
+				JSONObject actionJson = new JSONObject();
+				actionJson.put("action", "createBanner");
+				actionJson.put("zone", zoneId);
+				actionJson.put("position", position);
+				actionJson.put("positionName", getPositionName(position));
+				actionJson.put("size", size);
+				actionJson.put("thread", threadName);
+				actionJson.put("isMainThread", isMain);
+				actionJson.put("isConfigured", isConfigured);
+				fireEvent("adivery", "onBannerNativeActionReceived", actionJson.toString());
+			} catch (Exception ex) {
+				Log.e(TAG, "Error firing onBannerNativeActionReceived", ex);
+			}
+
 			BannerType bannerType = BannerType.BANNER;
 			switch (size) {
 				case 1:
@@ -137,8 +167,30 @@ public class AdiveryPlugin extends CordovaPlugin {
 	}
 	
 	private void init(String appId) {
-		Log.i(TAG, "Adivery.configure() called with App ID: " + appId);
-		Adivery.configure(_app, appId);
+		try {
+			Log.i(TAG, "Adivery.configure() starting with App ID: " + appId);
+			if (_app != null) {
+				Adivery.configure(_app, appId);
+			} else if (mActivity != null) {
+				Adivery.configure(mActivity.getApplication(), appId);
+			}
+			isConfigured = true;
+			Log.i(TAG, "Adivery.configure() completed successfully");
+
+			JSONObject initJson = new JSONObject();
+			initJson.put("status", "CONFIGURED");
+			initJson.put("appId", appId);
+			initJson.put("isConfigured", true);
+			fireEvent("adivery", "onSdkInitialized", initJson.toString());
+		} catch (Exception ex) {
+			Log.e(TAG, "Exception in Adivery.configure()", ex);
+			try {
+				JSONObject errJson = new JSONObject();
+				errJson.put("status", "CONFIG_FAILED");
+				errJson.put("error", ex.getMessage());
+				fireEvent("adivery", "onSdkInitialized", errJson.toString());
+			} catch (Exception ignore) {}
+		}
 	}
 
 	private String getPositionName(int pos) {
@@ -173,11 +225,16 @@ public class AdiveryPlugin extends CordovaPlugin {
 			@Override
 			public void run() {
 				try {
+					boolean isMain = (Looper.myLooper() == Looper.getMainLooper());
+					String threadName = Thread.currentThread().getName();
+
 					Log.i(TAG, "==================================================");
-					Log.i(TAG, "Adivery Banner: Request Started");
+					Log.i(TAG, "Adivery Banner: Request Starting on UI Thread");
 					Log.i(TAG, "  zone=" + zoneId);
 					Log.i(TAG, "  position=" + getPositionName(position));
 					Log.i(TAG, "  size=" + getSizeName(bannerType));
+					Log.i(TAG, "  thread=" + threadName + " (isMain=" + isMain + ")");
+					Log.i(TAG, "  isConfigured=" + isConfigured);
 					Log.i(TAG, "==================================================");
 
 					_removeBanner();
@@ -208,7 +265,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 
 					// Fire onBannerRequested event with initial diagnostic data
 					try {
-						org.json.JSONObject reqJson = new org.json.JSONObject();
+						JSONObject reqJson = new JSONObject();
 						reqJson.put("adType", "Banner");
 						reqJson.put("status", "REQUEST_STARTED");
 						reqJson.put("zone", zoneId);
@@ -220,6 +277,9 @@ public class AdiveryPlugin extends CordovaPlugin {
 						reqJson.put("targetHeightPx", heightPx);
 						reqJson.put("density", dm.density);
 						reqJson.put("densityDpi", dm.densityDpi);
+						reqJson.put("thread", threadName);
+						reqJson.put("isMainThread", isMain);
+						reqJson.put("isConfigured", isConfigured);
 						fireEvent("adivery", "onBannerRequested", reqJson.toString());
 					} catch (Exception ex) {
 						Log.e(TAG, "Error firing onBannerRequested", ex);
@@ -276,6 +336,24 @@ public class AdiveryPlugin extends CordovaPlugin {
 					AdiveryBannerCallback callback = new AdiveryBannerCallback() {
 					    @Override
 					    public void onAdLoaded(final View ad) {
+					    	String cbThread = Thread.currentThread().getName();
+					    	boolean cbIsMain = (Looper.myLooper() == Looper.getMainLooper());
+					    	Log.i(TAG, "==================================================");
+					    	Log.i(TAG, "Adivery Banner SDK Callback: onAdLoaded received!");
+					    	Log.i(TAG, "  adView=" + (ad != null ? ad.getClass().getName() : "null"));
+					    	Log.i(TAG, "  thread=" + cbThread + " (isMain=" + cbIsMain + ")");
+					    	Log.i(TAG, "==================================================");
+
+					    	try {
+					    		JSONObject cbJson = new JSONObject();
+					    		cbJson.put("callbackType", "LOADED");
+					    		cbJson.put("adType", "Banner");
+					    		cbJson.put("zone", zoneId);
+					    		cbJson.put("thread", cbThread);
+					    		cbJson.put("isMainThread", cbIsMain);
+					    		fireEvent("adivery", "onSdkCallbackReceived", cbJson.toString());
+					    	} catch (Exception ignore) {}
+
 					    	mActivity.runOnUiThread(new Runnable() {
 					    		@Override
 					    		public void run() {
@@ -330,7 +408,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    									Log.i(TAG, "  rootDimensions=" + rootW + "x" + rootH + " px (childCount: " + childCount + ")");
 					    									Log.i(TAG, "==================================================");
 
-					    									org.json.JSONObject diagJson = new org.json.JSONObject();
+					    									JSONObject diagJson = new JSONObject();
 					    									diagJson.put("adType", "Banner");
 					    									diagJson.put("status", (isAttached && isAdVisible && isLayoutVisible) ? "VISIBLE" : "ATTACHED");
 					    									diagJson.put("zone", zoneId);
@@ -367,7 +445,7 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    			} catch (Exception e) {
 					    				Log.e(TAG, "Adivery Banner: Error displaying banner ad view", e);
 					    				try {
-					    					org.json.JSONObject errJson = new org.json.JSONObject();
+					    					JSONObject errJson = new JSONObject();
 					    					errJson.put("message", e.getMessage());
 					    					errJson.put("reason", e.getMessage());
 					    					errJson.put("adType", "Banner");
@@ -381,19 +459,34 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	});
 					    }
 
+					    @Override
 					    public void onError(final String reason) {
 					    	String actualReason = (reason != null && !reason.trim().isEmpty()) ? reason : "No Ad Available";
+					    	String cbThread = Thread.currentThread().getName();
+					    	boolean cbIsMain = (Looper.myLooper() == Looper.getMainLooper());
 					    	Log.e(TAG, "==================================================");
-					    	Log.e(TAG, "Adivery Banner: Request Failed");
+					    	Log.e(TAG, "Adivery Banner SDK Callback: onError received!");
 					    	Log.e(TAG, "  zone=" + zoneId);
 					    	Log.e(TAG, "  position=" + getPositionName(position));
 					    	Log.e(TAG, "  size=" + getSizeName(bannerType));
 					    	Log.e(TAG, "  status=ERROR");
 					    	Log.e(TAG, "  reason=" + actualReason);
+					    	Log.e(TAG, "  thread=" + cbThread + " (isMain=" + cbIsMain + ")");
 					    	Log.e(TAG, "==================================================");
 
 					    	try {
-					    		org.json.JSONObject errJson = new org.json.JSONObject();
+					    		JSONObject cbJson = new JSONObject();
+					    		cbJson.put("callbackType", "ERROR");
+					    		cbJson.put("adType", "Banner");
+					    		cbJson.put("reason", actualReason);
+					    		cbJson.put("zone", zoneId);
+					    		cbJson.put("thread", cbThread);
+					    		cbJson.put("isMainThread", cbIsMain);
+					    		fireEvent("adivery", "onSdkCallbackReceived", cbJson.toString());
+					    	} catch (Exception ignore) {}
+
+					    	try {
+					    		JSONObject errJson = new JSONObject();
 					    		errJson.put("message", actualReason);
 					    		errJson.put("reason", actualReason);
 					    		errJson.put("adType", "Banner");
@@ -408,10 +501,11 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	}
 					    }
 
+					    @Override
 					    public void onAdClicked() {
-					    	Log.d(TAG, "Adivery Banner: onAdClicked");
+					    	Log.d(TAG, "Adivery Banner SDK Callback: onAdClicked received");
 					    	try {
-					    		org.json.JSONObject clickJson = new org.json.JSONObject();
+					    		JSONObject clickJson = new JSONObject();
 					    		clickJson.put("adType", "Banner");
 					    		clickJson.put("status", "CLICKED");
 					    		clickJson.put("zone", zoneId);
@@ -421,9 +515,75 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    }
 					};
 
-					Adivery.requestBannerAd(mActivity, zoneId, bannerType, callback);
+					// Step 3: Before Adivery.requestBannerAd()
+					Log.i(TAG, "==================================================");
+					Log.i(TAG, "Adivery SDK CALL STARTING");
+					Log.i(TAG, "  zone=" + zoneId);
+					Log.i(TAG, "  bannerType=" + getSizeName(bannerType));
+					Log.i(TAG, "  position=" + getPositionName(position));
+					Log.i(TAG, "  activity=" + (mActivity != null ? mActivity.getClass().getSimpleName() : "null"));
+					Log.i(TAG, "  thread=" + threadName + " (isMain=" + isMain + ")");
+					Log.i(TAG, "==================================================");
+
+					try {
+						JSONObject startingJson = new JSONObject();
+						startingJson.put("status", "SDK_CALL_STARTING");
+						startingJson.put("zone", zoneId);
+						startingJson.put("bannerType", getSizeName(bannerType));
+						startingJson.put("position", getPositionName(position));
+						startingJson.put("activity", (mActivity != null ? mActivity.getClass().getSimpleName() : "null"));
+						startingJson.put("thread", threadName);
+						startingJson.put("isMainThread", isMain);
+						fireEvent("adivery", "onSdkCallStarting", startingJson.toString());
+					} catch (Exception ignore) {}
+
+					// Step 4: Try/Catch around Adivery.requestBannerAd()
+					try {
+						Adivery.requestBannerAd(mActivity, zoneId, bannerType, callback);
+						
+						// Step 5: Immediately after Adivery.requestBannerAd()
+						Log.i(TAG, "==================================================");
+						Log.i(TAG, "Adivery.requestBannerAd() RETURNED");
+						Log.i(TAG, "==================================================");
+
+						try {
+							JSONObject returnedJson = new JSONObject();
+							returnedJson.put("status", "SDK_CALL_RETURNED");
+							returnedJson.put("zone", zoneId);
+							returnedJson.put("thread", threadName);
+							returnedJson.put("isMainThread", isMain);
+							fireEvent("adivery", "onSdkCallReturned", returnedJson.toString());
+						} catch (Exception ignore) {}
+
+					} catch (Throwable sdkEx) {
+						String exClass = sdkEx.getClass().getName();
+						String exMsg = sdkEx.getMessage() != null ? sdkEx.getMessage() : "null";
+						String stackTrace = Log.getStackTraceString(sdkEx);
+
+						Log.e(TAG, "==================================================");
+						Log.e(TAG, "Adivery Banner SDK Exception during requestBannerAd()!");
+						Log.e(TAG, "  Class: " + exClass);
+						Log.e(TAG, "  Message: " + exMsg);
+						Log.e(TAG, "  StackTrace: " + stackTrace);
+						Log.e(TAG, "==================================================");
+
+						try {
+							JSONObject exJson = new JSONObject();
+							exJson.put("errorClass", exClass);
+							exJson.put("message", exMsg);
+							exJson.put("stackTrace", stackTrace);
+							exJson.put("reason", "SDK Exception: " + exClass + " - " + exMsg);
+							exJson.put("adType", "Banner");
+							exJson.put("status", "SDK_EXCEPTION");
+							exJson.put("zone", zoneId);
+							fireEvent("adivery", "onBannerSdkException", exJson.toString());
+							fireEvent("adivery", "onBannerFailed", exJson.toString());
+							fireEvent("adivery", "onShowFailed", exJson.toString());
+						} catch (Exception ignore) {}
+					}
+
 				} catch (Exception ex) {
-					Log.e(TAG, "Adivery Banner: Exception in createBanner", ex);
+					Log.e(TAG, "Adivery Banner: Top-level Exception in createBanner", ex);
 				}
 			}
 		});
@@ -715,17 +875,30 @@ public class AdiveryPlugin extends CordovaPlugin {
         }
 	}
 	
-	public void fireEvent(String obj, String eventName, String jsonData) {
-			String js;
-			if("window".equals(obj)) {
-				js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
-			} else {
-				js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
-				if(jsonData != null) {
-					js += "," + jsonData;
+	public void fireEvent(final String obj, final String eventName, final String jsonData) {
+		if (mActivity != null) {
+			mActivity.runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						String js;
+						if ("window".equals(obj)) {
+							js = "var evt=document.createEvent('UIEvents');evt.initUIEvent('" + eventName + "',true,false,window,0);window.dispatchEvent(evt);";
+						} else {
+							js = "javascript:cordova.fireDocumentEvent('" + eventName + "'";
+							if (jsonData != null) {
+								js += "," + jsonData;
+							}
+							js += ");";
+						}
+						if (webView != null) {
+							webView.loadUrl(js);
+						}
+					} catch (Exception e) {
+						Log.e(TAG, "Error in fireEvent: " + eventName, e);
+					}
 				}
-				js += ");";
-			}
-			webView.loadUrl(js);
+			});
+		}
 	}
 }

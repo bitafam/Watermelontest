@@ -51,6 +51,23 @@ export interface BannerDiagnosticState {
   targetHeightPx: number;
   density: number;
   requestState: "IDLE" | "IN_PROGRESS" | "SUCCESS" | "FAILED";
+
+  // Step-by-step Pipeline Execution Flags
+  jsRequestStarted: boolean;
+  cordovaExecCalled: boolean;
+  cordovaExecReturned: boolean;
+  nativeActionReceived: boolean;
+  sdkCallStarted: boolean;
+  sdkCallReturned: boolean;
+  sdkCallbackReceived: boolean;
+  sdkCallbackType: "LOADED" | "ERROR" | "CLICKED" | "TIMEOUT" | "NONE";
+  sdkCallbackReason: string | null;
+  isTimeout: boolean;
+  threadInfo: string | null;
+  isMainThread: boolean | null;
+  isAdiveryConfigured: boolean;
+
+  // View Inspection
   isLoaded: boolean;
   isAttached: boolean;
   isVisible: boolean;
@@ -79,6 +96,21 @@ let bannerDiagState: BannerDiagnosticState = {
   targetHeightPx: 50,
   density: 1,
   requestState: "IDLE",
+
+  jsRequestStarted: false,
+  cordovaExecCalled: false,
+  cordovaExecReturned: false,
+  nativeActionReceived: false,
+  sdkCallStarted: false,
+  sdkCallReturned: false,
+  sdkCallbackReceived: false,
+  sdkCallbackType: "NONE",
+  sdkCallbackReason: null,
+  isTimeout: false,
+  threadInfo: null,
+  isMainThread: null,
+  isAdiveryConfigured: false,
+
   isLoaded: false,
   isAttached: false,
   isVisible: false,
@@ -133,8 +165,8 @@ const addBannerDebugEvent = (type: string, message: string, raw?: any, statusOve
     raw
   };
 
-  // Retain maximum last 20 events
-  const newEvents = [newLog, ...bannerDiagState.events].slice(0, 20);
+  // Retain maximum last 25 events
+  const newEvents = [newLog, ...bannerDiagState.events].slice(0, 25);
 
   bannerDiagState = {
     ...bannerDiagState,
@@ -196,6 +228,7 @@ let bannerRetryAttempt = 0;
 let bannerRetryTimer: any = null;
 let bannerCountdownTimer: any = null;
 let bannerRefreshTimer: any = null;
+let bannerDiagnosticTimeoutTimer: any = null;
 
 let hasRegisteredEvents = false;
 export let hasInitializedReal = false;
@@ -235,6 +268,158 @@ const registerGlobalEventListeners = () => {
 
   console.log("Adivery: Registering global Cordova and DOM event listeners...");
 
+  // Handler for JS cordova.exec calling event
+  const handleBannerCordovaExecCalling = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onBannerCordovaExecCalling", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      cordovaExecCalled: true
+    };
+    addBannerDebugEvent("cordova_exec_calling", "JS: Calling cordova.exec('Adivery', 'createBanner')", data);
+  };
+
+  // Handler for JS cordova.exec returned event
+  const handleBannerCordovaExecReturned = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onBannerCordovaExecReturned", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      cordovaExecReturned: true
+    };
+    addBannerDebugEvent("cordova_exec_returned", "JS: cordova.exec('createBanner') returned synchronously", data);
+  };
+
+  // Handler for JS cordova.exec error
+  const handleBannerCordovaExecError = (e: any) => {
+    const data = parseEventPayload(e);
+    console.error("Adivery Event: onBannerCordovaExecError", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      status: "Failed",
+      lastError: String(data.error || "cordova.exec error")
+    };
+    addBannerDebugEvent("cordova_exec_error", `JS: cordova.exec error: ${JSON.stringify(data.error)}`, data, "Failed");
+  };
+
+  // Handler for native action received
+  const handleBannerNativeActionReceived = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onBannerNativeActionReceived", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      nativeActionReceived: true,
+      threadInfo: data.thread || "pool-thread",
+      isMainThread: data.isMainThread === true,
+      isAdiveryConfigured: data.isConfigured === true
+    };
+    addBannerDebugEvent(
+      "native_action",
+      `Native: createBanner action received (thread: ${data.thread}, main: ${data.isMainThread})`,
+      data
+    );
+  };
+
+  // Handler for SDK call starting
+  const handleSdkCallStarting = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onSdkCallStarting", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      sdkCallStarted: true,
+      threadInfo: data.thread || bannerDiagState.threadInfo,
+      isMainThread: data.isMainThread === true
+    };
+    addBannerDebugEvent(
+      "sdk_call_starting",
+      `Native: Adivery.requestBannerAd() starting on thread: ${data.thread}`,
+      data
+    );
+  };
+
+  // Handler for SDK call returned
+  const handleSdkCallReturned = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onSdkCallReturned", data);
+    bannerDiagState = {
+      ...bannerDiagState,
+      sdkCallReturned: true
+    };
+    addBannerDebugEvent(
+      "sdk_call_returned",
+      "Native: Adivery.requestBannerAd() invocation completed",
+      data
+    );
+  };
+
+  // Handler for SDK callback received (LOADED / ERROR / CLICKED)
+  const handleSdkCallbackReceived = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onSdkCallbackReceived", data);
+
+    if (bannerDiagnosticTimeoutTimer) {
+      clearTimeout(bannerDiagnosticTimeoutTimer);
+      bannerDiagnosticTimeoutTimer = null;
+    }
+
+    const cbType = data.callbackType || "NONE";
+    bannerDiagState = {
+      ...bannerDiagState,
+      sdkCallbackReceived: true,
+      sdkCallbackType: cbType,
+      sdkCallbackReason: data.reason || null,
+      threadInfo: data.thread || bannerDiagState.threadInfo,
+      isMainThread: data.isMainThread === true
+    };
+
+    addBannerDebugEvent(
+      "sdk_callback",
+      `Native Callback: AdiveryBannerCallback.${cbType} (thread: ${data.thread}${data.reason ? ", reason: " + data.reason : ""})`,
+      data
+    );
+  };
+
+  // Handler for native SDK exceptions
+  const handleBannerSdkException = (e: any) => {
+    const data = parseEventPayload(e);
+    console.error("Adivery Event: onBannerSdkException", data);
+
+    if (bannerDiagnosticTimeoutTimer) {
+      clearTimeout(bannerDiagnosticTimeoutTimer);
+      bannerDiagnosticTimeoutTimer = null;
+    }
+
+    bannerDiagState = {
+      ...bannerDiagState,
+      status: "Failed",
+      requestState: "FAILED",
+      lastError: `SDK Exception: ${data.errorClass} - ${data.message}`
+    };
+
+    addBannerDebugEvent(
+      "sdk_exception",
+      `Native SDK Exception: ${data.errorClass}: ${data.message}`,
+      data,
+      "Failed"
+    );
+  };
+
+  // Handler for SDK configure initialization event
+  const handleSdkInitialized = (e: any) => {
+    const data = parseEventPayload(e);
+    console.log("Adivery Event: onSdkInitialized", data);
+    const isConfig = data.isConfigured === true || data.status === "CONFIGURED";
+    bannerDiagState = {
+      ...bannerDiagState,
+      isAdiveryConfigured: isConfig
+    };
+    addBannerDebugEvent(
+      "sdk_initialized",
+      `SDK Config: ${data.status} (App ID: ${data.appId || "configured"})`,
+      data
+    );
+  };
+
   // Handler for banner requested
   const handleBannerRequested = (e: any) => {
     const data = parseEventPayload(e);
@@ -252,6 +437,8 @@ const registerGlobalEventListeners = () => {
       targetWidthPx: data.targetWidthPx || 320,
       targetHeightPx: data.targetHeightPx || 50,
       density: data.density || 1,
+      threadInfo: data.thread || bannerDiagState.threadInfo,
+      isMainThread: data.isMainThread === true,
       nextRetrySeconds: null
     };
 
@@ -272,6 +459,10 @@ const registerGlobalEventListeners = () => {
       isBannerRequestInProgress = false;
       bannerRetryAttempt = 0;
 
+      if (bannerDiagnosticTimeoutTimer) {
+        clearTimeout(bannerDiagnosticTimeoutTimer);
+        bannerDiagnosticTimeoutTimer = null;
+      }
       if (bannerRetryTimer) {
         clearTimeout(bannerRetryTimer);
         bannerRetryTimer = null;
@@ -291,6 +482,8 @@ const registerGlobalEventListeners = () => {
         ...bannerDiagState,
         status,
         requestState: "SUCCESS",
+        sdkCallbackReceived: true,
+        sdkCallbackType: "LOADED",
         isLoaded: true,
         isAttached: isAtt,
         isVisible: isVis,
@@ -367,6 +560,10 @@ const registerGlobalEventListeners = () => {
       isBannerRequestInProgress = false;
       console.warn("Adivery Banner Event: Failed to load banner ad. Reason:", message);
 
+      if (bannerDiagnosticTimeoutTimer) {
+        clearTimeout(bannerDiagnosticTimeoutTimer);
+        bannerDiagnosticTimeoutTimer = null;
+      }
       if (bannerRetryTimer) clearTimeout(bannerRetryTimer);
       if (bannerCountdownTimer) clearInterval(bannerCountdownTimer);
 
@@ -378,6 +575,9 @@ const registerGlobalEventListeners = () => {
         ...bannerDiagState,
         status: "Failed",
         requestState: "FAILED",
+        sdkCallbackReceived: true,
+        sdkCallbackType: "ERROR",
+        sdkCallbackReason: message,
         isLoaded: false,
         isVisible: false,
         lastError: message,
@@ -447,6 +647,11 @@ const registerGlobalEventListeners = () => {
     isBannerLoaded = false;
     isBannerRequestInProgress = false;
 
+    if (bannerDiagnosticTimeoutTimer) {
+      clearTimeout(bannerDiagnosticTimeoutTimer);
+      bannerDiagnosticTimeoutTimer = null;
+    }
+
     bannerDiagState = {
       ...bannerDiagState,
       status: "Removed",
@@ -488,6 +693,28 @@ const registerGlobalEventListeners = () => {
   };
 
   // Register on document and window for safety across Capacitor / Cordova
+  window.addEventListener("onBannerCordovaExecCalling", handleBannerCordovaExecCalling);
+  window.addEventListener("onBannerCordovaExecReturned", handleBannerCordovaExecReturned);
+  window.addEventListener("onBannerCordovaExecError", handleBannerCordovaExecError);
+
+  document.addEventListener("onBannerNativeActionReceived", handleBannerNativeActionReceived);
+  window.addEventListener("onBannerNativeActionReceived", handleBannerNativeActionReceived);
+
+  document.addEventListener("onSdkCallStarting", handleSdkCallStarting);
+  window.addEventListener("onSdkCallStarting", handleSdkCallStarting);
+
+  document.addEventListener("onSdkCallReturned", handleSdkCallReturned);
+  window.addEventListener("onSdkCallReturned", handleSdkCallReturned);
+
+  document.addEventListener("onSdkCallbackReceived", handleSdkCallbackReceived);
+  window.addEventListener("onSdkCallbackReceived", handleSdkCallbackReceived);
+
+  document.addEventListener("onBannerSdkException", handleBannerSdkException);
+  window.addEventListener("onBannerSdkException", handleBannerSdkException);
+
+  document.addEventListener("onSdkInitialized", handleSdkInitialized);
+  window.addEventListener("onSdkInitialized", handleSdkInitialized);
+
   document.addEventListener("onBannerRequested", handleBannerRequested);
   window.addEventListener("onBannerRequested", handleBannerRequested);
 
@@ -540,7 +767,8 @@ const initRealSdk = (): void => {
 
     bannerDiagState = {
       ...bannerDiagState,
-      status: "Initializing"
+      status: "Initializing",
+      isAdiveryConfigured: true
     };
     addBannerDebugEvent("initialize", `Initialized SDK with App ID: ${ADIVERY_APP_ID}`, null, "Initializing");
 
@@ -575,6 +803,7 @@ const initSim = (): void => {
     ...bannerDiagState,
     status: "Initializing",
     viewClass: "SimulatorWebBanner",
+    isAdiveryConfigured: true,
     density: window.devicePixelRatio || 1
   };
   addBannerDebugEvent("initialize_sim", "Simulator initialized in Web Preview", null, "Initializing");
@@ -737,13 +966,49 @@ export const showStandardBannerAd = (): void => {
 
   isBannerActive = true;
 
+  // Reset pipeline stage flags for a fresh trace
   bannerDiagState = {
     ...bannerDiagState,
     status: "Request Started",
     requestState: "IN_PROGRESS",
-    zoneId: BANNER_ZONE_ID
+    zoneId: BANNER_ZONE_ID,
+    jsRequestStarted: true,
+    cordovaExecCalled: false,
+    cordovaExecReturned: false,
+    nativeActionReceived: false,
+    sdkCallStarted: false,
+    sdkCallReturned: false,
+    sdkCallbackReceived: false,
+    sdkCallbackType: "NONE",
+    sdkCallbackReason: null,
+    isTimeout: false,
+    lastError: null
   };
-  addBannerDebugEvent("requestBanner", `Invoking createBanner for zone: ${BANNER_ZONE_ID}`, null, "Request Started");
+  addBannerDebugEvent("requestBanner", `JS showStandardBannerAd: Invoking createBanner for zone: ${BANNER_ZONE_ID}`, null, "Request Started");
+
+  // Start 15s Diagnostic Timeout (purely diagnostic)
+  if (bannerDiagnosticTimeoutTimer) {
+    clearTimeout(bannerDiagnosticTimeoutTimer);
+    bannerDiagnosticTimeoutTimer = null;
+  }
+  bannerDiagnosticTimeoutTimer = setTimeout(() => {
+    if (isBannerRequestInProgress && !bannerDiagState.sdkCallbackReceived) {
+      console.warn("Adivery Diagnostic: 15s timeout elapsed with no SDK callback.");
+      bannerDiagState = {
+        ...bannerDiagState,
+        isTimeout: true,
+        sdkCallbackType: "TIMEOUT",
+        status: "Failed",
+        lastError: "SDK Callback Timeout (15s): No response from Adivery SDK (onAdLoaded or onError was not received)"
+      };
+      addBannerDebugEvent(
+        "sdk_timeout",
+        "SDK Callback Timeout (15s) - Adivery SDK did not trigger onAdLoaded or onError",
+        null,
+        "Failed"
+      );
+    }
+  }, 15000);
 
   if (isNativePlatform()) {
     if (!hasInitializedReal) {
@@ -781,6 +1046,10 @@ export const showStandardBannerAd = (): void => {
       );
     } catch (e: any) {
       isBannerRequestInProgress = false;
+      if (bannerDiagnosticTimeoutTimer) {
+        clearTimeout(bannerDiagnosticTimeoutTimer);
+        bannerDiagnosticTimeoutTimer = null;
+      }
       console.error("Adivery: Exception calling window.Adivery.createBanner()", e);
       bannerDiagState = {
         ...bannerDiagState,
@@ -796,10 +1065,22 @@ export const showStandardBannerAd = (): void => {
     setTimeout(() => {
       isBannerLoaded = true;
       isBannerRequestInProgress = false;
+      if (bannerDiagnosticTimeoutTimer) {
+        clearTimeout(bannerDiagnosticTimeoutTimer);
+        bannerDiagnosticTimeoutTimer = null;
+      }
       bannerDiagState = {
         ...bannerDiagState,
         status: "Visible",
         requestState: "SUCCESS",
+        jsRequestStarted: true,
+        cordovaExecCalled: true,
+        cordovaExecReturned: true,
+        nativeActionReceived: true,
+        sdkCallStarted: true,
+        sdkCallReturned: true,
+        sdkCallbackReceived: true,
+        sdkCallbackType: "LOADED",
         isLoaded: true,
         isAttached: true,
         isVisible: true,
@@ -835,6 +1116,10 @@ export const hideStandardBannerAd = (): void => {
 
 // Completely remove the standard banner ad from view and memory
 export const removeStandardBannerAd = (): void => {
+  if (bannerDiagnosticTimeoutTimer) {
+    clearTimeout(bannerDiagnosticTimeoutTimer);
+    bannerDiagnosticTimeoutTimer = null;
+  }
   if (bannerRetryTimer) {
     clearTimeout(bannerRetryTimer);
     bannerRetryTimer = null;
@@ -871,13 +1156,13 @@ export const removeStandardBannerAd = (): void => {
   }
 };
 
-// Debug trigger to explicitly remove then re-request a banner
+// Debug trigger to explicitly remove then re-request a banner in clean sequence
 export const triggerBannerDebugRequest = (): void => {
   console.log("Adivery Debug: User requested banner test re-fetch");
   removeStandardBannerAd();
   setTimeout(() => {
     showStandardBannerAd();
-  }, 250);
+  }, 350);
 };
 
 // Debug trigger to explicitly remove banner
@@ -924,5 +1209,3 @@ export const stopBannerRefresh = (): void => {
   }
   removeStandardBannerAd();
 };
-
-

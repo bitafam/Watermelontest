@@ -10,19 +10,19 @@
         ]
         },
       {
-          "id": "tapsell-plus-cordova-plugin.TapsellPlus",
-          "file": "plugins/tapsell-plus-cordova-plugin/www/TapsellPlus.js",
-          "pluginId": "tapsell-plus-cordova-plugin",
+          "id": "adivery-cordova-plugin.Adivery",
+          "file": "plugins/adivery-cordova-plugin/www/Adivery.js",
+          "pluginId": "adivery-cordova-plugin",
         "clobbers": [
-          "window.TapsellPlus"
+          "window.Adivery"
         ]
         }
     ];
     module.exports.metadata =
     // TOP OF METADATA
     {
-      "cordova-plugin-android-iab": "1.0.0",
-      "tapsell-plus-cordova-plugin": "2.1.8"
+      "adivery-cordova-plugin": "3.4.2",
+      "cordova-plugin-android-iab": "1.0.0"
     };
     // BOTTOM OF METADATA
     });

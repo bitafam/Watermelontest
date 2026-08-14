@@ -35,7 +35,7 @@ import ContactUs from "./components/ContactUs";
 import UpgradeView from "./components/UpgradeView";
 import { Crop, Copy } from "lucide-react";
 import {
-  initializeTapsell,
+  initializeAdivery,
   startBannerRefresh,
   stopBannerRefresh,
   isRewardedAdReady,
@@ -45,7 +45,7 @@ import {
   isRealNativeApp,
   REWARDED_ZONE_ID,
   preloadRewardedAd
-} from "./utils/tapsell";
+} from "./utils/adivery";
 import {
   initMyketBilling,
   checkOwnsFullVersion,
@@ -198,7 +198,7 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
-  // Tapsell Ads & Rate Limit States
+  // Adivery Ads & Rate Limit States
   const [watchedAdTimes, setWatchedAdTimes] = useState<number[]>(() => {
     const saved = localStorage.getItem("watermelon_watched_ads");
     return saved ? JSON.parse(saved) : [];
@@ -367,7 +367,7 @@ export default function App() {
     "Executing OCR to scan for any labels, price tags or codes..."
   ];
 
-  // Tapsell & Rate Limits Effects and Helpers
+  // Adivery & Rate Limits Effects and Helpers
   useEffect(() => {
     if (localStorage.getItem("watermelon_premium_user") === "true") {
       setIsPremium(true);
@@ -375,7 +375,7 @@ export default function App() {
       return;
     }
 
-    initializeTapsell();
+    initializeAdivery();
     return () => {
       stopBannerRefresh();
     };
@@ -1209,7 +1209,7 @@ export default function App() {
     }
   };
 
-  // Wrapper that handles Tapsell rewarded video advertisement before initiating analysis
+  // Wrapper that handles Adivery rewarded video advertisement before initiating analysis
   const analyzeWatermelon = () => {
     // If user is premium, completely bypass all ads and cooldowns!
     if (isPremium) {
@@ -1240,7 +1240,7 @@ export default function App() {
     }, 5000);
   };
 
-  // Proceed with standard Tapsell flow after pre-loading check
+  // Proceed with standard Adivery flow after pre-loading check
   const proceedWithAdFlow = () => {
     if (isNativePlatform()) {
       if (isRewardedAdReady()) {
@@ -1257,7 +1257,7 @@ export default function App() {
             executeAnalysis();
           },
           (err) => {
-            console.warn("Tapsell rewarded ad failed to show, running inspection directly:", err);
+            console.warn("Adivery rewarded ad failed to show, running inspection directly:", err);
             // Apply 1 minute cooldown (60 seconds) silently
             const cooldownUntil = Date.now() + 60 * 1000;
             localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
@@ -1267,7 +1267,7 @@ export default function App() {
           }
         );
       } else {
-        console.log("Tapsell: Rewarded ad not ready after 5 seconds delay, running directly.");
+        console.log("Adivery: Rewarded ad not ready after 5 seconds delay, running directly.");
         // Apply 1 minute cooldown (60 seconds) silently
         const cooldownUntil = Date.now() + 60 * 1000;
         localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
@@ -2850,7 +2850,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 1. Simulated Tapsell Rewarded Video Ad Overlay (Only shown on Web Browser/PC/AI Studio previews) */}
+      {/* 1. Simulated Adivery Rewarded Video Ad Overlay (Only shown on Web Browser/PC/AI Studio previews) */}
       <AnimatePresence>
         {adOverlayActive && (
           <motion.div
@@ -2865,7 +2865,7 @@ export default function App() {
             <div className="flex items-center justify-between w-full max-w-4xl mx-auto border-b border-zinc-800/50 pb-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] md:text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold tracking-wider">
-                  SPONSOR VIDEO / ویدیو حامی مالی
+                  ADIVERY SPONSOR / تبلیغ ادیوری (یکتانت)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -2907,7 +2907,7 @@ export default function App() {
                     برنامه هوشمند هندوانه‌سنج صوتی و دیجیتال
                   </h3>
                   <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed">
-                    با حمایت حامیان مالی برنامه، سنجش کیفیت برای شما به رایگان ارائه می‌شود. لطفاً تا اتمام ویدیو صبور باشید. از بردباری شما سپاسگزاریم.
+                    با حمایت شبکه تبلیغاتی ادیوری (یکتانت)، سنجش کیفیت برای شما به رایگان ارائه می‌شود. لطفاً تا اتمام ویدیو صبور باشید. از همراهی شما سپاسگزاریم.
                   </p>
                 </div>
 
@@ -2932,8 +2932,8 @@ export default function App() {
             <div className="w-full max-w-4xl mx-auto border-t border-zinc-800/50 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-500 text-[10px] md:text-xs">
               <p>این شبیه‌ساز پس از اتمام تایمر، مجوز شروع آنالیز را صادر می‌کند.</p>
               <div className="flex items-center gap-4">
-                <span>توسعه یافته با ❤️ برای مایکت و تپسل</span>
-                <span>شناسه زون: {REWARDED_ZONE_ID}</span>
+                <span>توسعه یافته با ❤️ برای مایکت و ادیوری</span>
+                <span>شناسه زون ویدیویی: {REWARDED_ZONE_ID}</span>
               </div>
             </div>
           </motion.div>
@@ -2986,7 +2986,7 @@ export default function App() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-300">امکانات نسخه طلایی:</h4>
                   <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
-                    <li>حذف دائمی تمامی تبلیغات بنری و ویدیوهای تپسل</li>
+                    <li>حذف دائمی تمامی تبلیغات بنری و ویدیوهای ادیوری</li>
                     <li>رفع محدودیت زمانی و قفل شمارنده بین سنجش‌ها</li>
                     <li>دسترسی کامل به آنالیز صوتی و چارت فرکانسی هندوانه</li>
                     <li>ارتقای دقت موتور هوش مصنوعی با اولویت سرور ممتاز</li>

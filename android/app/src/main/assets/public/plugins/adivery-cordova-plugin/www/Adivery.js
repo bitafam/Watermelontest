@@ -1,4 +1,4 @@
-cordova.define("tapsell-plus-cordova-plugin.TapsellPlus", function(require, exports, module) { 
+cordova.define("adivery-cordova-plugin.Adivery", function(require, exports, module) { 
 module.exports = {
 	AD_POSITION: {
         TOP_LEFT: 0,
@@ -14,44 +14,40 @@ module.exports = {
 	AD_SIZE: {
         BANNER_320x50: 1,
 		BANNER_320x100: 2,
-		BANNER_250x250: 3,
-		BANNER_300x250: 4,
-		BANNER_468x60: 5,
-		BANNER_728x90: 6,
-		BANNER_160x600: 7
+		BANNER_300x250: 3
     },
-    initialize: function(appKey) {
+    initialize: function(appID) {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'initialize',
-            [appKey]
+            [appID]
         ); 
     },
-    createBanner: function(zoneId, position, size) {
+    createBanner: function(zoneId, position, type) {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'createBanner',
-            [ zoneId, position, size ]
+            [ zoneId, position, type ]
         ); 
     },
-    createBannerAtXY: function(zoneId, x, y, size) {
+    createBannerAtXY: function(zoneId, x, y, type) {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'createBannerAtXY',
-            [ zoneId, x, y, size ]
+            [ zoneId, x, y, type ]
         ); 
     },
     removeBanner: function() {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'removeBanner',
             []
         ); 
@@ -60,7 +56,7 @@ module.exports = {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'showBanner',
             []
         ); 
@@ -69,49 +65,39 @@ module.exports = {
         cordova.exec(
 			null,
 			null,
-            'TapsellPlus',
+            'Adivery',
             'hideBanner',
             []
         ); 
     },
-    requestRewardedVideo: function (zoneId) {
+    requestInterstitialAd: function (zoneId) {
         var self = this;
         cordova.exec(
             null,
             null,
-            'TapsellPlus',
-            'requestRewardedVideo',
+            'Adivery',
+            'requestInterstitialAd',
             [ zoneId ]
         );
     },
-    requestInterstitial: function (zoneId) {
+    requestRewardedAd: function (zoneId) {
         var self = this;
         cordova.exec(
             null,
             null,
-            'TapsellPlus',
-            'requestInterstitial',
+            'Adivery',
+            'requestRewardedAd',
             [ zoneId ]
         );
     },
-    showRewardedVideo: function (responseId) {
+    showAd: function () {
         var self = this;
         cordova.exec(
             null,
             null,
-            'TapsellPlus',
-            'showRewardedVideo',
-            [ responseId ]
-        );
-    },
-    showInterstitial: function (responseId) {
-        var self = this;
-        cordova.exec(
-            null,
-            null,
-            'TapsellPlus',
-            'showInterstitial',
-            [ responseId ]
+            'Adivery',
+            'showAd',
+            []
         );
     }
 };

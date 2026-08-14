@@ -6,7 +6,7 @@ export const REWARDED_ZONE_ID = "cd218660-4ca4-434c-9029-b8bb9362db8e";
 export const BANNER_ZONE_ID = "60da29bc-34f9-4943-a3e0-8dbd0e28611e";
 
 // Global constant to enable or disable In-App Banner Diagnostic Panel
-export const BANNER_DEBUG = true;
+export const BANNER_DEBUG = false;
 
 declare global {
   interface Window {

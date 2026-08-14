@@ -33,7 +33,6 @@ import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
 import UpgradeView from "./components/UpgradeView";
-import { BannerDebugOverlay } from "./components/BannerDebugOverlay";
 import { Crop, Copy } from "lucide-react";
 import {
   initializeAdivery,
@@ -454,7 +453,7 @@ export default function App() {
     }
   };
 
-  // Helper function to analyze the watermelon image completely offline/client-side using HTML5 Canvas
+  // Helper function to analyze the watermelon image client-side using HTML5 Canvas
   const analyzeWatermelonLocal = (imageSrc: string, sType: string | null): Promise<AnalysisResult> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -2358,7 +2357,7 @@ export default function App() {
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>پردازش سریع و کاملاً آفلاین روی دستگاه شما (امنیت ۱۰۰٪)</span>
+                    <span>پردازش سریع و هوشمند روی دستگاه شما (امنیت ۱۰۰٪)</span>
                   </div>
                 </div>
               </div>
@@ -3045,8 +3044,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Banner Diagnostic In-App Debug Overlay */}
-      <BannerDebugOverlay />
     </div>
   );
 }

@@ -35,10 +35,10 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
     },
     {
       icon: <Sparkles className="w-5 h-5 text-pink-500" />,
-      titleFa: "موتور پردازش آفلاین فوق‌العاده سریع",
-      titleEn: "Priority Local Offline Engine",
-      descFa: "بهینه‌سازی حداکثری و افزایش فرکانس پردازش محلی تصاویر بدون نیاز به اینترنت؛ ایده‌آل برای استفاده در بازارهای میوه بدون آنتن‌دهی.",
-      descEn: "Maximum optimization and enhanced local frame rate processing. Works entirely offline, ideal for fruit markets."
+      titleFa: "موتور پردازش هوشمند و فوق‌العاده سریع",
+      titleEn: "Advanced Real-Time Processing Engine",
+      descFa: "بهینه‌سازی حداکثری و افزایش فرکانس پردازش هوشمند فریم‌های تصویر با بالاترین دقت تحلیل بافت و رنگ هندوانه.",
+      descEn: "Maximum optimization and enhanced real-time frame rate processing for accurate watermelon color and texture analysis."
     }
   ];
 

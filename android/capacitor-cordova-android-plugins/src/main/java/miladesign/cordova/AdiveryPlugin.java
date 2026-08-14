@@ -459,7 +459,6 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	});
 					    }
 
-					    @Override
 					    public void onError(final String reason) {
 					    	String actualReason = (reason != null && !reason.trim().isEmpty()) ? reason : "No Ad Available";
 					    	String cbThread = Thread.currentThread().getName();
@@ -501,7 +500,6 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	}
 					    }
 
-					    @Override
 					    public void onAdClicked() {
 					    	Log.d(TAG, "Adivery Banner SDK Callback: onAdClicked received");
 					    	try {
@@ -692,7 +690,6 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	});
 					    }
 
-					    @Override
 					    public void onError(final String reason) {
 					    	Log.e(TAG, "==================================================");
 					    	Log.e(TAG, "Adivery Banner: Request at XY Failed");
@@ -712,7 +709,6 @@ public class AdiveryPlugin extends CordovaPlugin {
 					    	fireEvent("adivery", "onShowFailed", json);
 					    }
 
-					    @Override
 					    public void onAdClicked() {
 					    	Log.d(TAG, "Adivery Banner: onAdClicked at XY");
 					    	String json = String.format("{\"adType\":\"%s\",\"status\":\"CLICKED\",\"zone\":\"%s\"}", "Banner", zoneId);

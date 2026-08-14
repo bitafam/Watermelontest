@@ -1,28 +1,30 @@
 cordova.define("adivery-cordova-plugin.Adivery", function(require, exports, module) { 
-module.exports = {
-	AD_POSITION: {
+var exec = require('cordova/exec');
+
+var Adivery = {
+    AD_POSITION: {
         TOP_LEFT: 0,
         TOP_CENTER: 1,
-		TOP_RIGHT: 2,
-		LEFT: 3,
-		CENTER: 4,
-		RIGHT: 5,
-		BOTTOM_LEFT: 6,
-		BOTTOM_CENTER: 7,
-		BOTTOM_RIGHT: 8
+        TOP_RIGHT: 2,
+        LEFT: 3,
+        CENTER: 4,
+        RIGHT: 5,
+        BOTTOM_LEFT: 6,
+        BOTTOM_CENTER: 7,
+        BOTTOM_RIGHT: 8
     },
-	AD_SIZE: {
-        BANNER_320x50: 1,
-		BANNER_320x100: 2,
-		BANNER_300x250: 3
+    AD_SIZE: {
+        BANNER: 1,
+        LARGE_BANNER: 2,
+        MEDIUM_RECTANGLE: 3
     },
-    initialize: function(appID) {
+    initialize: function(appId) {
         cordova.exec(
 			null,
 			null,
             'Adivery',
-            'initialize',
-            [appID]
+            'init',
+            [ appId ]
         ); 
     },
     createBanner: function(zoneId, position, type) {
@@ -85,7 +87,7 @@ module.exports = {
 			null,
             'Adivery',
             'removeBanner',
-            []
+            [ ]
         ); 
     },
     showBanner: function() {
@@ -94,7 +96,7 @@ module.exports = {
 			null,
             'Adivery',
             'showBanner',
-            []
+            [ ]
         ); 
     },
     hideBanner: function() {
@@ -103,38 +105,37 @@ module.exports = {
 			null,
             'Adivery',
             'hideBanner',
-            []
+            [ ]
         ); 
     },
-    requestInterstitialAd: function (zoneId) {
-        var self = this;
+    requestInterstitialAd: function(zoneId) {
         cordova.exec(
-            null,
-            null,
+			null,
+			null,
             'Adivery',
             'requestInterstitialAd',
             [ zoneId ]
-        );
+        ); 
     },
-    requestRewardedAd: function (zoneId) {
-        var self = this;
+    requestRewardedAd: function(zoneId) {
         cordova.exec(
-            null,
-            null,
+			null,
+			null,
             'Adivery',
             'requestRewardedAd',
             [ zoneId ]
-        );
+        ); 
     },
-    showAd: function () {
-        var self = this;
+    showAd: function() {
         cordova.exec(
-            null,
-            null,
+			null,
+			null,
             'Adivery',
             'showAd',
-            []
-        );
+            [ ]
+        ); 
     }
 };
+
+module.exports = Adivery;
 });

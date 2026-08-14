@@ -180,7 +180,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew clean assembleRelease
 
       - name: Decode Keystore File
         run: |

@@ -220,14 +220,12 @@ public class AdiveryPlugin extends CordovaPlugin {
 				    	});
 				    }
 
-				    @Override
 				    public void onError(final String reason) {
 				    	Log.e(TAG, "Adivery: Banner ad onError - " + reason);
 				    	String json = String.format("{\"message\":\"%s\",\"adType\":\"%s\"}", reason != null ? reason : "Failed to load banner", "Banner");
 				    	fireEvent("adivery", "onShowFailed", json);
 				    }
 
-				    @Override
 				    public void onAdClicked() {
 				    	Log.d(TAG, "Adivery: Banner clicked");
 				    	String json = String.format("{\"adType\":\"%s\"}", "Banner");
@@ -295,14 +293,12 @@ public class AdiveryPlugin extends CordovaPlugin {
 				    	});
 				    }
 
-				    @Override
 				    public void onError(final String reason) {
 				    	Log.e(TAG, "Adivery: Banner ad onError - " + reason);
 				    	String json = String.format("{\"message\":\"%s\",\"adType\":\"%s\"}", reason != null ? reason : "Failed to load banner", "Banner");
 				    	fireEvent("adivery", "onShowFailed", json);
 				    }
 
-				    @Override
 				    public void onAdClicked() {
 				    	Log.d(TAG, "Adivery: Banner clicked");
 				    	String json = String.format("{\"adType\":\"%s\"}", "Banner");

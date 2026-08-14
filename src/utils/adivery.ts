@@ -151,9 +151,13 @@ const initRealSdk = (): void => {
     window.Adivery.initialize(ADIVERY_APP_ID);
     hasRealSdkInitializedSuccessfully = true;
 
-    // Start preloading rewarded ad and start bottom banner
+    // Start preloading rewarded ad
     preloadRewardedAd();
-    startBannerRefresh();
+    
+    // Start banner after brief handshake delay
+    setTimeout(() => {
+      startBannerRefresh();
+    }, 1200);
   } catch (e) {
     console.error("Adivery: Exception during initialize()", e);
     hasInitializedReal = false;

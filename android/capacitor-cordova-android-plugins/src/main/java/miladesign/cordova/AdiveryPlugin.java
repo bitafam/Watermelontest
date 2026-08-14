@@ -200,15 +200,23 @@ public class AdiveryPlugin extends CordovaPlugin {
 				    		public void run() {
 				    			try {
 				    				if (banner != null && ad != null) {
-				    					if (ad.getParent() != null) {
+				    					if (ad.getParent() instanceof ViewGroup) {
 				    						((ViewGroup) ad.getParent()).removeView(ad);
 				    					}
 				    					banner.removeAllViews();
-				    					banner.addView(ad);
+				    					RelativeLayout.LayoutParams adParams = new RelativeLayout.LayoutParams(
+				    						RelativeLayout.LayoutParams.WRAP_CONTENT,
+				    						RelativeLayout.LayoutParams.WRAP_CONTENT
+				    					);
+				    					adParams.addRule(RelativeLayout.CENTER_HORIZONTAL, RelativeLayout.TRUE);
+				    					adParams.addRule(RelativeLayout.CENTER_VERTICAL, RelativeLayout.TRUE);
+				    					banner.addView(ad, adParams);
 				    					banner.setVisibility(View.VISIBLE);
 				    					if (bannerLayout != null) {
 				    						bannerLayout.setVisibility(View.VISIBLE);
 				    						bannerLayout.bringToFront();
+				    						bannerLayout.requestLayout();
+				    						bannerLayout.invalidate();
 				    					}
 				    					String json = String.format("{\"adType\":\"%s\"}", "Banner");
 				    					fireEvent("adivery", "onAdLoaded", json);

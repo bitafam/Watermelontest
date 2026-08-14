@@ -72,11 +72,6 @@ export default function UpgradeView({ onBack, isPremium, handleUpgrade }: Upgrad
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 pt-2">
-            <div className="flex items-baseline gap-1.5 justify-center mb-1">
-              <span className="text-2xl font-black text-amber-400">۱۹,۰۰۰</span>
-              <span className="text-[11px] text-slate-400">تومان</span>
-              <span className="text-xs text-slate-400 line-through mr-2">۲۹,۰۰۰</span>
-            </div>
             <button
               onClick={handleUpgrade}
               className="px-8 py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black rounded-2xl text-xs sm:text-sm shadow-[0_4px_20px_rgba(245,158,11,0.25)] transition-all transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 max-w-xs w-full"

@@ -2992,14 +2992,6 @@ export default function App() {
                     <li>ارتقای دقت موتور هوش مصنوعی با اولویت سرور ممتاز</li>
                   </ul>
                 </div>
-
-                <div className="border-t border-zinc-800 pt-4 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-200">مبلغ قابل پرداخت:</span>
-                  <div className="text-right">
-                    <span className="text-lg font-black text-amber-500">۱۹,۰۰۰</span>
-                    <span className="text-[10px] text-slate-400 mr-1">تومان</span>
-                  </div>
-                </div>
               </div>
 
               {/* Action Buttons */}

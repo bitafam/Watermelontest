@@ -17,10 +17,14 @@ dependencies {
 }
 
 // 2. Patch node_modules/adivery-cordova-plugin/src/AdiveryPlugin.java
-const pluginSrcPath = path.join(__dirname, '..', 'node_modules', 'adivery-cordova-plugin', 'src', 'AdiveryPlugin.java');
+const pluginSrcDir = path.join(__dirname, '..', 'node_modules', 'adivery-cordova-plugin', 'src');
+const pluginSrcPath = path.join(pluginSrcDir, 'AdiveryPlugin.java');
 const nativePluginPath = path.join(__dirname, '..', 'android', 'capacitor-cordova-android-plugins', 'src', 'main', 'java', 'miladesign', 'cordova', 'AdiveryPlugin.java');
 
-if (fs.existsSync(nativePluginPath) && fs.existsSync(pluginSrcPath)) {
+if (fs.existsSync(nativePluginPath)) {
+  if (!fs.existsSync(pluginSrcDir)) {
+    fs.mkdirSync(pluginSrcDir, { recursive: true });
+  }
   const goodContent = fs.readFileSync(nativePluginPath, 'utf8');
   fs.writeFileSync(pluginSrcPath, goodContent, 'utf8');
   console.log('Successfully synced AdiveryPlugin.java to node_modules');

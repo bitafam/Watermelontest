@@ -33,6 +33,7 @@ import AppLogo from "./assets/images/watermelon_app_icon_1783756956652.jpg";
 import AccuracyGuide from "./components/AccuracyGuide";
 import ContactUs from "./components/ContactUs";
 import UpgradeView from "./components/UpgradeView";
+import { BannerDebugOverlay } from "./components/BannerDebugOverlay";
 import { Crop, Copy } from "lucide-react";
 import {
   initializeAdivery,
@@ -3044,6 +3045,8 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Banner Diagnostic In-App Debug Overlay */}
+      <BannerDebugOverlay />
     </div>
   );
 }

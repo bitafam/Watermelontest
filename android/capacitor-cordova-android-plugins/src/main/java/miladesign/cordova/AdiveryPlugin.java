@@ -847,15 +847,41 @@ public class AdiveryPlugin extends CordovaPlugin {
 		    @Override
 		    public void onAdLoaded(AdiveryLoadedAd ad) {
 		    	loadedAd = ad;
-				String json = String.format("{'adType':'%s'}", new Object[] { "Rewarded" });
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"LOADED\"}", "Rewarded");
 			    fireEvent("adivery", "onAdLoaded", json);
 		    }
 
 		    @Override
 		    public void onAdRewarded() {
 		    	loadedAd = null;
-				String json = String.format("{'adType':'%s'}", new Object[] { "Rewarded" });
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"REWARDED\"}", "Rewarded");
 			    fireEvent("adivery", "onAdRewarded", json);
+		    }
+
+		    @Override
+		    public void onAdClosed() {
+		    	loadedAd = null;
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"CLOSED\"}", "Rewarded");
+			    fireEvent("adivery", "onAdClosed", json);
+		    }
+
+		    @Override
+		    public void onError(String reason) {
+		    	loadedAd = null;
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"ERROR\",\"message\":\"%s\"}", "Rewarded", reason != null ? reason : "Unknown error");
+			    fireEvent("adivery", "onShowFailed", json);
+		    }
+
+		    @Override
+		    public void onAdClicked() {
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"CLICKED\"}", "Rewarded");
+			    fireEvent("adivery", "onAdClicked", json);
+		    }
+
+		    @Override
+		    public void onAdShown() {
+				String json = String.format("{\"adType\":\"%s\",\"status\":\"SHOWN\"}", "Rewarded");
+			    fireEvent("adivery", "onAdShown", json);
 		    }
 		};
 

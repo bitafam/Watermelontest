@@ -507,10 +507,11 @@ const registerGlobalEventListeners = () => {
       return;
     }
 
-    // Rewarded / Interstitial loaded (100% untouched)
+    // Rewarded / Interstitial loaded
     if (adType === "rewarded" || adType === "rewardvideo" || adType === "") {
       isPreloading = false;
       isPreloaded = true;
+      console.log("Adivery Rewarded: Ad loaded and ready to show");
       if (onAdPreloadedCallback) onAdPreloadedCallback();
     }
   };
@@ -625,7 +626,7 @@ const registerGlobalEventListeners = () => {
       return;
     }
 
-    // Rewarded ad failure handling (100% untouched)
+    // Rewarded ad failure handling
     console.error("Adivery Rewarded Event: onShowFailed", message);
     if (onErrorCallback) {
       onErrorCallback(message);
@@ -637,8 +638,10 @@ const registerGlobalEventListeners = () => {
     isPreloaded = false;
     if (cb) cb(message);
     
-    // Retry preloading rewarded after 10s delay
-    setTimeout(() => preloadRewardedAd(), 10000);
+    // Retry preloading rewarded after 10s delay if not premium
+    if (!isPremiumUser()) {
+      setTimeout(() => preloadRewardedAd(), 10000);
+    }
   };
 
   const handleBannerRemoved = (e: any) => {
@@ -675,6 +678,8 @@ const registerGlobalEventListeners = () => {
   const handleAdRewarded = (e: any) => {
     const data = parseEventPayload(e);
     console.log("Adivery Event: onAdRewarded", data);
+    isPreloaded = false;
+    isPreloading = false;
     
     if (activeAdCallbacks?.onAdRewarded) {
       activeAdCallbacks.onAdRewarded();
@@ -686,11 +691,29 @@ const registerGlobalEventListeners = () => {
     const cb = activeAdCallbacks?.onAdClosed;
     activeAdCallbacks = null;
     isPreloaded = false;
+    isPreloading = false;
     if (cb) cb();
     
     // Automatically preload next rewarded ad
-    preloadRewardedAd();
+    if (!isPremiumUser()) {
+      setTimeout(() => preloadRewardedAd(), 1000);
+    }
   };
+
+  const handleAppResume = () => {
+    console.log("Adivery: App resumed from background / IAP flow");
+    if (!isPremiumUser()) {
+      if (!isBannerLoaded && !isBannerRequestInProgress) {
+        showStandardBannerAd();
+      }
+      if (!isPreloaded && !isPreloading) {
+        preloadRewardedAd();
+      }
+    }
+  };
+
+  document.addEventListener("resume", handleAppResume);
+  window.addEventListener("focus", handleAppResume);
 
   // Register on document and window for safety across Capacitor / Cordova
   window.addEventListener("onBannerCordovaExecCalling", handleBannerCordovaExecCalling);
@@ -871,8 +894,11 @@ export const registerPreloadedCallback = (callback: () => void) => {
   }
 };
 
-// Preload Rewarded Video Ad (100% untouched)
+let rewardedPreloadTimeoutTimer: any = null;
+
+// Preload Rewarded Video Ad
 export const preloadRewardedAd = (): void => {
+  if (isPremiumUser()) return;
   if (isPreloading || isPreloaded) return;
 
   if (isNativePlatform() && !hasInitializedReal) {
@@ -882,6 +908,19 @@ export const preloadRewardedAd = (): void => {
   }
 
   isPreloading = true;
+
+  if (rewardedPreloadTimeoutTimer) {
+    clearTimeout(rewardedPreloadTimeoutTimer);
+    rewardedPreloadTimeoutTimer = null;
+  }
+
+  // Safety unlock: if neither onAdLoaded nor onError arrives within 25s, unlock isPreloading
+  rewardedPreloadTimeoutTimer = setTimeout(() => {
+    if (isPreloading && !isPreloaded) {
+      console.warn("Adivery: Rewarded preload timeout (25s), resetting preloading lock");
+      isPreloading = false;
+    }
+  }, 25000);
 
   if (isNativePlatform()) {
     try {
@@ -899,7 +938,7 @@ export const preloadRewardedAd = (): void => {
       isPreloaded = true;
       console.log("Adivery Simulator: Video ad is preloaded and ready to show.");
       if (onAdPreloadedCallback) onAdPreloadedCallback();
-    }, 1500);
+    }, 1200);
   }
 };
 
@@ -908,7 +947,13 @@ export const isRewardedAdReady = (): boolean => {
   return isPreloaded;
 };
 
-// Show Rewarded Video Ad (100% untouched)
+// Explicitly consume the preloaded ad state
+export const consumePreloadedAd = (): void => {
+  isPreloaded = false;
+  isPreloading = false;
+};
+
+// Show Rewarded Video Ad
 export const showRewardedAd = (
   onAdOpened: () => void,
   onAdClosed: () => void,
@@ -920,14 +965,32 @@ export const showRewardedAd = (
     return;
   }
 
+  // Consume the preloaded state immediately
+  consumePreloadedAd();
+
+  // Temporarily remove standard banner ad so it doesn't overlap or refresh during video ad
+  removeStandardBannerAd();
+
   if (isNativePlatform()) {
     try {
       // Store callbacks to be executed when native events are received
       activeAdCallbacks = {
         onAdOpened,
-        onAdClosed,
+        onAdClosed: () => {
+          // Restart banner refresh when video closes if user is not premium
+          if (!isPremiumUser()) {
+            startBannerRefresh();
+          }
+          onAdClosed();
+        },
         onAdRewarded,
-        onAdShowFailed
+        onAdShowFailed: (err) => {
+          // Restart banner refresh on failure
+          if (!isPremiumUser()) {
+            startBannerRefresh();
+          }
+          onAdShowFailed(err);
+        }
       };
 
       console.log("Adivery: Displaying real rewarded video...");
@@ -935,6 +998,9 @@ export const showRewardedAd = (
       window.Adivery.showAd();
     } catch (e) {
       console.error("Adivery: Error showing rewarded ad", e);
+      if (!isPremiumUser()) {
+        startBannerRefresh();
+      }
       onAdShowFailed(e);
       preloadRewardedAd();
     }

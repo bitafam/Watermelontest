@@ -44,7 +44,9 @@ import {
   isNativePlatform,
   isRealNativeApp,
   REWARDED_ZONE_ID,
-  preloadRewardedAd
+  preloadRewardedAd,
+  removeStandardBannerAd,
+  consumePreloadedAd
 } from "./utils/adivery";
 import {
   initMyketBilling,
@@ -199,9 +201,18 @@ export default function App() {
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
 
   // Adivery Ads & Rate Limit States
-  const [watchedAdTimes, setWatchedAdTimes] = useState<number[]>(() => {
-    const saved = localStorage.getItem("watermelon_watched_ads");
-    return saved ? JSON.parse(saved) : [];
+  const [recentAnalyses, setRecentAnalyses] = useState<number[]>(() => {
+    const saved = localStorage.getItem("watermelon_recent_analyses");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const now = Date.now();
+        return Array.isArray(parsed) ? parsed.filter((t: number) => now - t < 5 * 60 * 1000) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   });
 
   const [cooldownTime, setCooldownTime] = useState<number>(() => {
@@ -398,23 +409,32 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let timer: any = null;
-    if (cooldownTime > 0) {
-      timer = setInterval(() => {
-        setCooldownTime((prev) => {
-          const next = prev - 1;
-          if (next <= 0) {
-            localStorage.removeItem("watermelon_cooldown_until");
-            return 0;
-          }
-          return next;
-        });
-      }, 1000);
+    const saved = localStorage.getItem("watermelon_cooldown_until");
+    if (!saved) {
+      setCooldownTime(0);
+      return;
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [cooldownTime]);
+    
+    const interval = setInterval(() => {
+      const savedUntil = localStorage.getItem("watermelon_cooldown_until");
+      if (savedUntil) {
+        const until = parseInt(savedUntil, 10);
+        const diff = Math.ceil((until - Date.now()) / 1000);
+        if (diff <= 0) {
+          setCooldownTime(0);
+          localStorage.removeItem("watermelon_cooldown_until");
+          clearInterval(interval);
+        } else {
+          setCooldownTime(diff);
+        }
+      } else {
+        setCooldownTime(0);
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [cooldownTime > 0]);
 
   useEffect(() => {
     let timer: any = null;
@@ -438,19 +458,40 @@ export default function App() {
     };
   }, [adOverlayActive]);
 
-  const recordAdWatched = () => {
-    const now = Date.now();
-    const updated = [...watchedAdTimes, now].filter(t => now - t < 5 * 60 * 1000);
-    setWatchedAdTimes(updated);
-    localStorage.setItem("watermelon_watched_ads", JSON.stringify(updated));
+  const applyAnalysisCooldown = () => {
+    if (isPremium) {
+      setCooldownTime(0);
+      return;
+    }
 
-    if (updated.length >= 3) {
+    const now = Date.now();
+    // Filter timestamps within last 5 minutes (5 * 60 * 1000 ms)
+    const validTimestamps = [...recentAnalyses, now].filter((t: number) => now - t < 5 * 60 * 1000);
+
+    // If more than 4 analyses within 5 minutes -> 5-minute cooldown (300 seconds) & reset
+    if (validTimestamps.length > 4) {
       const cooldownUntil = now + 5 * 60 * 1000;
       localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-      setCooldownTime(300); // 300 seconds
-      setWatchedAdTimes([]);
-      localStorage.setItem("watermelon_watched_ads", JSON.stringify([]));
+      setCooldownTime(300);
+      setRecentAnalyses([]);
+      localStorage.setItem("watermelon_recent_analyses", JSON.stringify([]));
+      showToast(
+        lang === "fa"
+          ? "محدودیت ۵ دقیقه‌ای به دلیل انجام بیش از ۴ بار آنالیز مداوم فعال شد. پس از اتمام زمان می‌توانید مجدداً اسکن کنید یا نسخه کامل را بدون محدودیت تهیه نمایید."
+          : "5-minute cooldown applied due to frequent scans. Wait for timer or upgrade to Premium.",
+        "info"
+      );
+    } else {
+      // Standard 1-minute cooldown (60 seconds) after each analysis so ads can fully load for next time
+      const cooldownUntil = now + 60 * 1000;
+      localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
+      setCooldownTime(60);
+      setRecentAnalyses(validTimestamps);
+      localStorage.setItem("watermelon_recent_analyses", JSON.stringify(validTimestamps));
     }
+
+    // Immediately trigger preloading of the next rewarded video ad so it is ready
+    preloadRewardedAd();
   };
 
   // Helper function to analyze the watermelon image client-side using HTML5 Canvas
@@ -1159,6 +1200,9 @@ export default function App() {
       setHistory(updatedHistory);
       localStorage.setItem("watermelon_scans", JSON.stringify(updatedHistory));
 
+      // Enforce post-analysis rate limit / cooldown rule
+      applyAnalysisCooldown();
+
     } catch (err: any) {
       console.error(err);
       setCustomError(
@@ -1174,6 +1218,10 @@ export default function App() {
   // Handle Myket In-App Billing Upgrade
   const handleUpgradeToPremium = async () => {
     try {
+      // Temporarily remove standard banner ad and stop refreshing during purchase process for clean flow
+      removeStandardBannerAd();
+      stopBannerRefresh();
+
       showToast(lang === "fa" ? "در حال اتصال به درگاه مایکت..." : "Connecting to Myket...", "info");
       
       const success = await buyFullVersion(async () => {
@@ -1187,7 +1235,9 @@ export default function App() {
       if (success) {
         setIsPremium(true);
         setCooldownTime(0);
-        stopBannerRefresh();
+        localStorage.removeItem("watermelon_cooldown_until");
+        localStorage.removeItem("watermelon_recent_analyses");
+        setRecentAnalyses([]);
         showToast(
           lang === "fa" 
             ? "تبریک! نسخه کامل و طلایی با موفقیت فعال شد. تمامی تبلیغات و محدودیت‌ها برداشته شدند." 
@@ -1199,6 +1249,9 @@ export default function App() {
           lang === "fa" ? "عملیات پرداخت لغو شد یا ناموفق بود." : "Payment cancelled or failed.", 
           "error"
         );
+        // Ensure ads resume immediately when returning from cancelled payment
+        startBannerRefresh();
+        preloadRewardedAd();
       }
     } catch (err) {
       console.error("Myket Billing Error:", err);
@@ -1206,6 +1259,9 @@ export default function App() {
         lang === "fa" ? "خطا در برقراری ارتباط با مایکت." : "Error communicating with Myket.", 
         "error"
       );
+      // Ensure ads resume
+      startBannerRefresh();
+      preloadRewardedAd();
     }
   };
 
@@ -1218,12 +1274,16 @@ export default function App() {
     }
 
     if (cooldownTime > 0) {
-      showToast(lang === "fa" ? "لطفاً تا اتمام زمان محدودیت صبور باشید یا نسخه طلایی را ارتقا دهید." : "Please wait until the rate limit ends or upgrade to Premium Gold.", "error");
+      const minutes = Math.floor(cooldownTime / 60);
+      const seconds = (cooldownTime % 60).toString().padStart(2, "0");
+      showToast(
+        lang === "fa" 
+          ? `لطفاً تا اتمام زمان محدودیت (${minutes}:${seconds}) صبور باشید یا نسخه طلایی را ارتقا دهید.` 
+          : `Please wait until the rate limit ends (${minutes}:${seconds}) or upgrade to Premium Gold.`, 
+        "error"
+      );
       return;
     }
-
-    // Try preloading the ad immediately
-    preloadRewardedAd();
 
     // If rewarded ad is already ready, show it instantly without any pause/delay!
     if (isRewardedAdReady()) {
@@ -1231,7 +1291,8 @@ export default function App() {
       return;
     }
 
-    // Otherwise, start a 5-second delay to allow the ad to load. Show "Please wait" spinner overlay.
+    // Otherwise, preload and start a 5-second delay to allow the ad to load. Show "Please wait" spinner overlay.
+    preloadRewardedAd();
     setIsWaitingForAd(true);
     
     setTimeout(() => {
@@ -1250,33 +1311,25 @@ export default function App() {
           },
           () => {
             // Closed
+            console.log("Adivery: Rewarded ad window closed");
           },
           () => {
             // Rewarded
-            recordAdWatched();
             executeAnalysis();
           },
           (err) => {
             console.warn("Adivery rewarded ad failed to show, running inspection directly:", err);
-            // Apply 1 minute cooldown (60 seconds) silently
-            const cooldownUntil = Date.now() + 60 * 1000;
-            localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-            setCooldownTime(60);
-            
             executeAnalysis();
           }
         );
       } else {
         console.log("Adivery: Rewarded ad not ready after 5 seconds delay, running directly.");
-        // Apply 1 minute cooldown (60 seconds) silently
-        const cooldownUntil = Date.now() + 60 * 1000;
-        localStorage.setItem("watermelon_cooldown_until", cooldownUntil.toString());
-        setCooldownTime(60);
-        
         executeAnalysis();
       }
     } else {
       // Web Simulator Mode
+      // Consume preloaded ad so that subsequent scans must preload a new ad
+      consumePreloadedAd();
       setAdOverlayActive(true);
       setAdOverlayProgress(0);
       setAdOverlaySeconds(15);
@@ -2878,7 +2931,6 @@ export default function App() {
                   <button
                     onClick={() => {
                       setAdOverlayActive(false);
-                      recordAdWatched();
                       executeAnalysis();
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-black text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-green-500 transition-all flex items-center gap-1.5 cursor-pointer"
